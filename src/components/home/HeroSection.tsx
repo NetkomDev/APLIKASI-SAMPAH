@@ -8,7 +8,7 @@ export function HeroSection() {
             <div className="absolute top-0 right-0 w-[800px] h-[800px] bg-emerald-100/40 rounded-full blur-3xl -translate-y-1/2 translate-x-1/3 pointer-events-none" />
             <div className="absolute bottom-0 left-0 w-[600px] h-[600px] bg-brand-100/40 rounded-full blur-3xl translate-y-1/3 -translate-x-1/4 pointer-events-none" />
 
-            <section className="px-6 py-20 lg:py-32 max-w-7xl mx-auto flex flex-col lg:flex-row items-center gap-16 relative z-10">
+            <section className="px-6 pt-12 pb-20 lg:pt-16 lg:pb-32 max-w-7xl mx-auto flex flex-col lg:flex-row items-center gap-16 relative z-10">
 
                 {/* Left Text Content */}
                 <div className="flex-1 flex flex-col items-start space-y-8">
