@@ -91,7 +91,8 @@ Ditujukan untuk **developer/pengelola sistem utama** agar seluruh konfigurasi da
 2. **Modul Konfigurasi Bot WhatsApp**
    - **Menu Builder**: Mengatur daftar menu, teks respons, dan alur percakapan Bot WA secara visual.
    - **Template Manager**: Mengelola template pesan sambutan, notifikasi jemput, konfirmasi setoran, dan pesan broadcast.
-   - **Fonnte API Settings**: Konfigurasi token API Fonnte, nomor pengirim, dan pengaturan webhook.
+   - **Virtual QR Code**: Menampilkan QR Code untuk menghubungkan Bot WA langsung dari Dashboard (tanpa akses terminal VPS).
+   - **Bot Status Monitor**: Memantau status koneksi bot secara real-time (Connected / Waiting QR / Disconnected).
    - **Auto-Reply Rules**: Mengatur aturan balasan otomatis berdasarkan kata kunci.
 3. **Modul Pengaturan Operasional Global**
    - **Service Area Manager**: Mengatur radius/geofence area operasional (polygon wilayah yang dilayani).
@@ -99,7 +100,7 @@ Ditujukan untuk **developer/pengelola sistem utama** agar seluruh konfigurasi da
    - **Pricing Master Control**: Mengatur harga dasar per kategori sampah yang menjadi acuan seluruh sistem.
    - **Referral Configuration**: Mengatur mekanisme referral (reward per referral, batas maksimum, dll).
 4. **Modul Monitoring Sistem**
-   - **System Health Check**: Status koneksi Supabase, Fonnte API, dan Edge Functions.
+   - **System Health Check**: Status koneksi Supabase dan Bot WhatsApp.
    - **Audit Log Viewer**: Melihat seluruh log perubahan konfigurasi (siapa mengubah apa, kapan).
    - **User Management**: Mengelola akun admin operator dan admin pemerintah (buat, nonaktifkan, reset password).
 
@@ -107,7 +108,7 @@ Ditujukan untuk **developer/pengelola sistem utama** agar seluruh konfigurasi da
 > - Akun `gov` (Pemerintah) dan `admin` (Operator Bank Sampah) **TIDAK** memiliki fitur self-registration.
 > - Kedua akun ini **hanya bisa dibuat oleh Super Admin** melalui menu "Kelola Distrik" di `/superadmin/districts`.
 > - Setiap Gov dan Admin **harus dipasangkan** sebagai satu Distrik (district_id yang sama), sehingga data tidak bertukar antar daerah.
-> - Akun warga (`user`) tetap self-register melalui `/auth`.
+> - Akun warga (`user`) bisa self-register melalui **2 jalur**: Web (`/auth`) atau Bot WhatsApp (lihat §3.5).
 
 ### 3.4 Mekanisme Akses Dashboard Internal (Hidden Portal)
 Semua dashboard internal (Operator, Pemerintah, Super Admin) **tidak boleh** memiliki link atau tombol yang terlihat di homepage publik warga.
@@ -127,6 +128,112 @@ Semua dashboard internal (Operator, Pemerintah, Super Admin) **tidak boleh** mem
    - Semua rute dashboard dilindungi oleh `AuthGuard` yang memverifikasi session + role.
    - Akses ke `/superadmin` hanya bisa dilakukan oleh user dengan `role = 'superadmin'` di tabel `profiles`.
    - Percobaan akses tanpa otorisasi akan di-redirect ke halaman login portal (`/portal`).
+
+---
+
+### 3.5 Mekanisme Bot WhatsApp (Pendaftaran & Interaksi)
+
+Bot WhatsApp adalah interface utama penghubung warga dengan sistem. Bot di-host di VPS menggunakan library `whatsapp-web.js` dan terhubung langsung ke database Supabase.
+
+#### 3.5.1 Jalur Pendaftaran Warga (Dual Registration Path)
+
+Warga dapat mendaftar melalui **2 jalur** yang terintegrasi:
+
+| No | Jalur | Cara Kerja | Notifikasi |
+|----|-------|-----------|------------|
+| 1 | **Web** (`/auth`) | User mengisi form di website → data tersimpan di Supabase → Bot mengirim pesan selamat datang otomatis via WA (proaktif) | Bot mengirim welcome + daftar menu ke nomor WA yang didaftarkan |
+| 2 | **WhatsApp** (via Referral/DAFTAR) | User mengirim link referral atau ketik `DAFTAR` ke Bot → Bot memandu pendaftaran step-by-step via percakapan → data tersimpan di Supabase | Bot mengirim welcome + daftar menu setelah konfirmasi selesai |
+
+#### 3.5.2 Alur Pendaftaran via WhatsApp (Conversation Flow)
+
+```text
+User mengirim link referral / ketik DAFTAR
+          │
+          ▼
+┌─────────────────────────┐
+│  Bot: "Langkah 1/2:     │
+│  Siapa nama lengkap     │
+│  Anda?"                 │
+└────────┬────────────────┘
+         │ User: "Budi Santoso"
+         ▼
+┌─────────────────────────┐
+│  Bot: "Langkah 2/2:     │
+│  Masukkan alamat        │
+│  lengkap Anda."         │
+└────────┬────────────────┘
+         │ User: "Jl. Merdeka No. 10..."
+         ▼
+┌─────────────────────────┐
+│  Bot: "Konfirmasi Data: │
+│  Nama: Budi Santoso     │
+│  Alamat: Jl. Merdeka... │
+│  Ketik YA/BATAL"        │
+└────────┬────────────────┘
+         │ User: "YA"
+         ▼
+┌─────────────────────────┐
+│  ✅ Akun dibuat di      │
+│  Supabase Auth + Profile│
+│  + User Wallet          │
+│  Bot: Welcome + Menu    │
+└─────────────────────────┘
+```
+
+- User dapat mengetik **BATAL** kapan saja untuk membatalkan pendaftaran.
+- Jika melalui referral, `referred_by` di tabel `profiles` akan terisi ID referrer.
+- Kolom `registration_source` mencatat asal pendaftaran: `web`, `whatsapp`, atau `admin`.
+
+#### 3.5.3 Alur Proaktif Welcome (untuk Pendaftar Web)
+
+Setelah user mendaftar via web dan menyertakan nomor WhatsApp:
+1. Bot melakukan polling setiap 30 detik mencari user baru dengan `registration_source = 'web'`.
+2. Bot mengirimkan pesan selamat datang resmi + daftar menu layanan ke nomor WA user.
+3. Setelah terkirim, `registration_source` di-update menjadi `web_welcomed` agar tidak terkirim ulang.
+
+> **User dinyatakan resmi terdaftar** saat sudah menerima pesan selamat datang dari Bot WA, baik yang mendaftar via Web maupun via WhatsApp.
+
+#### 3.5.4 Alur Interaksi User Terdaftar
+
+```text
+User mengirim pesan ke Bot
+          │
+          ▼
+    ┌─────────────┐
+    │ Cek profil  │──── Tidak terdaftar ──→ Tampilkan cara daftar
+    │ di Supabase │
+    └─────┬───────┘
+          │ Terdaftar
+          ▼
+    ┌─────────────┐
+    │ Match dgn   │──── Cocok ──→ Eksekusi logika menu (saldo/jemput/dll)
+    │ menu_key?   │
+    └─────┬───────┘
+          │ Tidak cocok
+          ▼
+    Tampilkan daftar menu
+```
+
+#### 3.5.5 Daftar Global Messages Bot
+
+| Key | Fungsi | Kapan Dikirim |
+|-----|--------|---------------|
+| `welcome_message` | Pesan saat user terdaftar ketik MENU/HALO | Setiap user terdaftar mengirim pesan sapaan |
+| `menu_header` | Header daftar menu | Saat user mengirim pesan yang tidak dikenali |
+| `unregistered_message` | Info pendaftaran untuk user belum terdaftar | Saat nomor belum terdaftar mengirim pesan |
+| `registration_welcome` | Pesan proaktif setelah daftar via web | Dikirim otomatis oleh bot setelah registrasi web |
+| `wa_registration_complete` | Pesan selamat setelah daftar via WA | Setelah user selesai mendaftar via percakapan WA |
+
+#### 3.5.6 Infrastruktur Bot
+
+| Komponen | Detail |
+|----------|--------|
+| **Library** | `whatsapp-web.js` (Chromium-based) |
+| **Hosting** | VPS SumoPod (124.156.202.180) |
+| **Process Manager** | PM2 (`ecosistem-bot`) |
+| **Path di VPS** | `/home/ubuntu/ecosistem-bot/vps-bot/` |
+| **Dashboard Kontrol** | Super Admin → Konfigurasi Bot WA |
+| **QR Code** | Ditampilkan virtual di Dashboard (Base64 via Supabase) |
 
 ---
 
