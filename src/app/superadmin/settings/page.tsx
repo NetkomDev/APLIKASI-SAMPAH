@@ -80,8 +80,8 @@ export default function SettingsPage() {
 
             {message && (
                 <div className={`flex items-start gap-3 p-4 rounded-xl border text-sm ${message.type === "success"
-                        ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-400"
-                        : "bg-red-500/10 border-red-500/20 text-red-400"
+                    ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-400"
+                    : "bg-red-500/10 border-red-500/20 text-red-400"
                     }`}>
                     {message.type === "success" ? <CheckCircle2 className="h-5 w-5 flex-shrink-0 mt-0.5" /> : <AlertCircle className="h-5 w-5 flex-shrink-0 mt-0.5" />}
                     {message.text}
@@ -154,7 +154,9 @@ export default function SettingsPage() {
     );
 }
 
-function InputField({ label, placeholder, value, onChange, type = "text" }: any) {
+function InputField({ label, placeholder, value, onChange, type = "text" }: {
+    label: string; placeholder?: string; value: string; onChange: (v: string) => void; type?: string;
+}) {
     return (
         <div className="space-y-1.5">
             <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">{label}</label>

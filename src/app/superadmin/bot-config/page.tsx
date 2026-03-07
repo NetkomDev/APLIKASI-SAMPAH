@@ -120,8 +120,8 @@ export default function BotConfigPage() {
 
             {message && (
                 <div className={`flex items-start gap-3 p-4 rounded-xl border text-sm ${message.type === "success"
-                        ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-400"
-                        : "bg-red-500/10 border-red-500/20 text-red-400"
+                    ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-400"
+                    : "bg-red-500/10 border-red-500/20 text-red-400"
                     }`}>
                     {message.type === "success" ? <CheckCircle2 className="h-5 w-5 flex-shrink-0 mt-0.5" /> : <AlertCircle className="h-5 w-5 flex-shrink-0 mt-0.5" />}
                     {message.text}
@@ -143,18 +143,18 @@ export default function BotConfigPage() {
                             <InputField
                                 label="Fonnte API Token"
                                 value={settings.fonnte_api_token || ""}
-                                onChange={(v) => handleSettingChange("fonnte_api_token", v)}
+                                onChange={(v: string) => handleSettingChange("fonnte_api_token", v)}
                                 type="password"
                             />
                             <InputField
                                 label="Nomor Fonnte Target (Opsional)"
                                 value={settings.fonnte_device_number || ""}
-                                onChange={(v) => handleSettingChange("fonnte_device_number", v)}
+                                onChange={(v: string) => handleSettingChange("fonnte_device_number", v)}
                             />
                             <InputField
                                 label="Webhook URL"
                                 value={settings.fonnte_webhook_url || ""}
-                                onChange={(v) => handleSettingChange("fonnte_webhook_url", v)}
+                                onChange={(v: string) => handleSettingChange("fonnte_webhook_url", v)}
                                 placeholder="https://..."
                             />
                         </div>
@@ -172,17 +172,17 @@ export default function BotConfigPage() {
                             <TextAreaField
                                 label="Pesan Sambutan (Awal Chat)"
                                 value={settings.welcome_message || ""}
-                                onChange={(v) => handleSettingChange("welcome_message", v)}
+                                onChange={(v: string) => handleSettingChange("welcome_message", v)}
                             />
                             <TextAreaField
                                 label="Header Menu Utama"
                                 value={settings.menu_header || ""}
-                                onChange={(v) => handleSettingChange("menu_header", v)}
+                                onChange={(v: string) => handleSettingChange("menu_header", v)}
                             />
                             <TextAreaField
                                 label="Pesan Belum Terdaftar"
                                 value={settings.unregistered_message || ""}
-                                onChange={(v) => handleSettingChange("unregistered_message", v)}
+                                onChange={(v: string) => handleSettingChange("unregistered_message", v)}
                             />
                         </div>
                         <button
@@ -241,12 +241,12 @@ export default function BotConfigPage() {
                                 <InputField
                                     label="Label Menu (Tampil di List)"
                                     value={menu.menu_label}
-                                    onChange={(v) => handleMenuChange(menu.id, "menu_label", v)}
+                                    onChange={(v: string) => handleMenuChange(menu.id, "menu_label", v)}
                                 />
                                 <TextAreaField
                                     label="Template Balasan"
                                     value={menu.response_template}
-                                    onChange={(v) => handleMenuChange(menu.id, "response_template", v)}
+                                    onChange={(v: string) => handleMenuChange(menu.id, "response_template", v)}
                                     rows={3}
                                 />
                             </div>
@@ -258,7 +258,9 @@ export default function BotConfigPage() {
     );
 }
 
-function InputField({ label, placeholder, value, onChange, type = "text" }: any) {
+function InputField({ label, placeholder, value, onChange, type = "text" }: {
+    label: string; placeholder?: string; value: string; onChange: (v: string) => void; type?: string;
+}) {
     return (
         <div className="space-y-1.5">
             <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">{label}</label>
@@ -268,7 +270,9 @@ function InputField({ label, placeholder, value, onChange, type = "text" }: any)
     );
 }
 
-function TextAreaField({ label, placeholder, value, onChange, rows = 4 }: any) {
+function TextAreaField({ label, placeholder, value, onChange, rows = 4 }: {
+    label: string; placeholder?: string; value: string; onChange: (v: string) => void; rows?: number;
+}) {
     return (
         <div className="space-y-1.5">
             <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">{label}</label>
