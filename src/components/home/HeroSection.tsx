@@ -39,8 +39,8 @@ export function HeroSection() {
                         <Link href="/auth" className="w-full sm:w-auto flex items-center justify-center gap-2 px-8 py-4 rounded-full bg-slate-900 text-white font-semibold hover:bg-slate-800 transition-all shadow-xl shadow-slate-900/10 active:scale-[0.98]">
                             Mulai Jadi Pahlawan Lingkungan
                         </Link>
-                        <Link href="/gov" className="w-full sm:w-auto flex items-center justify-center gap-2 px-8 py-4 rounded-full bg-white text-slate-700 font-semibold border border-slate-200 hover:bg-slate-50 hover:text-brand-600 transition-all shadow-sm active:scale-[0.98] group">
-                            Dashboard Pemerintah
+                        <Link href="#features" className="w-full sm:w-auto flex items-center justify-center gap-2 px-8 py-4 rounded-full bg-white text-slate-700 font-semibold border border-slate-200 hover:bg-slate-50 hover:text-brand-600 transition-all shadow-sm active:scale-[0.98] group">
+                            Pelajari Lebih Lanjut
                             <ArrowRight className="h-4 w-4 text-slate-400 group-hover:text-brand-600 transition-colors" />
                         </Link>
                     </div>

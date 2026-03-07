@@ -17,12 +17,9 @@ export function NavigationMenuBar() {
                 <nav className="hidden md:flex items-center gap-8 text-sm font-medium text-slate-600">
                     <Link href="#features" className="hover:text-brand-600 transition-colors">Fitur</Link>
                     <Link href="#impact" className="hover:text-brand-600 transition-colors">Dampak Keuangan</Link>
-                    <div className="flex items-center gap-3 pl-6 border-l border-slate-200">
-                        <Link href="/auth" className="px-5 py-2.5 rounded-full bg-slate-50 text-slate-700 hover:bg-slate-100 hover:text-slate-900 border border-slate-200 transition-all font-semibold active:scale-[0.98]">
-                            Login Warga
-                        </Link>
-                        <Link href="/admin" className="px-5 py-2.5 rounded-full bg-slate-900 text-white hover:bg-slate-800 shadow-lg shadow-slate-900/10 transition-all font-semibold active:scale-[0.98]">
-                            Portal Operator
+                    <div className="pl-6 border-l border-slate-200">
+                        <Link href="/auth" className="px-5 py-2.5 rounded-full bg-slate-900 text-white hover:bg-slate-800 shadow-lg shadow-slate-900/10 transition-all font-semibold active:scale-[0.98]">
+                            Daftar Sekarang
                         </Link>
                     </div>
                 </nav>

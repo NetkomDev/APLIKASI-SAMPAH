@@ -35,7 +35,7 @@ Sistem menggunakan model **"One District, One Project"** di Supabase untuk menja
 
 ## 3. Komponen Antarmuka (Front-End)
 
-Sistem Web (Next.js) terbagi menjadi dua lapisan kendali utama:
+Sistem Web (Next.js) terbagi menjadi **tiga lapisan kendali utama**, plus satu mekanisme akses tersembunyi:
 
 ### 3.1 Operational Admin Dashboard (Manajemen Harian - Tingkat Kabupaten)
 Ditujukan untuk **admin pengelola operasional (operator)** untuk memastikan kelancaran bisnis dan transaksi harian.
@@ -81,16 +81,65 @@ Ditujukan untuk **Dinas Lingkungan Hidup (DLH)** sebagai intelijen manajemen dae
 4. **Modul Reward Engine & Intervensi Kebijakan**
    - **Top 100 Contributors**: Pemeringkatan warga/kurir proaktif untuk insentif daerah (subsidi PBB/diskon retribusi sampah otomatis).
 
+### 3.3 Super Admin Dashboard (Pengelola Sistem - Tingkat Developer)
+Ditujukan untuk **developer/pengelola sistem utama** agar seluruh konfigurasi dapat diatur secara dinamis tanpa harus mengubah source code.
+
+1. **Modul Konfigurasi Tampilan Dashboard**
+   - **Dashboard Branding Manager**: Mengatur logo Pemda, nama dinas, warna tema, dan teks sambutan yang tampil di Dashboard Pemerintah dan Dashboard Operator.
+   - **Widget Visibility Control**: Mengaktifkan/menonaktifkan modul-modul tertentu per dashboard (misal: menyembunyikan modul "Revenue Monitoring" dari Dashboard Operator).
+   - **Announcement Banner**: Mengelola banner pengumuman yang muncul di atas semua dashboard tanpa deployment ulang.
+2. **Modul Konfigurasi Bot WhatsApp**
+   - **Menu Builder**: Mengatur daftar menu, teks respons, dan alur percakapan Bot WA secara visual.
+   - **Template Manager**: Mengelola template pesan sambutan, notifikasi jemput, konfirmasi setoran, dan pesan broadcast.
+   - **Fonnte API Settings**: Konfigurasi token API Fonnte, nomor pengirim, dan pengaturan webhook.
+   - **Auto-Reply Rules**: Mengatur aturan balasan otomatis berdasarkan kata kunci.
+3. **Modul Pengaturan Operasional Global**
+   - **Service Area Manager**: Mengatur radius/geofence area operasional (polygon wilayah yang dilayani).
+   - **Role & Permission Matrix**: Mengelola peran pengguna dan hak akses per modul.
+   - **Pricing Master Control**: Mengatur harga dasar per kategori sampah yang menjadi acuan seluruh sistem.
+   - **Referral Configuration**: Mengatur mekanisme referral (reward per referral, batas maksimum, dll).
+4. **Modul Monitoring Sistem**
+   - **System Health Check**: Status koneksi Supabase, Fonnte API, dan Edge Functions.
+   - **Audit Log Viewer**: Melihat seluruh log perubahan konfigurasi (siapa mengubah apa, kapan).
+   - **User Management**: Mengelola akun admin operator dan admin pemerintah (buat, nonaktifkan, reset password).
+
+### 3.4 Mekanisme Akses Dashboard Internal (Hidden Portal)
+Semua dashboard internal (Operator, Pemerintah, Super Admin) **tidak boleh** memiliki link atau tombol yang terlihat di homepage publik warga.
+
+1. **Akses via URL Rahasia**
+   - Dashboard internal diakses melalui rute `/portal` yang tidak ditampilkan di navigasi homepage.
+   - Rute `/portal` menampilkan halaman login khusus dengan identifikasi peran otomatis.
+   - Setelah login berhasil, sistem mengarahkan pengguna ke dashboard sesuai perannya:
+     - `superadmin` → `/superadmin`
+     - `admin` (Operator Bank Sampah) → `/admin`
+     - `gov` (Dinas/Bupati) → `/gov`
+2. **Homepage Warga Bersih**
+   - Homepage (`/`) dan halaman registrasi (`/auth`) **hanya** menampilkan konten untuk warga.
+   - Tidak ada tombol, link, atau referensi visual apapun ke dashboard internal.
+   - Tombol CTA di homepage hanya berisi: "Mulai Jadi Pahlawan Lingkungan" (ke `/auth`) dan "Dashboard Pemerintah" (opsional, bisa dihilangkan).
+3. **Proteksi Berlapis**
+   - Semua rute dashboard dilindungi oleh `AuthGuard` yang memverifikasi session + role.
+   - Akses ke `/superadmin` hanya bisa dilakukan oleh user dengan `role = 'superadmin'` di tabel `profiles`.
+   - Percobaan akses tanpa otorisasi akan di-redirect ke halaman login portal (`/portal`).
+
 ---
 
 ## 4. Keamanan & Database Schema
 
 ### 4.1 Schema Enhancement (Tabel Esensial)
 Di dalam Supabase, struktur PostgreSQL harus memasukkan beberapa entitas berikut:
-- **`profiles`**: Profil user dengan ekstensi `role` (`user` / `courier` / `admin` / `gov`), dan `achievement_points`.
+- **`profiles`**: Profil user dengan ekstensi `role` (`user` / `courier` / `admin` / `gov` / `superadmin`), dan `achievement_points`.
 - **`courier_logs`**: Tabel log performa (durasi jemput, lokasi, *rating* dari warga).
 - **`policy_configs`**: Master data pengaturan pemerintah (parameter reward, threshold, target Zero Waste).
 - **`waste_analytics`**: Tabel *materialized view* / *summary* agregasi agar grafik analitik *Government Dashboard* ter-load sangat cepat.
+- **`system_settings`**: Tabel konfigurasi dinamis yang dikelola Super Admin. Berisi key-value pair untuk:
+  - Pengaturan tampilan dashboard (logo, tema, widget visibility)
+  - Konfigurasi Bot WhatsApp (menu, template pesan, token API Fonnte)
+  - Parameter operasional global (radius layanan, harga dasar, aturan referral)
+  - Setiap perubahan tercatat di `audit_logs` untuk transparansi.
+- **`audit_logs`**: Log perubahan konfigurasi sistem oleh Super Admin (field: `user_id`, `action`, `table_name`, `old_value`, `new_value`, `timestamp`).
+- **`wa_menu_configs`**: Konfigurasi menu dan template pesan Bot WhatsApp yang dapat diubah real-time tanpa deployment ulang.
+- **`dashboard_widgets`**: Daftar widget/modul per dashboard beserta status aktif/nonaktif, urutan tampil, dan konfigurasi visual.
 
 ### 4.2 Security & Data Privacy
 - **Row Level Security (RLS)**: Data dibatasi by peruntukan login. (Misal: Pemerintah hanya visual data *aggregate*, Warga dan Kurir hanya data transaksi mereka).
