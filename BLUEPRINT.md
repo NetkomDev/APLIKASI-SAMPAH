@@ -103,6 +103,12 @@ Ditujukan untuk **developer/pengelola sistem utama** agar seluruh konfigurasi da
    - **Audit Log Viewer**: Melihat seluruh log perubahan konfigurasi (siapa mengubah apa, kapan).
    - **User Management**: Mengelola akun admin operator dan admin pemerintah (buat, nonaktifkan, reset password).
 
+> **PENTING — Aturan Registrasi Akun:**
+> - Akun `gov` (Pemerintah) dan `admin` (Operator Bank Sampah) **TIDAK** memiliki fitur self-registration.
+> - Kedua akun ini **hanya bisa dibuat oleh Super Admin** melalui menu "Kelola Distrik" di `/superadmin/districts`.
+> - Setiap Gov dan Admin **harus dipasangkan** sebagai satu Distrik (district_id yang sama), sehingga data tidak bertukar antar daerah.
+> - Akun warga (`user`) tetap self-register melalui `/auth`.
+
 ### 3.4 Mekanisme Akses Dashboard Internal (Hidden Portal)
 Semua dashboard internal (Operator, Pemerintah, Super Admin) **tidak boleh** memiliki link atau tombol yang terlihat di homepage publik warga.
 
@@ -140,8 +146,21 @@ Di dalam Supabase, struktur PostgreSQL harus memasukkan beberapa entitas berikut
 - **`audit_logs`**: Log perubahan konfigurasi sistem oleh Super Admin (field: `user_id`, `action`, `table_name`, `old_value`, `new_value`, `timestamp`).
 - **`wa_menu_configs`**: Konfigurasi menu dan template pesan Bot WhatsApp yang dapat diubah real-time tanpa deployment ulang.
 - **`dashboard_widgets`**: Daftar widget/modul per dashboard beserta status aktif/nonaktif, urutan tampil, dan konfigurasi visual.
+- **`districts`**: Tabel master distrik/kabupaten untuk menyambungkan (pairing) akun Gov dan Admin sebagai satu kesatuan. Kolom utama:
+  - `id` (uuid, PK)
+  - `name` (text) — Nama kabupaten/distrik
+  - `gov_id` (uuid, FK → profiles.id) — Akun pemerintah yang bertanggung jawab
+  - `created_by` (uuid, FK → profiles.id) — Super Admin yang mendaftarkan
+  - `is_active` (boolean) — Status aktif/nonaktif
+- **`profiles.district_id`**: Kolom tambahan pada tabel profiles (FK → districts.id) yang menghubungkan akun gov dan admin ke distrik yang sama.
+- **`profiles.district_name`**: Cache nama distrik untuk kemudahan query.
 
-### 4.2 Security & Data Privacy
+### 4.2 Kredensial Super Admin
+- **Email**: `superadmin@ecosistemdigital.id`
+- **Password**: `SuperAdmin@2026!`
+- **Akses**: Hanya via `/portal` → otomatis redirect ke `/superadmin`
+
+### 4.3 Security & Data Privacy
 - **Row Level Security (RLS)**: Data dibatasi by peruntukan login. (Misal: Pemerintah hanya visual data *aggregate*, Warga dan Kurir hanya data transaksi mereka).
 - **Audit Trail**: Tracking history perubahan *Dynamic Pricing* atau persetujuan dana untuk keamanan internal.
 - **Encrypted Storage**: Privasi foto tumpukan sampah terenkripsi sesuai persetujuan.
