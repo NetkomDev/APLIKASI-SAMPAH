@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/infrastructure/config/supabase";
 import { useRouter } from "next/navigation";
-import { Leaf, ArrowRight, ArrowLeft, CheckCircle2, Phone, User, MapPin, Sparkles } from "lucide-react";
+import { Leaf, ArrowRight, ArrowLeft, CheckCircle2, Phone, User, MapPin, Sparkles, Eye, EyeOff } from "lucide-react";
 
 // Format phone number for display: 812 3456 7890
 const formatPhoneDisplay = (raw: string): string => {
@@ -32,6 +32,7 @@ export function RegistrationFlow() {
     const [phone, setPhone] = useState("");
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
+    const [showPassword, setShowPassword] = useState(false);
 
     useEffect(() => {
         setMounted(true);
@@ -293,16 +294,31 @@ export function RegistrationFlow() {
                                 {/* Password */}
                                 <div className="space-y-1.5">
                                     <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Kata Sandi</label>
-                                    <input
-                                        type="password"
-                                        id="password"
-                                        name="password"
-                                        autoComplete="new-password"
-                                        placeholder="Minimal 6 karakter"
-                                        value={password}
-                                        onChange={(e) => setPassword(e.target.value)}
-                                        className="w-full px-4 py-3.5 bg-white rounded-xl border border-slate-200 text-sm text-slate-800 placeholder:text-slate-300 focus:outline-none focus:ring-2 focus:ring-brand-200 focus:border-brand-300 transition shadow-sm"
-                                    />
+                                    <div className="relative">
+                                        <input
+                                            type={showPassword ? "text" : "password"}
+                                            id="password"
+                                            name="password"
+                                            autoComplete="new-password"
+                                            placeholder="Minimal 6 karakter"
+                                            value={password}
+                                            onChange={(e) => setPassword(e.target.value)}
+                                            className="w-full px-4 pr-12 py-3.5 bg-white rounded-xl border border-slate-200 text-sm text-slate-800 placeholder:text-slate-300 focus:outline-none focus:ring-2 focus:ring-brand-200 focus:border-brand-300 transition shadow-sm"
+                                        />
+                                        <button
+                                            type="button"
+                                            onClick={() => setShowPassword(!showPassword)}
+                                            className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-brand-500 transition-colors"
+                                            tabIndex={-1}
+                                            aria-label={showPassword ? "Sembunyikan kata sandi" : "Tampilkan kata sandi"}
+                                        >
+                                            {showPassword ? (
+                                                <EyeOff className="h-5 w-5" />
+                                            ) : (
+                                                <Eye className="h-5 w-5" />
+                                            )}
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
 
