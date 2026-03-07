@@ -153,17 +153,17 @@ export default function BotConfigPage() {
                                 </div>
                                 <h2 className="text-lg font-bold text-white">Status Koneksi</h2>
                             </div>
-                            <span className={`px-2.5 py-1 rounded-full text-xs font-medium border ${settings.bot_status === "READY" ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20" :
+                            <span className={`px-2.5 py-1 rounded-full text-xs font-medium border ${(settings.bot_status === "READY" || settings.bot_status === "CONNECTED") ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20" :
                                 settings.bot_status === "WAITING_QR" ? "bg-amber-500/10 text-amber-400 border-amber-500/20" :
                                     "bg-red-500/10 text-red-400 border-red-500/20"
                                 }`}>
-                                {settings.bot_status === "READY" ? "Tersambung" :
+                                {(settings.bot_status === "READY" || settings.bot_status === "CONNECTED") ? "Tersambung" :
                                     settings.bot_status === "WAITING_QR" ? "Menunggu Scan" : "Terputus"}
                             </span>
                         </div>
 
                         <div className="flex flex-col items-center justify-center p-6 bg-slate-950/50 rounded-xl border border-slate-800 relative z-10 min-h-[200px]">
-                            {settings.bot_status === "READY" ? (
+                            {(settings.bot_status === "READY" || settings.bot_status === "CONNECTED") ? (
                                 <div className="text-center space-y-3">
                                     <div className="mx-auto w-16 h-16 bg-emerald-500/10 rounded-full flex items-center justify-center border border-emerald-500/20 shadow-[0_0_15px_rgba(16,185,129,0.2)]">
                                         <Bot className="h-8 w-8 text-emerald-400" />
