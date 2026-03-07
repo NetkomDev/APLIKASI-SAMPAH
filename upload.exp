@@ -1,0 +1,6 @@
+#!/usr/bin/expect -f
+set timeout -1
+spawn scp -o StrictHostKeyChecking=no -r vps-bot ubuntu@124.156.202.180:/home/ubuntu/ecosistem-bot
+expect "*?assword:*"
+send "Scd-35Q-vJD-BVh\r"
+expect eof

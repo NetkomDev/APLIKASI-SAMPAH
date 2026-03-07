@@ -39,11 +39,11 @@ export default function BotConfigPage() {
 
         if (menuData) setMenus(menuData);
 
-        // Fetch Fonnte & Bot settings
+        // Fetch Bot settings
         const { data: settingData } = await supabase
             .from("system_settings")
             .select("key_name, value_text")
-            .in("category", ["fonnte", "bot"]);
+            .eq("category", "bot");
 
         if (settingData) {
             const settingsMap: Record<string, string> = {};
@@ -99,7 +99,7 @@ export default function BotConfigPage() {
                     .eq("key_name", update.key_name);
             }
 
-            setMessage({ type: "success", text: "Pengaturan Bot & Fonnte berhasil disimpan." });
+            setMessage({ type: "success", text: "Pengaturan Bot berhasil disimpan." });
         } catch (error: any) {
             setMessage({ type: "error", text: `Gagal menyimpan pengaturan: ${error.message}` });
         } finally {
@@ -114,7 +114,7 @@ export default function BotConfigPage() {
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <div>
                     <h1 className="text-2xl font-bold text-white tracking-tight">Konfigurasi Bot WhatsApp</h1>
-                    <p className="text-sm text-slate-400 mt-1">Atur template pesan, menu otomatis, dan API Fonnte.</p>
+                    <p className="text-sm text-slate-400 mt-1">Atur template pesan dan menu respons otomatis bot.</p>
                 </div>
             </div>
 
@@ -129,37 +129,8 @@ export default function BotConfigPage() {
             )}
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                {/* Left Column: API & Global Bot Settings */}
+                {/* Left Column: Global Bot Settings */}
                 <div className="space-y-6">
-                    {/* Fonnte API Settings */}
-                    <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6">
-                        <div className="flex items-center gap-3 mb-6">
-                            <div className="p-2.5 rounded-xl bg-blue-500/10 border border-blue-500/20">
-                                <Smartphone className="h-5 w-5 text-blue-400" />
-                            </div>
-                            <h2 className="text-lg font-bold text-white">Fonnte API</h2>
-                        </div>
-                        <div className="space-y-4">
-                            <InputField
-                                label="Fonnte API Token"
-                                value={settings.fonnte_api_token || ""}
-                                onChange={(v: string) => handleSettingChange("fonnte_api_token", v)}
-                                type="password"
-                            />
-                            <InputField
-                                label="Nomor Fonnte Target (Opsional)"
-                                value={settings.fonnte_device_number || ""}
-                                onChange={(v: string) => handleSettingChange("fonnte_device_number", v)}
-                            />
-                            <InputField
-                                label="Webhook URL"
-                                value={settings.fonnte_webhook_url || ""}
-                                onChange={(v: string) => handleSettingChange("fonnte_webhook_url", v)}
-                                placeholder="https://..."
-                            />
-                        </div>
-                    </div>
-
                     {/* Bot Global Messages */}
                     <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6">
                         <div className="flex items-center gap-3 mb-6">
