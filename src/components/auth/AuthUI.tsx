@@ -69,10 +69,12 @@ export function AuthUI() {
                         },
                     },
                     className: {
-                        button: 'px-4 py-2 font-medium bg-brand-500 hover:bg-brand-600 rounded-lg text-white w-full transition-colors',
-                        label: 'text-sm font-medium text-slate-700',
-                        input: 'mt-1 block w-full px-3 py-2 bg-white border border-slate-300 rounded-md text-sm shadow-sm placeholder-slate-400 focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500',
-                        anchor: 'text-sm text-brand-600 hover:text-brand-500',
+                        button: 'justify-center items-center flex px-4 py-3 sm:py-2.5 font-semibold bg-brand-500 hover:bg-brand-600 rounded-full text-white w-full transition-all shadow-md hover:shadow-lg active:scale-[0.98]',
+                        label: 'text-sm font-semibold text-slate-700 ml-1',
+                        input: 'mt-1 block w-full px-4 py-3 sm:py-2.5 bg-slate-50 border border-slate-200 rounded-full text-sm shadow-sm placeholder-slate-400 focus:outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 transition-all',
+                        anchor: 'text-sm font-medium text-brand-600 hover:text-brand-500 hover:underline',
+                        divider: 'bg-slate-200',
+                        message: 'text-sm text-red-500 p-3 bg-red-50 rounded-xl mt-3'
                     }
                 }}
                 providers={['google']}
