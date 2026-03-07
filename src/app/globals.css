@@ -1,26 +1,65 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+@theme {
+  --color-brand-50: #effdf5;
+  --color-brand-100: #d9fbe8;
+  --color-brand-200: #b3f5d1;
+  --color-brand-300: #7eeab4;
+  --color-brand-400: #44d58f;
+  --color-brand-500: #1fb970;
+  --color-brand-600: #129555;
+  --color-brand-700: #117646;
+  --color-brand-800: #115d39;
+  --color-brand-900: #0f4d31;
+
+  --color-slate-850: #141b26;
+  --color-slate-900: #0f172a;
+  --color-slate-950: #020617;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
+@layer base {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    --background: #f8fafc;
+    --foreground: #020617;
+    
+    --card: #ffffff;
+    --card-foreground: #020617;
+    
+    --border: #e2e8f0;
+    --input: #e2e8f0;
+    
+    --primary: #1fb970;
+    --primary-foreground: #ffffff;
+    
+    --muted: #f1f5f9;
+    --muted-foreground: #64748b;
+  }
+  
+  .dark {
+    --background: #020617;
+    --foreground: #f8fafc;
+    
+    --card: #0f172a;
+    --card-foreground: #f8fafc;
+    
+    --border: #1e293b;
+    --input: #1e293b;
+    
+    --primary: #1fb970;
+    --primary-foreground: #ffffff;
+    
+    --muted: #0f172a;
+    --muted-foreground: #94a3b8;
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+@layer base {
+  * {
+    border-color: var(--border);
+  }
+  body {
+    background-color: var(--background);
+    color: var(--foreground);
+    @apply antialiased min-h-screen selection:bg-brand-200 selection:text-brand-900;
+  }
 }
