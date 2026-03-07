@@ -241,6 +241,9 @@ export function RegistrationFlow() {
                                     </label>
                                     <input
                                         type="text"
+                                        id="fullName"
+                                        name="name"
+                                        autoComplete="name"
                                         placeholder="Contoh: Budi Santoso"
                                         value={fullName}
                                         onChange={(e) => setFullName(e.target.value)}
@@ -257,6 +260,9 @@ export function RegistrationFlow() {
                                         <span className="absolute left-4 top-1/2 -translate-y-1/2 text-sm text-slate-400 font-medium select-none">+62</span>
                                         <input
                                             type="tel"
+                                            id="phone"
+                                            name="tel"
+                                            autoComplete="tel-national"
                                             placeholder="812 3456 7890"
                                             value={formatPhoneDisplay(phone)}
                                             onChange={(e) => {
@@ -274,6 +280,9 @@ export function RegistrationFlow() {
                                     <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Email</label>
                                     <input
                                         type="email"
+                                        id="email"
+                                        name="email"
+                                        autoComplete="email"
                                         placeholder="nama@email.com"
                                         value={email}
                                         onChange={(e) => setEmail(e.target.value)}
@@ -286,6 +295,9 @@ export function RegistrationFlow() {
                                     <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Kata Sandi</label>
                                     <input
                                         type="password"
+                                        id="password"
+                                        name="password"
+                                        autoComplete="new-password"
                                         placeholder="Minimal 6 karakter"
                                         value={password}
                                         onChange={(e) => setPassword(e.target.value)}
