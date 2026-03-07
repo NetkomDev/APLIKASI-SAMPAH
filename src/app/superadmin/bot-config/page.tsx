@@ -27,7 +27,31 @@ export default function BotConfigPage() {
 
     useEffect(() => {
         fetchData();
+
+        // Setup polling for bot status & qr code
+        const intervalId = setInterval(() => {
+            fetchSettings();
+        }, 5000);
+
+        return () => clearInterval(intervalId);
     }, []);
+
+    const fetchSettings = async () => {
+        const { data: settingData } = await supabase
+            .from("system_settings")
+            .select("key_name, value_text")
+            .eq("category", "bot");
+
+        if (settingData) {
+            setSettings(prev => {
+                const newSettings = { ...prev };
+                settingData.forEach(s => {
+                    newSettings[s.key_name] = s.value_text || "";
+                });
+                return newSettings;
+            });
+        }
+    };
 
     const fetchData = async () => {
         setIsLoading(true);
@@ -39,19 +63,7 @@ export default function BotConfigPage() {
 
         if (menuData) setMenus(menuData);
 
-        // Fetch Bot settings
-        const { data: settingData } = await supabase
-            .from("system_settings")
-            .select("key_name, value_text")
-            .eq("category", "bot");
-
-        if (settingData) {
-            const settingsMap: Record<string, string> = {};
-            settingData.forEach(s => {
-                settingsMap[s.key_name] = s.value_text || "";
-            });
-            setSettings(settingsMap);
-        }
+        await fetchSettings();
         setIsLoading(false);
     };
 
@@ -114,7 +126,7 @@ export default function BotConfigPage() {
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <div>
                     <h1 className="text-2xl font-bold text-white tracking-tight">Konfigurasi Bot WhatsApp</h1>
-                    <p className="text-sm text-slate-400 mt-1">Atur template pesan dan menu respons otomatis bot.</p>
+                    <p className="text-sm text-slate-400 mt-1">Atur template pesan, menu respons otomatis, dan pantau status bot WhatsApp.</p>
                 </div>
             </div>
 
@@ -129,8 +141,56 @@ export default function BotConfigPage() {
             )}
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                {/* Left Column: Global Bot Settings */}
+                {/* Left Column: Global Bot Settings & Status */}
                 <div className="space-y-6">
+                    {/* Bot Status / QR Code */}
+                    <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 relative overflow-hidden group">
+                        <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/5 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                        <div className="flex items-center justify-between mb-4 relative z-10">
+                            <div className="flex items-center gap-3">
+                                <div className="p-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20">
+                                    <Smartphone className="h-5 w-5 text-emerald-400" />
+                                </div>
+                                <h2 className="text-lg font-bold text-white">Status Koneksi</h2>
+                            </div>
+                            <span className={`px-2.5 py-1 rounded-full text-xs font-medium border ${settings.bot_status === "READY" ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20" :
+                                settings.bot_status === "WAITING_QR" ? "bg-amber-500/10 text-amber-400 border-amber-500/20" :
+                                    "bg-red-500/10 text-red-400 border-red-500/20"
+                                }`}>
+                                {settings.bot_status === "READY" ? "Tersambung" :
+                                    settings.bot_status === "WAITING_QR" ? "Menunggu Scan" : "Terputus"}
+                            </span>
+                        </div>
+
+                        <div className="flex flex-col items-center justify-center p-6 bg-slate-950/50 rounded-xl border border-slate-800 relative z-10 min-h-[200px]">
+                            {settings.bot_status === "READY" ? (
+                                <div className="text-center space-y-3">
+                                    <div className="mx-auto w-16 h-16 bg-emerald-500/10 rounded-full flex items-center justify-center border border-emerald-500/20 shadow-[0_0_15px_rgba(16,185,129,0.2)]">
+                                        <Bot className="h-8 w-8 text-emerald-400" />
+                                    </div>
+                                    <p className="text-sm font-medium text-emerald-400">Bot Siap Melayani</p>
+                                    <p className="text-xs text-slate-500">Koneksi WhatsApp aktif dan stabil.</p>
+                                </div>
+                            ) : settings.bot_status === "WAITING_QR" && settings.bot_qr_code ? (
+                                <div className="text-center space-y-4">
+                                    <div className="mx-auto w-40 h-40 bg-white p-2 rounded-xl border-4 border-slate-800 shadow-xl overflow-hidden relative">
+                                        <img src={settings.bot_qr_code} alt="WhatsApp QR Code" className="w-full h-full object-contain" />
+                                    </div>
+                                    <p className="text-sm font-medium text-amber-400 animate-pulse">Menunggu Scan QR...</p>
+                                    <p className="text-xs text-slate-500">Buka WA &gt; Perangkat Tertaut &gt; Tautkan Perangkat</p>
+                                </div>
+                            ) : (
+                                <div className="text-center space-y-3">
+                                    <div className="mx-auto w-16 h-16 bg-red-500/10 rounded-full flex items-center justify-center border border-red-500/20">
+                                        <AlertCircle className="h-8 w-8 text-red-400" />
+                                    </div>
+                                    <p className="text-sm font-medium text-red-400">Bot Terputus</p>
+                                    <p className="text-xs text-slate-500">Bot sedang offline atau terjadi masalah di server VPS.</p>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+
                     {/* Bot Global Messages */}
                     <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6">
                         <div className="flex items-center gap-3 mb-6">
