@@ -3,7 +3,20 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/infrastructure/config/supabase";
 import { useRouter } from "next/navigation";
-import { Leaf, ArrowRight, CheckCircle2, Phone, User, MapPin, Sparkles } from "lucide-react";
+import { Leaf, ArrowRight, ArrowLeft, CheckCircle2, Phone, User, MapPin, Sparkles } from "lucide-react";
+
+// Format phone number for display: 812 3456 7890
+const formatPhoneDisplay = (raw: string): string => {
+    const digits = raw.replace(/\D/g, "");
+    if (digits.length <= 3) return digits;
+    if (digits.length <= 7) return `${digits.slice(0, 3)} ${digits.slice(3)}`;
+    return `${digits.slice(0, 3)} ${digits.slice(3, 7)} ${digits.slice(7, 11)}`;
+};
+
+// Strip formatting to get raw digits for DB storage
+const stripPhoneFormat = (formatted: string): string => {
+    return formatted.replace(/\D/g, "");
+};
 
 type Step = "welcome" | "form" | "otp" | "success";
 
@@ -138,9 +151,10 @@ export function RegistrationFlow() {
                     {step !== "welcome" && step !== "success" && (
                         <button
                             onClick={() => setStep("welcome")}
-                            className="text-xs text-slate-400 hover:text-slate-600 transition"
+                            className="w-9 h-9 rounded-full bg-white shadow-md border border-slate-100 flex items-center justify-center hover:bg-slate-50 hover:shadow-lg active:scale-95 transition-all"
+                            aria-label="Kembali"
                         >
-                            Kembali
+                            <ArrowLeft className="h-4 w-4 text-slate-600" />
                         </button>
                     )}
                 </header>
@@ -240,13 +254,16 @@ export function RegistrationFlow() {
                                         <Phone className="h-3.5 w-3.5" /> Nomor WhatsApp
                                     </label>
                                     <div className="relative">
-                                        <span className="absolute left-4 top-1/2 -translate-y-1/2 text-sm text-slate-400 font-medium">+62</span>
+                                        <span className="absolute left-4 top-1/2 -translate-y-1/2 text-sm text-slate-400 font-medium select-none">+62</span>
                                         <input
                                             type="tel"
                                             placeholder="812 3456 7890"
-                                            value={phone}
-                                            onChange={(e) => setPhone(e.target.value)}
-                                            className="w-full pl-14 pr-4 py-3.5 bg-white rounded-xl border border-slate-200 text-sm text-slate-800 placeholder:text-slate-300 focus:outline-none focus:ring-2 focus:ring-brand-200 focus:border-brand-300 transition shadow-sm"
+                                            value={formatPhoneDisplay(phone)}
+                                            onChange={(e) => {
+                                                const raw = stripPhoneFormat(e.target.value);
+                                                if (raw.length <= 12) setPhone(raw);
+                                            }}
+                                            className="w-full pl-14 pr-4 py-3.5 bg-white rounded-xl border border-slate-200 text-sm text-slate-800 tracking-wide placeholder:text-slate-300 placeholder:tracking-wide focus:outline-none focus:ring-2 focus:ring-brand-200 focus:border-brand-300 transition shadow-sm"
                                         />
                                     </div>
                                     <p className="text-[11px] text-slate-400 pl-1">Bot WhatsApp akan menghubungi nomor ini setelah pendaftaran berhasil.</p>
