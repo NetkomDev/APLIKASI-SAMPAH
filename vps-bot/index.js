@@ -179,7 +179,7 @@ async function startRegistration(msg, senderNumber, referrerId) {
     }
 
     await msg.reply(
-        `📝 *Pendaftaran Akun EcoSistem Digital*\n${referrerInfo}\nMari kita daftarkan Anda! Prosesnya cepat dan mudah.\n\n*Langkah 1/2*: Siapa nama lengkap Anda?`
+        `📝 *Pendaftaran Akun EcoSistem Digital*\n${referrerInfo}\nMari kita mulai!\n\n*Langkah 1/2*: Siapa nama lengkap Anda?`
     );
 }
 
