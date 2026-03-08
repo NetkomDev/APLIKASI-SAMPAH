@@ -1,0 +1,12 @@
+#!/usr/bin/expect -f
+set timeout -1
+spawn ssh -o StrictHostKeyChecking=no ubuntu@124.156.202.180
+expect "password:"
+send "Scd-35Q-vJD-BVh\r"
+expect "$ "
+send "cd ~/ecosistem-bot/vps-bot\r"
+expect "$ "
+send "pm2 restart ecosistem-bot\r"
+expect "$ "
+send "pm2 logs ecosistem-bot\r"
+interact

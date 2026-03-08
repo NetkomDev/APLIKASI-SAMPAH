@@ -1,0 +1,24 @@
+#!/usr/bin/expect -f
+set timeout -1
+spawn ssh -o StrictHostKeyChecking=no ubuntu@124.156.202.180
+expect "password:"
+send "Scd-35Q-vJD-BVh"
+expect "$ "
+send "cat << \EOF > /home/ubuntu/ecosistem-bot/vps-bot/test-rt.js
+require(\"dotenv\").config();
+const { createClient } = require(\"@supabase/supabase-js\");
+const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
+console.log(\"Testing connection...\");
+supabase.channel(\"test-listener\")
+    .on(\"postgres_changes\", { event: \"*\", schema: \"public\", table: \"whatsapp_webhooks\" }, () => {})
+    .subscribe((status, err) => {
+        console.log(\"Status Realtime:\", status, err);
+        process.exit();
+    });
+EOF
+"
+expect "$ "
+send "cd /home/ubuntu/ecosistem-bot/vps-bot && node test-rt.js"
+expect "$ "
+send "exit"
+expect eof

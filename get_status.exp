@@ -1,0 +1,13 @@
+#!/usr/bin/expect -f
+set timeout -1
+spawn ssh -o StrictHostKeyChecking=no ubuntu@124.156.202.180
+expect "password:"
+send "Scd-35Q-vJD-BVh\r"
+expect "$ "
+send "cd ~/ecosistem-bot/vps-bot\r"
+expect "$ "
+send "cat << 'JS_EOF' > test_status.cjs\nconst { createClient } = require('@supabase/supabase-js');\nrequire('dotenv').config({ path: '../.env.local' });\nconst supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;\nconst supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;\nconst supabase = createClient(supabaseUrl, supabaseKey);\nasync function run() {\n    const { data } = await supabase.from('system_settings').select('key_name, value_text').eq('category', 'bot');\n    const status = data.find(d => d.key_name === 'bot_status')?.value_text;\n    console.log('STATUS:', status);\n}\nrun();\nJS_EOF\r"
+expect "$ "
+send "node test_status.cjs\r"
+expect "$ "
+interact

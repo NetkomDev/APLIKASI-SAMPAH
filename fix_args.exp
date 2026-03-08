@@ -1,0 +1,18 @@
+#!/usr/bin/expect -f
+set timeout -1
+spawn ssh -o StrictHostKeyChecking=no ubuntu@124.156.202.180
+expect "password:"
+send "Scd-35Q-vJD-BVh\r"
+expect "$ "
+send "cd ~/ecosistem-bot/vps-bot\r"
+expect "$ "
+send "echo \"CmNvbnN0IGZzID0gcmVxdWlyZSgnZnMnKTsKbGV0IGNvZGUgPSBmcy5yZWFkRmlsZVN5bmMoJ2luZGV4LmpzJywgJ3V0ZjgnKTsKY29kZSA9IGNvZGUucmVwbGFjZSgvYXJnczpccypcWy4qP1xdL3MsICJhcmdzOiBbJy0tbm8tc2FuZGJveCcsICctLWRpc2FibGUtc2V0dWlkLXNhbmRib3gnLCAnLS1kaXNhYmxlLWRldi1zaG0tdXNhZ2UnLCAnLS1kaXNhYmxlLWFjY2VsZXJhdGVkLTJkLWNhbnZhcycsICctLWRpc2FibGUtZ3B1J10iKTsKZnMud3JpdGVGaWxlU3luYygnaW5kZXguanMnLCBjb2RlKTsK\" | base64 -d > patch_args.js\r"
+expect "$ "
+send "node patch_args.js\r"
+expect "$ "
+send "rm -rf .wwebjs_auth\r"
+expect "$ "
+send "pm2 restart ecosistem-bot\r"
+expect "$ "
+send "pm2 logs ecosistem-bot --lines 50\r"
+interact

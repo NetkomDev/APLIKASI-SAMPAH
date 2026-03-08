@@ -1,0 +1,16 @@
+#!/usr/bin/expect -f
+set timeout -1
+spawn ssh -o StrictHostKeyChecking=no ubuntu@124.156.202.180
+expect "password:"
+send "Scd-35Q-vJD-BVh\r"
+expect "$ "
+send "cd ~/ecosistem-bot/vps-bot\r"
+expect "$ "
+send "rm -rf package.json package-lock.json node_modules\r"
+expect "$ "
+send "npm init -y\r"
+expect "$ "
+send "npm install dotenv@16.4.5 whatsapp-web.js@1.26.0 qrcode-terminal qrcode @supabase/supabase-js\r"
+expect "$ "
+send "node index.js\r"
+interact

@@ -1,0 +1,11 @@
+#!/usr/bin/expect -f
+set timeout -1
+spawn ssh -o StrictHostKeyChecking=no ubuntu@124.156.202.180
+expect "password:"
+send "Scd-35Q-vJD-BVh\r"
+expect "$ "
+send "cd ~/ecosistem-bot/vps-bot\r"
+expect "$ "
+send "cat << 'INDEXEOF' > patch.js\nconst fs = require('fs');\nlet code = fs.readFileSync('index.js', 'utf8');\ncode = code.replace(/client\\.on\\('ready'/g, \"client.on('authenticated', () => { console.log('✅ Authenticated!'); });\\n\\nclient.on('auth_failure', msg => { console.error('❌ Auth failure', msg); });\\n\\nclient.on('ready'\");\nfs.writeFileSync('index.js', code);\nINDEXEOF\nnode patch.js\npm2 restart ecosistem-bot\npm2 logs ecosistem-bot --lines 50\r"
+expect "$ "
+interact
