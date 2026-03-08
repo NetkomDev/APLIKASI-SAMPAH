@@ -380,7 +380,15 @@ client.on('message', async msg => {
         return originalReply(content, chatId, options);
     };
 
-    const senderNumber = msg.from.split('@')[0];
+    const contact = await msg.getContact();
+    let senderNumber = contact.number;
+
+    // Fallback if contact.number is undefined
+    if (!senderNumber) {
+        let rawId = msg.author || msg.from;
+        senderNumber = rawId.split('@')[0].split(':')[0];
+    }
+
     const messageText = msg.body.trim().toLowerCase();
 
     console.log('[BOT] MSG IN:', senderNumber, msg.body);
