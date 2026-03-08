@@ -133,8 +133,11 @@ Semua dashboard internal (Operator, Pemerintah, Super Admin) **tidak boleh** mem
 
 ### 3.5 Mekanisme Bot WhatsApp (Pendaftaran & Interaksi)
 
-Bot WhatsApp adalah interface utama penghubung warga dengan sistem. Bot di-host di VPS menggunakan library `whatsapp-web.js` dan terhubung langsung ke database Supabase.
+Bot WhatsApp adalah interface utama penghubung warga dengan sistem. Bot menggunakan arsitektur **WhatsApp Cloud API (Resmi Meta)** yang dihubungkan melalui *Webhook* ke Supabase Edge Functions.
 
+*Catatan Sistem:*
+- **Webhook URL:** `https://icyirbezrmixxkzzrufq.supabase.co/functions/v1/webhook-whatsapp`
+- **Verify Token:** `beres_api_123`
 #### 3.5.1 Jalur Pendaftaran Warga (Dual Registration Path)
 
 Warga dapat mendaftar melalui **2 jalur** yang terintegrasi:
@@ -228,8 +231,8 @@ User mengirim pesan ke Bot
 
 | Komponen | Detail |
 |----------|--------|
-| **Library** | `whatsapp-web.js` (Chromium-based) |
-| **Hosting** | VPS SumoPod (124.156.202.180) |
+| **Infrastruktur**  | WhatsApp Cloud API (Resmi) |
+| **Integrasi**      | Supabase Edge Functions Webhook |
 | **Process Manager** | PM2 (`ecosistem-bot`) |
 | **Path di VPS** | `/home/ubuntu/ecosistem-bot/vps-bot/` |
 | **Dashboard Kontrol** | Super Admin → Konfigurasi Bot WA |
@@ -247,8 +250,7 @@ Di dalam Supabase, struktur PostgreSQL harus memasukkan beberapa entitas berikut
 - **`waste_analytics`**: Tabel *materialized view* / *summary* agregasi agar grafik analitik *Government Dashboard* ter-load sangat cepat.
 - **`system_settings`**: Tabel konfigurasi dinamis yang dikelola Super Admin. Berisi key-value pair untuk:
   - Pengaturan tampilan dashboard (logo, tema, widget visibility)
-  - Konfigurasi Bot WhatsApp (menu, template pesan, token API Fonnte)
-  - Parameter operasional global (radius layanan, harga dasar, aturan referral)
+  - Konfigurasi Webhook & Credentials WhatsApp Cloud API (Token Permanen, WABA ID, Phone ID)  - Parameter operasional global (radius layanan, harga dasar, aturan referral)
   - Setiap perubahan tercatat di `audit_logs` untuk transparansi.
 - **`audit_logs`**: Log perubahan konfigurasi sistem oleh Super Admin (field: `user_id`, `action`, `table_name`, `old_value`, `new_value`, `timestamp`).
 - **`wa_menu_configs`**: Konfigurasi menu dan template pesan Bot WhatsApp yang dapat diubah real-time tanpa deployment ulang.

@@ -1,14 +1,30 @@
-// Follow this setup guide to connect the Fonnte Webhook to this edge function.
-// URL to enter in Fonnte Dashboard: https://icyirbezrmixxkzzrufq.supabase.co/functions/v1/webhook-whatsapp
+// Webhook handler for Meta WhatsApp Cloud API
+// Target Table: whatsapp_webhooks
+// The VPS Node.js bot listens to the whatsapp_webhooks table via Realtime.
 
-import { serve } from "std/http/server.ts";
-import { createClient } from "supabase";
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "npm:@supabase/supabase-js@2";
 
 const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
 const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 
 serve(async (req) => {
-    // We only accept POST requests from Fonnte
+    // 1. WhatsApp API Webhook Verification (GET Request)
+    if (req.method === "GET") {
+        const url = new URL(req.url);
+        const mode = url.searchParams.get("hub.mode");
+        const token = url.searchParams.get("hub.verify_token");
+        const challenge = url.searchParams.get("hub.challenge");
+
+        if (mode === "subscribe" && token === "beres_api_123") {
+            console.log("WEBHOOK_VERIFIED");
+            return new Response(challenge, { status: 200 });
+        } else {
+            return new Response("Verification failed", { status: 403 });
+        }
+    }
+
+    // 2. We accept POST requests for incoming WhatsApp messages
     if (req.method !== "POST") {
         return new Response(JSON.stringify({ error: "Method not allowed" }), {
             status: 405,
@@ -17,73 +33,33 @@ serve(async (req) => {
     }
 
     try {
-        const supabase = createClient(supabaseUrl, supabaseServiceKey);
         const body = await req.json();
 
-        // 1. Fonnte typically sends the sender's phone and their message text
-        const senderRaw = body.sender || "";
-        const message = body.message?.trim().toLowerCase() || "";
-
-        // Clean up Fonnte sender number (Sometimes it comes with @c.us or leading 62)
-        const senderSanitized = senderRaw.replace(/\@c\.us$/, "");
-
-        // 2. Check if this phone number exists in our 'profiles' table
-        const { data: userProfile, error: profileError } = await supabase
-            .from('profiles')
-            .select('id, full_name, role')
-            .eq('phone_number', senderSanitized)
-            .single();
-
-        if (!userProfile) {
-            // Logic for UNREGISTERED user
-            return new Response(JSON.stringify({
-                reply: "Halo! Nomor Anda belum terdaftar di Sistem Beres | Benahi Residu Sampah. Silakan daftar via Aplikasi Web terlebih dahulu."
-            }), { headers: { "Content-Type": "application/json" } });
+        // 3. WhatsApp messages usually have body.entry
+        if (!body.entry) {
+            return new Response("Not a WhatsApp message", { status: 200 });
         }
 
-        // 3. Simple Intent Engine via WhatsApp Text
-        let replyText = "";
+        const changes = body.entry?.[0]?.changes?.[0]?.value;
+        const messages = changes?.messages;
 
-        switch (message) {
-            case "saldo":
-            case "cek saldo":
-                // Fetch wallet balance
-                const { data: wallet } = await supabase
-                    .from('user_wallets')
-                    .select('balance')
-                    .eq('user_id', userProfile.id)
-                    .single();
-
-                replyText = `Halo ${userProfile.full_name}, Saldo Anda saat ini adalah: Rp ${wallet?.balance || 0}.`;
-                break;
-
-            case "jemput":
-            case "request jemput":
-                if (userProfile.role !== 'user') {
-                    replyText = "Maaf, fitur 'Jemput' hanya untuk warga.";
-                    break;
-                }
-
-                // Insert a new pickup request
-                const { error: pickupError } = await supabase
-                    .from('pickup_requests')
-                    .insert([{ user_id: userProfile.id, status: 'pending' }]);
-
-                if (pickupError) {
-                    replyText = "Gagal membuat tiket penjemputan. Coba lagi nanti.";
-                } else {
-                    replyText = `Tiket penjemputan berhasil dibuat. Segera, Kurir kami akan merespon permintaan Anda!`;
-                }
-                break;
-
-            default:
-                replyText = `Selamat datang kembali, ${userProfile.full_name}!\n\nKetik:\n👉 *SALDO* untuk Cek Uang\n👉 *JEMPUT* untuk panggil Kurir\n👉 *PROFIL* untuk akses Web Anda.`;
+        // Return 200 immediately to acknowledge receipt to Meta
+        if (!messages || messages.length === 0) {
+            return new Response("OK", { status: 200 });
         }
 
-        return new Response(JSON.stringify({ reply: replyText }), {
-            headers: { "Content-Type": "application/json" },
+        // Insert into database to be processed by VPS bot listener
+        const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+        const { error } = await supabase.from('whatsapp_webhooks').insert({
+            payload: body
         });
 
+        if (error) {
+            console.error("Failed to insert into whatsapp_webhooks:", error);
+        }
+
+        return new Response("OK", { status: 200 });
     } catch (err) {
         console.error("Error processing webhook:", err);
         return new Response(JSON.stringify({ error: err.message }), {
