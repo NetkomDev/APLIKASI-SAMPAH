@@ -156,7 +156,13 @@ setInterval(sendPendingWelcomeMessages, 30000);
 
 const REGISTRATION_STEPS = {
     WAITING_NAME: 'WAITING_NAME',
-    WAITING_ADDRESS: 'WAITING_ADDRESS',
+    WAITING_JALAN: 'WAITING_JALAN',
+    WAITING_NOMOR: 'WAITING_NOMOR',
+    WAITING_RTRW: 'WAITING_RTRW',
+    WAITING_DESA: 'WAITING_DESA',
+    WAITING_KECAMATAN: 'WAITING_KECAMATAN',
+    WAITING_KABUPATEN: 'WAITING_KABUPATEN',
+    WAITING_PROVINSI: 'WAITING_PROVINSI',
     WAITING_CONFIRM: 'WAITING_CONFIRM'
 };
 
@@ -203,19 +209,69 @@ async function handleRegistrationFlow(msg, senderNumber) {
                 return true;
             }
             session.data.fullName = messageText;
-            session.step = REGISTRATION_STEPS.WAITING_ADDRESS;
+            session.step = REGISTRATION_STEPS.WAITING_JALAN;
             await msg.reply(
-                `Baik, *${messageText}*! 👍\n\n*Langkah 2/2*: Masukkan alamat lengkap Anda:\n(Contoh: Jl. Merdeka No. 10, RT 03/RW 05, Kel. Sukamaju, Kec. Cibiru, Bandung)`
+                `Baik, *${messageText}*! 👍\n\n*Langkah 2/2*: Masukkan alamat lengkap Anda:\nNama Jalan/Dusun:\n_(Contoh: Jl. Pisang atau Dusun Mekar Jaya)_`
             );
             return true;
         }
 
-        case REGISTRATION_STEPS.WAITING_ADDRESS: {
-            if (messageText.length < 10) {
-                await msg.reply('⚠️ Alamat terlalu pendek. Silakan masukkan alamat lengkap Anda:');
+        case REGISTRATION_STEPS.WAITING_JALAN: {
+            if (messageText.length < 3) {
+                await msg.reply('⚠️ Nama Jalan terlalu pendek. Silakan masukkan nama Jalan/Dusun:');
                 return true;
             }
-            session.data.address = messageText;
+            session.data.jalan = messageText;
+            session.step = REGISTRATION_STEPS.WAITING_NOMOR;
+            await msg.reply(`Nomor Rumah:\n_(Ketik "-" jika tidak ada)_`);
+            return true;
+        }
+
+        case REGISTRATION_STEPS.WAITING_NOMOR: {
+            session.data.nomor = messageText;
+            session.step = REGISTRATION_STEPS.WAITING_RTRW;
+            await msg.reply(`RT/RW:\n_(Contoh: 03/05)_`);
+            return true;
+        }
+
+        case REGISTRATION_STEPS.WAITING_RTRW: {
+            session.data.rtrw = messageText;
+            session.step = REGISTRATION_STEPS.WAITING_DESA;
+            await msg.reply(`Desa/Kelurahan:`);
+            return true;
+        }
+
+        case REGISTRATION_STEPS.WAITING_DESA: {
+            session.data.desa = messageText;
+            session.step = REGISTRATION_STEPS.WAITING_KECAMATAN;
+            await msg.reply(`Kecamatan:`);
+            return true;
+        }
+
+        case REGISTRATION_STEPS.WAITING_KECAMATAN: {
+            session.data.kecamatan = messageText;
+            session.step = REGISTRATION_STEPS.WAITING_KABUPATEN;
+            await msg.reply(`Kabupaten/Kota:`);
+            return true;
+        }
+
+        case REGISTRATION_STEPS.WAITING_KABUPATEN: {
+            session.data.kabupaten = messageText;
+            session.step = REGISTRATION_STEPS.WAITING_PROVINSI;
+            await msg.reply(`Provinsi:`);
+            return true;
+        }
+
+        case REGISTRATION_STEPS.WAITING_PROVINSI: {
+            session.data.provinsi = messageText;
+
+            let formattedAddress = session.data.jalan;
+            if (session.data.nomor && session.data.nomor !== '-') {
+                formattedAddress += ` No. ${session.data.nomor}`;
+            }
+            formattedAddress += `, RT/RW ${session.data.rtrw}, Desa/Kel. ${session.data.desa}, Kec. ${session.data.kecamatan}, ${session.data.kabupaten}, Provinsi ${session.data.provinsi}`;
+
+            session.data.address = formattedAddress;
             session.step = REGISTRATION_STEPS.WAITING_CONFIRM;
 
             let referrerLine = '';
@@ -233,8 +289,9 @@ async function handleRegistrationFlow(msg, senderNumber) {
         case REGISTRATION_STEPS.WAITING_CONFIRM: {
             if (messageText.toLowerCase() === 'koreksi') {
                 session.step = REGISTRATION_STEPS.WAITING_NAME;
-                delete session.data.fullName;
-                delete session.data.address;
+                Object.keys(session.data).forEach(key => {
+                    if (key !== 'referrerId' && key !== 'phoneNumber') delete session.data[key];
+                });
                 await msg.reply('Mari kita ulangi proses pendaftaran.\n\n*Langkah 1/2*: Siapa nama lengkap Anda?');
                 return true;
             }
