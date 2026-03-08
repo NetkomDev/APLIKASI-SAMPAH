@@ -35,9 +35,7 @@ function trackMessage(phoneNumber) {
     globalDailyMsgCount++;
 }
 
-function randomDelay(minMs, maxMs) {
-    return Math.floor(Math.random() * (maxMs - minMs + 1)) + minMs;
-}
+
 
 // ──────────────────────────────────────────────
 // WHATSAPP CLOUD API — SEND FUNCTIONS
@@ -49,9 +47,6 @@ async function sendWA(toPhoneNumber, payload) {
     if (!token || !phoneId) { console.error("[WA] Token/PhoneID missing!"); return; }
 
     try {
-        const delay = randomDelay(1500, 3000);
-        await new Promise(r => setTimeout(r, delay));
-
         const response = await fetch(`https://graph.facebook.com/v20.0/${phoneId}/messages`, {
             method: "POST",
             headers: { "Authorization": `Bearer ${token}`, "Content-Type": "application/json" },
@@ -104,6 +99,21 @@ async function sendButtons(toPhoneNumber, bodyText, buttons, headerText, footerT
     return sendWA(toPhoneNumber, payload);
 }
 
+// Kirim CTA URL Button (tombol buka link)
+async function sendCTAUrl(toPhoneNumber, bodyText, buttonLabel, url, headerText, footerText) {
+    const payload = {
+        type: "interactive",
+        interactive: {
+            type: "cta_url",
+            body: { text: bodyText },
+            action: { name: "cta_url", parameters: { display_text: buttonLabel, url } }
+        }
+    };
+    if (headerText) payload.interactive.header = { type: "text", text: headerText };
+    if (footerText) payload.interactive.footer = { text: footerText };
+    return sendWA(toPhoneNumber, payload);
+}
+
 // ──────────────────────────────────────────────
 // HELPERS
 // ──────────────────────────────────────────────
@@ -135,18 +145,18 @@ async function loadBotConfigs() {
 
 async function sendMainMenu(senderNumber, nama) {
     const rows = [
-        { id: "saldo",    title: "💰 Cek Saldo",     description: "Lihat saldo dompet digital Anda" },
-        { id: "jemput",   title: "🚛 Request Jemput", description: "Minta petugas jemput sampah" },
-        { id: "riwayat",  title: "📜 Riwayat",        description: "Riwayat 5 setoran terakhir" },
-        { id: "harga",    title: "💲 Daftar Harga",   description: "Harga sampah per-kilogram" },
-        { id: "referral", title: "📢 Referral",       description: "Ajak tetangga, dapat bonus!" },
-        { id: "bantuan",  title: "📞 Bantuan / CS",   description: "Hubungi customer service" }
+        { id: "saldo", title: "💰 Cek Saldo", description: "Lihat saldo dompet digital Anda" },
+        { id: "jemput", title: "🚛 Request Jemput", description: "Minta petugas jemput sampah" },
+        { id: "riwayat", title: "📜 Riwayat", description: "Riwayat 5 setoran terakhir" },
+        { id: "harga", title: "💲 Daftar Harga", description: "Harga sampah per-kilogram" },
+        { id: "referral", title: "📢 Referral", description: "Ajak tetangga, dapat bonus!" },
+        { id: "bantuan", title: "📞 Bantuan / CS", description: "Hubungi customer service" }
     ];
 
     return sendMenuList(
         senderNumber,
-        "♻️ Beres | Menu Utama",
-        `Halo *${nama}*! 👋\n\nSelamat datang di *Beres | Benahi Residu Sampah*.\nPilih menu di bawah ini:`,
+        "♻️ BERES | Menu Utama",
+        `Halo *${nama}*! 👋\n\nSelamat datang di *Aplikasi BERES | Benahi Residu Sampah*.\nPilih menu di bawah ini:`,
         "Ketik 'menu' kapan saja untuk kembali",
         "📋 Pilih Menu",
         [{ title: "Menu Layanan", rows }]
@@ -171,109 +181,186 @@ async function sendWebWelcomeIfNeeded(senderNumber, userProfile) {
 }
 
 // ──────────────────────────────────────────────
-// REGISTRATION FLOW
+// REGISTRATION FLOW (Simplified 2 Steps + Web Option)
 // ──────────────────────────────────────────────
 
-const REGISTRATION_STEPS = {
-    WAITING_NAME: "WAITING_NAME", WAITING_JALAN: "WAITING_JALAN",
-    WAITING_NOMOR: "WAITING_NOMOR", WAITING_RTRW: "WAITING_RTRW",
-    WAITING_DESA: "WAITING_DESA", WAITING_KECAMATAN: "WAITING_KECAMATAN",
-    WAITING_KABUPATEN: "WAITING_KABUPATEN", WAITING_PROVINSI: "WAITING_PROVINSI",
+const REG = {
+    CHOOSE_METHOD: "CHOOSE_METHOD",
+    WAITING_NAME: "WAITING_NAME",
+    WAITING_ADDRESS: "WAITING_ADDRESS",
     WAITING_CONFIRM: "WAITING_CONFIRM"
 };
 
 async function startRegistration(senderNumber, referrerId) {
-    registrationSessions[senderNumber] = { step: REGISTRATION_STEPS.WAITING_NAME, data: { referrerId, phoneNumber: senderNumber } };
+    registrationSessions[senderNumber] = { step: REG.CHOOSE_METHOD, data: { referrerId, phoneNumber: senderNumber } };
+
     let referrerInfo = "";
     if (referrerId) {
         const { data: referrer } = await supabase.from("profiles").select("full_name").eq("id", referrerId).single();
-        if (referrer) referrerInfo = `\n📎 Anda diundang oleh: *${referrer.full_name}*\n`;
+        if (referrer) referrerInfo = `\n📎 Diundang oleh: *${referrer.full_name}*`;
     }
-    await sendWhatsAppMessage(senderNumber, `📝 *Pendaftaran Akun Beres | Benahi Residu Sampah*\n${referrerInfo}\nMari kita mulai!\n\n*Langkah 1/2*: Siapa nama lengkap Anda?`);
+
+    const webUrl = referrerId
+        ? `https://beres.vercel.app/auth?ref=${referrerId}`
+        : "https://beres.vercel.app/auth";
+
+    // Kirim pilihan metode pendaftaran
+    await sendWhatsAppMessage(senderNumber,
+        `🌿 *Selamat Datang di Aplikasi BERES!*\n` +
+        `_Benahi Residu Sampah_\n${referrerInfo}\n\n` +
+        `Setor sampah dari rumah, dapat penghasilan! ♻️💰\n\n` +
+        `Pilih cara mendaftar:`
+    );
+
+    // Tombol CTA ke web
+    await sendCTAUrl(senderNumber,
+        `🌐 *Daftar via Website*\nDaftar lengkap dengan form interaktif di browser Anda.`,
+        "🌐 Buka Formulir Web", webUrl,
+        null, "Lebih cepat & mudah"
+    );
+
+    // Tombol daftar via chat
+    return sendButtons(senderNumber,
+        `💬 *Daftar via WhatsApp*\nCukup 2 langkah — ketik nama & alamat, selesai!`,
+        [{ id: "reg_chat", title: "💬 Daftar via Chat" }],
+        null, "Hanya butuh 1 menit"
+    );
 }
 
 async function handleRegistrationFlow(senderNumber, messageTextRaw) {
     const session = registrationSessions[senderNumber];
     if (!session) return false;
-    const messageText = messageTextRaw.trim();
+    const text = messageTextRaw.trim();
+    const cmd = text.toLowerCase();
 
-    if (messageText.toLowerCase() === "batal") {
+    // Batalkan kapan saja
+    if (cmd === "batal" || cmd === "confirm_batal") {
         delete registrationSessions[senderNumber];
-        await sendWhatsAppMessage(senderNumber, "❌ Pendaftaran dibatalkan. Ketik *DAFTAR* kapan saja untuk mendaftar kembali.");
-        return true;
+        return sendButtons(senderNumber,
+            "❌ Pendaftaran dibatalkan.\n\nAnda bisa mendaftar kapan saja.",
+            [{ id: "daftar", title: "📝 Daftar Ulang" }],
+            null, "Aplikasi BERES | Benahi Residu Sampah"
+        );
     }
 
     switch (session.step) {
-        case REGISTRATION_STEPS.WAITING_NAME:
-            if (messageText.length < 3) return sendWhatsAppMessage(senderNumber, "⚠️ Nama terlalu pendek (min 3 karakter):");
-            session.data.fullName = messageText; session.step = REGISTRATION_STEPS.WAITING_JALAN;
-            return sendWhatsAppMessage(senderNumber, `Baik, *${messageText}*! 👍\n\n*Langkah 2/2*: Masukkan alamat lengkap:\nNama Jalan/Dusun:\n_(Contoh: Jl. Pisang)_`);
-        case REGISTRATION_STEPS.WAITING_JALAN:
-            if (messageText.length < 3) return sendWhatsAppMessage(senderNumber, "⚠️ Nama Jalan terlalu pendek:");
-            session.data.jalan = messageText; session.step = REGISTRATION_STEPS.WAITING_NOMOR;
-            return sendWhatsAppMessage(senderNumber, `Nomor Rumah:\n_(Ketik "-" jika tidak ada)_`);
-        case REGISTRATION_STEPS.WAITING_NOMOR:
-            session.data.nomor = messageText; session.step = REGISTRATION_STEPS.WAITING_RTRW;
-            return sendWhatsAppMessage(senderNumber, `RT/RW:\n_(Contoh: 03/05)_`);
-        case REGISTRATION_STEPS.WAITING_RTRW:
-            session.data.rtrw = messageText; session.step = REGISTRATION_STEPS.WAITING_DESA;
-            return sendWhatsAppMessage(senderNumber, `Desa/Kelurahan:`);
-        case REGISTRATION_STEPS.WAITING_DESA:
-            session.data.desa = messageText; session.step = REGISTRATION_STEPS.WAITING_KECAMATAN;
-            return sendWhatsAppMessage(senderNumber, `Kecamatan:`);
-        case REGISTRATION_STEPS.WAITING_KECAMATAN:
-            session.data.kecamatan = messageText; session.step = REGISTRATION_STEPS.WAITING_KABUPATEN;
-            return sendWhatsAppMessage(senderNumber, `Kabupaten/Kota:`);
-        case REGISTRATION_STEPS.WAITING_KABUPATEN:
-            session.data.kabupaten = messageText; session.step = REGISTRATION_STEPS.WAITING_PROVINSI;
-            return sendWhatsAppMessage(senderNumber, `Provinsi:`);
-        case REGISTRATION_STEPS.WAITING_PROVINSI:
-            session.data.provinsi = messageText;
-            let addr = session.data.jalan;
-            if (session.data.nomor && session.data.nomor !== "-") addr += ` No. ${session.data.nomor}`;
-            addr += `, RT/RW ${session.data.rtrw}, Desa/Kel. ${session.data.desa}, Kec. ${session.data.kecamatan}, ${session.data.kabupaten}, Provinsi ${session.data.provinsi}`;
-            session.data.address = addr; session.step = REGISTRATION_STEPS.WAITING_CONFIRM;
+        case REG.CHOOSE_METHOD:
+            if (cmd !== "reg_chat" && cmd !== "daftar") {
+                return sendButtons(senderNumber,
+                    "Silakan pilih metode pendaftaran:",
+                    [{ id: "reg_chat", title: "💬 Daftar via Chat" }],
+                    null, null
+                );
+            }
+            session.step = REG.WAITING_NAME;
+            return sendWhatsAppMessage(senderNumber,
+                `📝 *Pendaftaran via WhatsApp*\n\n` +
+                `*Langkah 1 dari 2* — Nama Lengkap\n\n` +
+                `Silakan ketik nama lengkap Anda:\n` +
+                `_(Contoh: Ahmad Fauzi)_`
+            );
+
+        case REG.WAITING_NAME:
+            if (text.length < 3) return sendWhatsAppMessage(senderNumber, "⚠️ Nama terlalu pendek. Minimal 3 karakter.");
+            session.data.fullName = text;
+            session.step = REG.WAITING_ADDRESS;
+            return sendWhatsAppMessage(senderNumber,
+                `Baik, *${text}*! 👍\n\n` +
+                `*Langkah 2 dari 2* — Alamat Rumah\n\n` +
+                `Ketik alamat lengkap Anda dalam *satu pesan*:\n\n` +
+                `_Contoh:_\n` +
+                `_Jl. Mangga No. 12, RT 03/RW 05,_\n` +
+                `_Desa Sukamaju, Kec. Ciamis,_\n` +
+                `_Kab. Ciamis, Jawa Barat_`
+            );
+
+        case REG.WAITING_ADDRESS:
+            if (text.length < 10) return sendWhatsAppMessage(senderNumber, "⚠️ Alamat terlalu pendek. Pastikan alamat lengkap (min. 10 karakter).");
+            session.data.address = text;
+            session.step = REG.WAITING_CONFIRM;
+
             let refInfo = "";
             if (session.data.referrerId) {
                 const { data: ref } = await supabase.from("profiles").select("full_name").eq("id", session.data.referrerId).single();
-                if (ref) refInfo = `📎 Diundang oleh: *${ref.full_name}*\n`;
+                if (ref) refInfo = `\n📎 Diundang oleh: *${ref.full_name}*`;
             }
+
             return sendButtons(senderNumber,
-                `📋 *Konfirmasi Data Pendaftaran:*\n\n👤 Nama: *${session.data.fullName}*\n📱 HP: *${senderNumber}*\n🏠 Alamat: *${session.data.address}*\n${refInfo}\nApakah data sudah benar?`,
+                `📋 *Konfirmasi Data Pendaftaran*\n\n` +
+                `┌────────────────────\n` +
+                `│ 👤 *${session.data.fullName}*\n` +
+                `│ 📱 ${senderNumber}\n` +
+                `│ 🏠 ${session.data.address}\n` +
+                `└────────────────────${refInfo}\n\n` +
+                `Apakah data di atas sudah benar?`,
                 [
-                    { id: "confirm_ya", title: "✅ Ya, Benar" },
-                    { id: "confirm_koreksi", title: "✏️ Koreksi" },
+                    { id: "confirm_ya", title: "✅ Ya, Daftarkan" },
+                    { id: "confirm_koreksi", title: "✏️ Ulangi" },
                     { id: "confirm_batal", title: "❌ Batalkan" }
                 ],
-                "📝 Konfirmasi Data", "Beres | Benahi Residu Sampah"
+                "📝 Konfirmasi", "Aplikasi BERES | Benahi Residu Sampah"
             );
-        case REGISTRATION_STEPS.WAITING_CONFIRM:
-            if (messageText.toLowerCase() === "koreksi" || messageText === "confirm_koreksi") {
-                session.step = REGISTRATION_STEPS.WAITING_NAME;
-                Object.keys(session.data).forEach(k => { if (k !== "referrerId" && k !== "phoneNumber") delete session.data[k]; });
-                return sendWhatsAppMessage(senderNumber, "Mari ulangi pendaftaran.\n\n*Langkah 1/2*: Siapa nama lengkap Anda?");
+
+        case REG.WAITING_CONFIRM:
+            if (cmd === "koreksi" || cmd === "confirm_koreksi" || cmd === "✏️ ulangi") {
+                session.step = REG.WAITING_NAME;
+                session.data = { referrerId: session.data.referrerId, phoneNumber: session.data.phoneNumber };
+                return sendWhatsAppMessage(senderNumber, "📝 Mari ulangi.\n\n*Langkah 1 dari 2* — Ketik nama lengkap Anda:");
             }
-            if (messageText.toLowerCase() === "batal" || messageText === "confirm_batal") {
-                delete registrationSessions[senderNumber];
-                return sendWhatsAppMessage(senderNumber, "❌ Pendaftaran dibatalkan.");
+            if (cmd !== "ya" && cmd !== "confirm_ya" && cmd !== "✅ ya, daftarkan") {
+                return sendButtons(senderNumber,
+                    "Silakan konfirmasi data Anda:",
+                    [
+                        { id: "confirm_ya", title: "✅ Ya, Daftarkan" },
+                        { id: "confirm_koreksi", title: "✏️ Ulangi" },
+                        { id: "confirm_batal", title: "❌ Batalkan" }
+                    ], null, null
+                );
             }
-            if (messageText.toLowerCase() !== "ya" && messageText !== "confirm_ya") {
-                return sendWhatsAppMessage(senderNumber, "⚠️ Ketik YA untuk konfirmasi, KOREKSI untuk mengulang.");
-            }
+
+            // === PROSES PENDAFTARAN ===
             try {
                 const tempEmail = `wa_${senderNumber}@ecosistemdigital.id`;
                 const tempPassword = `EcoWA_${senderNumber}_${Date.now()}`;
-                const { data: authUser, error: authError } = await supabase.auth.admin.createUser({ email: tempEmail, password: tempPassword, email_confirm: true, user_metadata: { full_name: session.data.fullName } });
-                if (authError) return sendWhatsAppMessage(senderNumber, "⚠️ Kendala pendaftaran. Coba lagi.");
-                await supabase.from("profiles").update({ full_name: session.data.fullName, phone_number: senderNumber, address: session.data.address, role: "user", registration_source: "whatsapp", is_registration_complete: true, referred_by: session.data.referrerId || null }).eq("id", authUser.user.id);
+                const { data: authUser, error: authError } = await supabase.auth.admin.createUser({
+                    email: tempEmail, password: tempPassword, email_confirm: true,
+                    user_metadata: { full_name: session.data.fullName }
+                });
+                if (authError) {
+                    console.error("Reg Auth Error:", authError);
+                    return sendWhatsAppMessage(senderNumber, "⚠️ Terjadi kendala. Silakan coba lagi atau daftar via web.");
+                }
+
+                await supabase.from("profiles").update({
+                    full_name: session.data.fullName,
+                    phone_number: senderNumber,
+                    address: session.data.address,
+                    role: "user",
+                    registration_source: "whatsapp",
+                    is_registration_complete: true,
+                    referred_by: session.data.referrerId || null
+                }).eq("id", authUser.user.id);
+
                 await supabase.from("user_wallets").insert({ user_id: authUser.user.id, balance: 0 });
                 await loadBotConfigs();
-                let completeMsg = formatResponse(systemSettings["wa_registration_complete"] || "✅ Pendaftaran berhasil, {nama}!", { nama: session.data.fullName });
-                await sendWhatsAppMessage(senderNumber, completeMsg);
+
+                // Pesan sukses
+                await sendWhatsAppMessage(senderNumber,
+                    `🎉 *Pendaftaran Berhasil!*\n\n` +
+                    `Selamat bergabung, *${session.data.fullName}*! 🌿\n\n` +
+                    `Anda kini bisa menyetor sampah dan mendapatkan penghasilan melalui *Aplikasi BERES*.\n\n` +
+                    `♻️ *Langkah selanjutnya:*\n` +
+                    `1. Pisahkan sampah organik & anorganik\n` +
+                    `2. Request jemput melalui menu bot\n` +
+                    `3. Petugas datang, sampah ditimbang\n` +
+                    `4. Saldo masuk otomatis ke dompet digital Anda!`
+                );
+
                 await sendMainMenu(senderNumber, session.data.fullName);
                 delete registrationSessions[senderNumber];
             } catch (e) {
-                sendWhatsAppMessage(senderNumber, "⚠️ Error sistem.");
+                console.error("Registration Error:", e);
+                sendWhatsAppMessage(senderNumber, "⚠️ Error sistem. Silakan coba lagi.");
             }
             return true;
     }
@@ -293,7 +380,7 @@ async function handleMenuSaldo(senderNumber, userProfile) {
             { id: "jemput", title: "🚛 Request Jemput" },
             { id: "btn_menu", title: "📋 Menu Utama" }
         ],
-        "💰 Saldo Dompet Digital", "Beres | Benahi Residu Sampah"
+        "💰 Saldo Dompet Digital", "Aplikasi BERES"
     );
 }
 
@@ -306,7 +393,7 @@ async function handleMenuJemput(senderNumber, userProfile) {
             { id: "saldo", title: "💰 Cek Saldo" },
             { id: "btn_menu", title: "📋 Menu Utama" }
         ],
-        "🚛 Jemput Sampah", "Beres | Benahi Residu Sampah"
+        "🚛 Jemput Sampah", "Aplikasi BERES"
     );
 }
 
@@ -329,7 +416,7 @@ async function handleMenuRiwayat(senderNumber, userProfile) {
             { id: "jemput", title: "🚛 Request Jemput" },
             { id: "btn_menu", title: "📋 Menu Utama" }
         ],
-        "📜 Riwayat Setoran", "Beres | Benahi Residu Sampah"
+        "📜 Riwayat Setoran", "Aplikasi BERES"
     );
 }
 
@@ -349,28 +436,53 @@ async function handleMenuHarga(senderNumber) {
             { id: "jemput", title: "🚛 Request Jemput" },
             { id: "btn_menu", title: "📋 Menu Utama" }
         ],
-        "💲 Daftar Harga", "Beres | Benahi Residu Sampah"
+        "💲 Daftar Harga", "Aplikasi BERES"
     );
 }
 
 async function handleMenuReferral(senderNumber, userProfile) {
     const refLink = `https://beres.vercel.app/auth?ref=${userProfile.id}`;
-    await sendButtons(senderNumber,
-        `📢 *Program Referral*\n\nAjak tetangga dan teman bergabung!\n🎁 Setiap orang yang mendaftar lewat link Anda, saldo bonus akan ditambahkan.\n\n🔗 Link Referral Anda:\n${refLink}\n\n_Teruskan pesan di bawah ini ke teman Anda:_`,
-        [
-            { id: "saldo", title: "💰 Cek Saldo" },
-            { id: "btn_menu", title: "📋 Menu Utama" }
-        ],
-        "📢 Referral Program", "Beres | Benahi Residu Sampah"
+
+    // 1. Info program referral
+    await sendWhatsAppMessage(senderNumber,
+        `📢 *Program Referral — Aplikasi BERES*\n\n` +
+        `Ajak warga sekitar Anda bergabung dan dapatkan *bonus saldo*! 🎁\n\n` +
+        `┌────────────────────\n` +
+        `│ 🎯 *Cara kerjanya:*\n` +
+        `│ 1. Bagikan link di bawah\n` +
+        `│ 2. Teman daftar lewat link Anda\n` +
+        `│ 3. Bonus saldo otomatis masuk!\n` +
+        `└────────────────────\n\n` +
+        `🔗 Link Referral Anda:\n${refLink}`
     );
-    // Kirim pesan forwardable terpisah
-    return sendWhatsAppMessage(senderNumber, `Hai! Ayo gabung di *Beres | Benahi Residu Sampah* 🌿♻️\n\nSetor sampah, dapat uang!\nDaftar gratis di sini:\n${refLink}`);
+
+    // 2. CTA Button buka link
+    await sendCTAUrl(senderNumber,
+        `Klik tombol di bawah untuk menyalin dan membagikan link referral Anda.`,
+        "🔗 Buka Link Referral", refLink,
+        null, "Bagikan ke teman & tetangga"
+    );
+
+    // 3. Pesan siap-forward (terpisah agar mudah diteruskan)
+    await sendWhatsAppMessage(senderNumber,
+        `👇 *Teruskan pesan di bawah ini ke teman Anda:*`
+    );
+
+    // 4. Pesan forwardable
+    return sendWhatsAppMessage(senderNumber,
+        `♻️🌿 *Aplikasi BERES — Benahi Residu Sampah*\n\n` +
+        `Hai! Tau nggak? Sekarang sampah rumah tangga bisa jadi uang! 💰\n\n` +
+        `✅ Gratis daftar\n` +
+        `✅ Sampah dijemput dari rumah\n` +
+        `✅ Ditimbang & dibayar langsung ke dompet digital\n\n` +
+        `Yuk gabung sekarang! 👇\n${refLink}`
+    );
 }
 
 async function handleMenuBantuan(senderNumber) {
     const csPhone = systemSettings["cs_phone_number"] || "08xxxxxxxxxx";
-    return sendButtons(senderNumber,
-        `📞 *Pusat Bantuan*\n\n` +
+    await sendButtons(senderNumber,
+        `📞 *Pusat Bantuan — Aplikasi BERES*\n\n` +
         `Butuh bantuan? Hubungi Customer Service kami:\n\n` +
         `📱 CS: wa.me/${csPhone.replace(/^0/, '62')}\n` +
         `📧 Email: cs@beres.id\n` +
@@ -379,7 +491,12 @@ async function handleMenuBantuan(senderNumber) {
         [
             { id: "btn_menu", title: "📋 Menu Utama" }
         ],
-        "📞 Bantuan", "Beres | Benahi Residu Sampah"
+        "📞 Bantuan", "Aplikasi BERES"
+    );
+    return sendCTAUrl(senderNumber,
+        "Anda juga bisa langsung chat CS kami:",
+        "💬 Chat CS Sekarang", `https://wa.me/${csPhone.replace(/^0/, '62')}`,
+        null, null
     );
 }
 
@@ -418,9 +535,9 @@ async function handleIncomingMessage(senderNumber, messageText, interactionId) {
             if (refMatch) return await startRegistration(senderNumber, refMatch[1]);
             if (command === "daftar") return await startRegistration(senderNumber, null);
             return sendButtons(senderNumber,
-                `Halo! 👋\n\nNomor Anda belum terdaftar di *Beres | Benahi Residu Sampah*.\n\nSilakan daftar untuk mulai menyetor sampah dan mendapatkan penghasilan!`,
+                `Halo! 👋\n\nNomor Anda belum terdaftar di *Aplikasi BERES | Benahi Residu Sampah*.\n\nSetor sampah dari rumah, dapat penghasilan! ♻️💰`,
                 [{ id: "daftar", title: "📝 Daftar Sekarang" }],
-                "♻️ Beres", "Ketik DAFTAR atau klik tombol di bawah"
+                "♻️ Aplikasi BERES", "Ketik DAFTAR atau klik tombol"
             );
         }
 
