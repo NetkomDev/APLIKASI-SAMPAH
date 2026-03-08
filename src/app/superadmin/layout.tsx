@@ -73,7 +73,7 @@ export default function SuperAdminLayout({ children }: { children: ReactNode }) 
                     </div>
                     <div>
                         <h1 className="text-sm font-bold text-white tracking-tight">Super Admin</h1>
-                        <p className="text-[11px] text-slate-500">EcoSistem Digital</p>
+                        <p className="text-[11px] text-slate-500">Beres | Benahi Residu Sampah</p>
                     </div>
                     <button onClick={() => setSidebarOpen(false)} className="ml-auto lg:hidden text-slate-500 hover:text-white">
                         <X className="h-5 w-5" />
@@ -90,8 +90,8 @@ export default function SuperAdminLayout({ children }: { children: ReactNode }) 
                                 href={item.href}
                                 onClick={() => setSidebarOpen(false)}
                                 className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all ${isActive
-                                        ? "bg-brand-500/10 text-brand-400 border border-brand-500/20"
-                                        : "text-slate-400 hover:bg-slate-800 hover:text-white"
+                                    ? "bg-brand-500/10 text-brand-400 border border-brand-500/20"
+                                    : "text-slate-400 hover:bg-slate-800 hover:text-white"
                                     }`}
                             >
                                 <item.icon className="h-5 w-5" />

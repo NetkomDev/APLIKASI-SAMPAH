@@ -29,7 +29,7 @@ export default function SuperAdminDashboard() {
             {/* Page Header */}
             <div>
                 <h1 className="text-2xl font-bold text-white tracking-tight">Dashboard Super Admin</h1>
-                <p className="text-sm text-slate-400 mt-1">Ringkasan seluruh sistem EcoSistem Digital</p>
+                <p className="text-sm text-slate-400 mt-1">Ringkasan seluruh sistem Beres | Benahi Residu Sampah</p>
             </div>
 
             {/* Stats Grid */}

@@ -38,7 +38,7 @@ export function Sidebar({ role }: SidebarProps) {
                     <Activity className="h-6 w-6 text-white" />
                 </div>
                 <div className="flex flex-col">
-                    <span className="text-white text-lg font-bold tracking-tight">EcoSistem</span>
+                    <span className="text-white text-lg font-bold tracking-tight">Beres</span>
                     <span className="text-xs text-brand-400 font-medium uppercase tracking-wider">{role === 'admin' ? 'Operational' : 'Government'}</span>
                 </div>
             </div>

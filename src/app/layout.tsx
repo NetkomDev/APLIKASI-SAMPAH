@@ -5,7 +5,7 @@ import './globals.css';
 const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
-  title: 'Aplikasi Sampah | Ecosystem Terdistribusi',
+  title: 'Beres | Benahi Residu Sampah',
   description: 'Sistem Data-Driven Policy untuk Pengelolaan Sampah Daerah',
 };
 

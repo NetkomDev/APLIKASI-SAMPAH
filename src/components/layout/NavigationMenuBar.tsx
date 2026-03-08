@@ -10,7 +10,7 @@ export function NavigationMenuBar() {
                         <Leaf className="h-5 w-5 text-white" />
                     </div>
                     <span className="text-xl font-extrabold tracking-tight text-brand-600">
-                        EcoSistem<span className="text-slate-900">Digital</span>
+                        Beres <span className="text-slate-900">App</span>
                     </span>
                 </Link>
 

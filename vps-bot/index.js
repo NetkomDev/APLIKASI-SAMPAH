@@ -209,7 +209,7 @@ async function startRegistration(msg, senderNumber, referrerId) {
     }
 
     await msg.reply(
-        `📝 *Pendaftaran Akun EcoSistem Digital*\n${referrerInfo}\nMari kita mulai!\n\n*Langkah 1/2*: Siapa nama lengkap Anda?`
+        `📝 *Pendaftaran Akun Beres | Benahi Residu Sampah*\n${referrerInfo}\nMari kita mulai!\n\n*Langkah 1/2*: Siapa nama lengkap Anda?`
     );
 }
 
@@ -550,7 +550,7 @@ client.on('message', async msg => {
                 await msg.reply(`📢 Bagikan pesan di bawah ini ke tetangga/teman Anda:\n\nTeruskan pesan berikut dengan cara *tekan lama* lalu *Teruskan*:`);
 
                 // Pesan 2: Pesan yang bisa diteruskan (link web pendaftaran)
-                const forwardableMsg = `Hai! Ayo bergabung di *EcoSistem Digital* dan jadi Pahlawan Lingkungan${kabupaten ? ' ' + kabupaten : ''}. 🌿♻️\n\nDaftar gratis di sini:\n${refLink}`;
+                const forwardableMsg = `Hai! Ayo bergabung di *Beres | Benahi Residu Sampah* dan jadi Pahlawan Lingkungan${kabupaten ? ' ' + kabupaten : ''}. 🌿♻️\n\nDaftar gratis di sini:\n${refLink}`;
                 await chat.sendMessage(forwardableMsg);
                 return;
             }

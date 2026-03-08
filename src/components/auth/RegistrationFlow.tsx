@@ -398,7 +398,7 @@ export function RegistrationFlow() {
                 <footer className="mt-8 pt-6 border-t border-brand-100/30 text-center">
                     <p className="text-[11px] text-slate-400 leading-relaxed">
                         Dilindungi oleh enkripsi data tingkat pemerintah.<br />
-                        © 2026 EcoSistem Digital • Pemerintah Kabupaten
+                        © 2026 Beres | Benahi Residu Sampah • Pemerintah Kabupaten
                     </p>
                 </footer>
             </div>

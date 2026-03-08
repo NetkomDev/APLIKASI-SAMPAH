@@ -172,7 +172,7 @@ export default function PortalLoginPage() {
                     <div className="mt-6 pt-6 border-t border-slate-700/50 text-center">
                         <div className="flex items-center justify-center gap-2 text-slate-500">
                             <Leaf className="h-4 w-4" />
-                            <span className="text-xs font-medium">EcoSistem Digital • Akses Terbatas</span>
+                            <span className="text-xs font-medium">Beres | Benahi Residu Sampah • Akses Terbatas</span>
                         </div>
                     </div>
                 </div>

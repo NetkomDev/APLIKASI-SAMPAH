@@ -37,7 +37,7 @@ serve(async (req) => {
         if (!userProfile) {
             // Logic for UNREGISTERED user
             return new Response(JSON.stringify({
-                reply: "Halo! Nomor Anda belum terdaftar di Sistem EcoSistem Digital. Silakan daftar via Aplikasi Web terlebih dahulu."
+                reply: "Halo! Nomor Anda belum terdaftar di Sistem Beres | Benahi Residu Sampah. Silakan daftar via Aplikasi Web terlebih dahulu."
             }), { headers: { "Content-Type": "application/json" } });
         }
 
