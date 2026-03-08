@@ -500,7 +500,17 @@ client.on('message', async msg => {
             }
 
             if (matchedMenu.menu_key === 'referral') {
-                templateVars.link_referral = `Ajak teman Anda bergabung!\n\nKirim pesan berikut ke teman Anda:\n\n_Hai! Ayo bergabung di EcoSistem Digital dan jadi Pahlawan Lingkungan. Kirim pesan ini ke nomor bot:_\n*ref=${userProfile.id}*`;
+                const kabupaten = systemSettings['kabupaten_name'] || '';
+                const botPhone = systemSettings['bot_phone_number'] || '';
+                const refLink = `https://api.whatsapp.com/send?phone=${botPhone}&text=ref%3D${userProfile.id}`;
+
+                // Pesan 1: Instruksi
+                await msg.reply(`📢 Bagikan link di bawah ini ke tetangga/teman Anda:\n\nTeruskan pesan berikut dengan cara *tekan lama* lalu *Teruskan*:`);
+
+                // Pesan 2: Pesan yang bisa diteruskan (dikirim sebagai pesan baru, bukan reply)
+                const forwardableMsg = `Hai! Ayo bergabung di *EcoSistem Digital* dan jadi Pahlawan Lingkungan${kabupaten ? ' ' + kabupaten : ''}. 🌿♻️\n\nKlik link berikut untuk mendaftar:\n${refLink}`;
+                await chat.sendMessage(forwardableMsg);
+                return;
             }
 
             const response = formatResponse(matchedMenu.response_template, templateVars);
