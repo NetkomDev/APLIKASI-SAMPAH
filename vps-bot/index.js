@@ -201,8 +201,8 @@ async function startRegistration(senderNumber, referrerId) {
     }
 
     const webUrl = referrerId
-        ? `https://beres.vercel.app/auth?ref=${referrerId}`
-        : "https://beres.vercel.app/auth";
+        ? `https://beres-bone.vercel.app/auth?ref=${referrerId}`
+        : "https://beres-bone.vercel.app/auth";
 
     // Kirim pilihan metode pendaftaran
     await sendWhatsAppMessage(senderNumber,
@@ -441,7 +441,7 @@ async function handleMenuHarga(senderNumber) {
 }
 
 async function handleMenuReferral(senderNumber, userProfile) {
-    const refLink = `https://beres.vercel.app/auth?ref=${userProfile.id}`;
+    const refLink = `https://beres-bone.vercel.app/auth?ref=${userProfile.id}`;
 
     // 1. Info program referral
     await sendWhatsAppMessage(senderNumber,
@@ -580,7 +580,7 @@ async function handleIncomingMessage(senderNumber, messageText, interactionId) {
                 // Coba cocokkan dari database menu lama
                 const matchedMenu = botMenus.find(m => command === m.menu_key);
                 if (matchedMenu) {
-                    let tv = { nama: userProfile.full_name, nomor_cs: systemSettings["cs_phone_number"] || "-", link_web: "https://beres.vercel.app", link_referral: `https://beres.vercel.app/auth?ref=${userProfile.id}` };
+                    let tv = { nama: userProfile.full_name, nomor_cs: systemSettings["cs_phone_number"] || "-", link_web: "https://beres-bone.vercel.app", link_referral: `https://beres-bone.vercel.app/auth?ref=${userProfile.id}` };
                     return sendWhatsAppMessage(senderNumber, formatResponse(matchedMenu.response_template, tv));
                 }
                 // Default: tampilkan menu utama
