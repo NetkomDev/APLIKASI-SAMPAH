@@ -28,10 +28,15 @@ const client = new Client({
 // ──────────────────────────────────────────────
 
 function formatResponse(template, variables) {
-    let result = template;
+    let result = template || '';
+
+    // Konversi text literal "\n" dari panel Admin menjadi karakter baris baru sesungguhnya
+    result = result.replace(/\\n/g, '\n');
+
     for (const key in variables) {
         const re = new RegExp(`{${key}}`, 'gi');
-        result = result.replace(re, variables[key] || '');
+        const val = variables[key] ?? '';
+        result = result.replace(re, val);
     }
     return result;
 }
