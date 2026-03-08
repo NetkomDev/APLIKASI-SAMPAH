@@ -38,6 +38,36 @@ function trackMessage(phoneNumber) {
 
 
 // ──────────────────────────────────────────────
+// WHATSAPP CLOUD API — STATUS & TYPING (Non-blocking)
+// ──────────────────────────────────────────────
+
+// Tandai pesan sudah dibaca (centang biru) — fire-and-forget
+function markAsRead(messageId) {
+    const token = systemSettings["wa_api_token"];
+    const phoneId = systemSettings["wa_phone_number_id"];
+    if (!token || !phoneId || !messageId) return;
+
+    fetch(`https://graph.facebook.com/v20.0/${phoneId}/messages`, {
+        method: "POST",
+        headers: { "Authorization": `Bearer ${token}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ messaging_product: "whatsapp", status: "read", message_id: messageId })
+    }).catch(() => { }); // silent fail, non-blocking
+}
+
+// Tampilkan indikator "sedang mengetik..." — fire-and-forget
+function showTyping(toPhoneNumber) {
+    const token = systemSettings["wa_api_token"];
+    const phoneId = systemSettings["wa_phone_number_id"];
+    if (!token || !phoneId) return;
+
+    fetch(`https://graph.facebook.com/v20.0/${phoneId}/messages`, {
+        method: "POST",
+        headers: { "Authorization": `Bearer ${token}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ messaging_product: "whatsapp", recipient_type: "individual", to: toPhoneNumber, type: "reaction", reaction: { message_id: "", emoji: "" } })
+    }).catch(() => { }); // silent fail
+}
+
+// ──────────────────────────────────────────────
 // WHATSAPP CLOUD API — SEND FUNCTIONS
 // ──────────────────────────────────────────────
 
@@ -616,6 +646,11 @@ async function processPendingWebhooks() {
 
             const msgInfo = changes.messages[0];
             const from = msgInfo.from;
+            const msgId = msgInfo.id;
+
+            // Langsung kirim centang biru + typing (non-blocking, tidak menunda)
+            markAsRead(msgId);
+            showTyping(from);
 
             if (msgInfo.type === "text" && msgInfo.text?.body) {
                 // Pesan teks biasa
