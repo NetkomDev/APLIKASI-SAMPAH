@@ -502,7 +502,7 @@ client.on('message', async msg => {
                 nama: userProfile.full_name,
                 nomor_cs: systemSettings['cs_phone_number'] || '-',
                 link_web: 'https://aplikasi-sampah.vercel.app',
-                link_referral: `https://api.whatsapp.com/send?phone=&text=Hai! Ayo bergabung di EcoSistem Digital. Daftar lewat link ini:%0Ahttps://aplikasi-sampah.vercel.app/auth?ref=${userProfile.id}`
+                link_referral: `https://aplikasi-sampah.vercel.app/auth?ref=${userProfile.id}`
             };
 
             if (matchedMenu.menu_key === 'saldo') {
@@ -544,14 +544,13 @@ client.on('message', async msg => {
 
             if (matchedMenu.menu_key === 'referral') {
                 const kabupaten = systemSettings['kabupaten_name'] || '';
-                const botPhone = systemSettings['bot_phone_number'] || '';
+                const refLink = `https://aplikasi-sampah.vercel.app/auth?ref=${userProfile.id}`;
 
-                // ANTI-BAN: Gunakan teks biasa, bukan api.whatsapp.com link
                 // Pesan 1: Instruksi
                 await msg.reply(`📢 Bagikan pesan di bawah ini ke tetangga/teman Anda:\n\nTeruskan pesan berikut dengan cara *tekan lama* lalu *Teruskan*:`);
 
-                // Pesan 2: Pesan yang bisa diteruskan
-                const forwardableMsg = `Hai! Ayo bergabung di *EcoSistem Digital* dan jadi Pahlawan Lingkungan${kabupaten ? ' ' + kabupaten : ''}. 🌿♻️\n\nCaranya:\n1. Simpan nomor ini: *${botPhone}*\n2. Kirim pesan berikut ke nomor di atas:\n\n*ref=${userProfile.id}*\n\nAtau daftar via web:\nhttps://aplikasi-sampah.vercel.app/auth?ref=${userProfile.id}`;
+                // Pesan 2: Pesan yang bisa diteruskan (link web pendaftaran)
+                const forwardableMsg = `Hai! Ayo bergabung di *EcoSistem Digital* dan jadi Pahlawan Lingkungan${kabupaten ? ' ' + kabupaten : ''}. 🌿♻️\n\nDaftar gratis di sini:\n${refLink}`;
                 await chat.sendMessage(forwardableMsg);
                 return;
             }
