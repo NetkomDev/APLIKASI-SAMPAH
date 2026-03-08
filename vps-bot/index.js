@@ -364,6 +364,22 @@ client.on('message', async msg => {
     const chat = await msg.getChat();
     if (chat.isGroup) return;
 
+    // ── OVERRIDE msg.reply UNTUK MENAMBAH JEDA TYPING ──
+    const originalReply = msg.reply.bind(msg);
+    msg.reply = async (content, chatId, options) => {
+        try {
+            await chat.sendStateTyping();
+            // Hitung jeda berdasarkan panjang pesan, maks 3 detik, min 1 detik
+            const textLength = typeof content === 'string' ? content.length : 0;
+            const delay = Math.min(Math.max(textLength * 30, 1000), 3000);
+            await new Promise(resolve => setTimeout(resolve, delay));
+            await chat.clearState(); // Hentikan state typing
+        } catch (e) {
+            console.error('[WA] Gagal mengatur status typing:', e.message);
+        }
+        return originalReply(content, chatId, options);
+    };
+
     const senderNumber = msg.from.split('@')[0];
     const messageText = msg.body.trim().toLowerCase();
 
