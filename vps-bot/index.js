@@ -501,8 +501,8 @@ client.on('message', async msg => {
             let templateVars = {
                 nama: userProfile.full_name,
                 nomor_cs: systemSettings['cs_phone_number'] || '-',
-                link_web: 'https://aplikasi-sampah.vercel.app',
-                link_referral: `https://aplikasi-sampah.vercel.app/auth?ref=${userProfile.id}`
+                link_web: 'https://beres.vercel.app',
+                link_referral: `https://beres.vercel.app/auth?ref=${userProfile.id}`
             };
 
             if (matchedMenu.menu_key === 'saldo') {
@@ -544,7 +544,7 @@ client.on('message', async msg => {
 
             if (matchedMenu.menu_key === 'referral') {
                 const kabupaten = systemSettings['kabupaten_name'] || '';
-                const refLink = `https://aplikasi-sampah.vercel.app/auth?ref=${userProfile.id}`;
+                const refLink = `https://beres.vercel.app/auth?ref=${userProfile.id}`;
 
                 // Pesan 1: Instruksi
                 await msg.reply(`📢 Bagikan pesan di bawah ini ke tetangga/teman Anda:\n\nTeruskan pesan berikut dengan cara *tekan lama* lalu *Teruskan*:`);
