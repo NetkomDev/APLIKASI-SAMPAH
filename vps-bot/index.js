@@ -12,7 +12,50 @@ const supabase = createClient(supabaseUrl, supabaseKey);
 // Global State
 let systemSettings = {};
 let botMenus = [];
-const registrationSessions = {}; // Track ongoing WA registrations { phoneNumber: { step, data } }
+const registrationSessions = {};
+
+// ── ANTI-BAN: Rate Limiter ──
+const rateLimiter = {}; // { phoneNumber: { count, resetAt } }
+const MAX_MSGS_PER_USER_PER_DAY = 30;
+let globalDailyMsgCount = 0;
+let globalDailyResetAt = Date.now() + 86400000;
+const MAX_GLOBAL_MSGS_PER_DAY = 200;
+
+function isRateLimited(phoneNumber) {
+    const now = Date.now();
+    // Reset global counter daily
+    if (now > globalDailyResetAt) {
+        globalDailyMsgCount = 0;
+        globalDailyResetAt = now + 86400000;
+    }
+    // Global cap
+    if (globalDailyMsgCount >= MAX_GLOBAL_MSGS_PER_DAY) {
+        console.log(`[RATE] Global daily limit reached (${MAX_GLOBAL_MSGS_PER_DAY})`);
+        return true;
+    }
+    // Per-user cap
+    if (!rateLimiter[phoneNumber] || now > rateLimiter[phoneNumber].resetAt) {
+        rateLimiter[phoneNumber] = { count: 0, resetAt: now + 86400000 };
+    }
+    if (rateLimiter[phoneNumber].count >= MAX_MSGS_PER_USER_PER_DAY) {
+        console.log(`[RATE] User ${phoneNumber} daily limit reached (${MAX_MSGS_PER_USER_PER_DAY})`);
+        return true;
+    }
+    return false;
+}
+
+function trackMessage(phoneNumber) {
+    if (!rateLimiter[phoneNumber]) {
+        rateLimiter[phoneNumber] = { count: 0, resetAt: Date.now() + 86400000 };
+    }
+    rateLimiter[phoneNumber].count++;
+    globalDailyMsgCount++;
+}
+
+// ── ANTI-BAN: Random human-like delay ──
+function randomDelay(minMs, maxMs) {
+    return Math.floor(Math.random() * (maxMs - minMs + 1)) + minMs;
+} // Track ongoing WA registrations { phoneNumber: { step, data } }
 
 // Init WhatsApp Client
 const client = new Client({
@@ -103,8 +146,8 @@ client.on('ready', async () => {
     await supabase.from('system_settings').update({ value_text: '' }).eq('key_name', 'bot_qr_code');
     await supabase.from('system_settings').update({ value_text: 'CONNECTED' }).eq('key_name', 'bot_status');
 
-    // Check for newly registered web users who haven't received welcome
-    await sendPendingWelcomeMessages();
+    // ANTI-BAN: Tidak lagi mengirim pesan proaktif ke nomor yang belum pernah chat.
+    // Welcome akan dikirim saat user pertama kali mengirim pesan ke bot (lihat handler).
 });
 
 client.on('disconnected', async (reason) => {
@@ -113,47 +156,23 @@ client.on('disconnected', async (reason) => {
 });
 
 // ──────────────────────────────────────────────
-// PROACTIVE WELCOME: Send welcome to new web registrants
+// WELCOME FOR WEB REGISTRANTS (Reactive, bukan Proactive)
+// Dikirim saat user yang registrasi via web PERTAMA KALI mengirim pesan ke bot.
 // ──────────────────────────────────────────────
 
-async function sendPendingWelcomeMessages() {
+async function sendWebWelcomeIfNeeded(msg, userProfile) {
+    if (userProfile.registration_source !== 'web') return;
     try {
-        // Find users who registered via web in last 24h with phone_number set
-        const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
-        const { data: newUsers } = await supabase
-            .from('profiles')
-            .select('id, full_name, phone_number, registration_source')
-            .eq('registration_source', 'web')
-            .eq('is_registration_complete', true)
-            .not('phone_number', 'is', null)
-            .gte('created_at', since);
-
-        if (!newUsers || newUsers.length === 0) return;
-
-        for (const user of newUsers) {
-            if (!user.phone_number) continue;
-            try {
-                const chatId = user.phone_number + '@c.us';
-                const welcomeTemplate = systemSettings['registration_welcome'] || 'Selamat datang, {nama}!';
-                let welcomeMsg = formatResponse(welcomeTemplate, { nama: user.full_name });
-                welcomeMsg += '\n\n' + generateMenuList();
-                await client.sendMessage(chatId, welcomeMsg);
-                console.log(`[WA] Welcome sent to ${user.phone_number}`);
-
-                // Mark as 'sent' by changing source to avoid re-sending
-                // We use a simple approach: set registration_source to 'web_welcomed'
-                await supabase.from('profiles').update({ registration_source: 'web_welcomed' }).eq('id', user.id);
-            } catch (e) {
-                console.error(`[WA] Failed to send welcome to ${user.phone_number}:`, e.message);
-            }
-        }
+        const welcomeTemplate = systemSettings['registration_welcome'] || 'Selamat datang, {nama}!';
+        let welcomeMsg = formatResponse(welcomeTemplate, { nama: userProfile.full_name });
+        welcomeMsg += '\n\n' + generateMenuList();
+        await msg.reply(welcomeMsg);
+        console.log(`[WA] Reactive welcome sent to web user: ${userProfile.full_name}`);
+        await supabase.from('profiles').update({ registration_source: 'web_welcomed' }).eq('id', userProfile.id);
     } catch (e) {
-        console.error('[WA] Error in sendPendingWelcomeMessages:', e);
+        console.error('[WA] Failed to send reactive welcome:', e.message);
     }
 }
-
-// Run welcome check every 30 seconds
-setInterval(sendPendingWelcomeMessages, 30000);
 
 // ──────────────────────────────────────────────
 // WA REGISTRATION FLOW (for referral users)
@@ -369,20 +388,32 @@ client.on('message', async msg => {
     const chat = await msg.getChat();
     if (chat.isGroup) return;
 
-    // ── OVERRIDE msg.reply UNTUK MENAMBAH JEDA TYPING ──
+    // ── ANTI-BAN: Override msg.reply dengan random delay + typing ──
     const originalReply = msg.reply.bind(msg);
     msg.reply = async (content, chatId, options) => {
         try {
             await chat.sendStateTyping();
-            // Hitung jeda berdasarkan panjang pesan, maks 3 detik, min 1 detik
-            const textLength = typeof content === 'string' ? content.length : 0;
-            const delay = Math.min(Math.max(textLength * 30, 1000), 3000);
+            // Delay RANDOM antara 2-5 detik agar terlihat natural
+            const delay = randomDelay(2000, 5000);
             await new Promise(resolve => setTimeout(resolve, delay));
-            await chat.clearState(); // Hentikan state typing
+            await chat.clearState();
         } catch (e) {
             console.error('[WA] Gagal mengatur status typing:', e.message);
         }
         return originalReply(content, chatId, options);
+    };
+
+    // Wrap chat.sendMessage juga (untuk pesan referral ke-2)
+    const originalSendMessage = chat.sendMessage.bind(chat);
+    chat.sendMessage = async (content, options) => {
+        try {
+            await chat.sendStateTyping();
+            const delay = randomDelay(2000, 4000);
+            await new Promise(resolve => setTimeout(resolve, delay));
+            await chat.clearState();
+        } catch (e) { /* ignore */ }
+        trackMessage(senderNumber);
+        return originalSendMessage(content, options);
     };
 
     const contact = await msg.getContact();
@@ -397,6 +428,12 @@ client.on('message', async msg => {
     const messageText = msg.body.trim().toLowerCase();
 
     console.log('[BOT] MSG IN:', senderNumber, msg.body);
+
+    // ── ANTI-BAN: Rate limiter check ──
+    if (isRateLimited(senderNumber)) {
+        return; // Diam saja, jangan balas
+    }
+    trackMessage(senderNumber);
 
     // ── Handle ongoing registration session first ──
     if (registrationSessions[senderNumber]) {
@@ -417,9 +454,15 @@ client.on('message', async msg => {
         // ── 1. Check if user is registered ──
         const { data: userProfile } = await supabase
             .from('profiles')
-            .select('id, full_name, role, is_registration_complete')
+            .select('id, full_name, role, is_registration_complete, registration_source')
             .eq('phone_number', senderNumber)
             .single();
+
+        // ── 1.5 REACTIVE WELCOME: kirim welcome saat user web pertama kali chat ──
+        if (userProfile && userProfile.registration_source === 'web') {
+            await sendWebWelcomeIfNeeded(msg, userProfile);
+            return; // Selesai, welcome sudah terkirim + menu
+        }
 
         // ── 2. UNREGISTERED USER ──
         if (!userProfile) {
@@ -502,13 +545,13 @@ client.on('message', async msg => {
             if (matchedMenu.menu_key === 'referral') {
                 const kabupaten = systemSettings['kabupaten_name'] || '';
                 const botPhone = systemSettings['bot_phone_number'] || '';
-                const refLink = `https://api.whatsapp.com/send?phone=${botPhone}&text=ref%3D${userProfile.id}`;
 
+                // ANTI-BAN: Gunakan teks biasa, bukan api.whatsapp.com link
                 // Pesan 1: Instruksi
-                await msg.reply(`📢 Bagikan link di bawah ini ke tetangga/teman Anda:\n\nTeruskan pesan berikut dengan cara *tekan lama* lalu *Teruskan*:`);
+                await msg.reply(`📢 Bagikan pesan di bawah ini ke tetangga/teman Anda:\n\nTeruskan pesan berikut dengan cara *tekan lama* lalu *Teruskan*:`);
 
-                // Pesan 2: Pesan yang bisa diteruskan (dikirim sebagai pesan baru, bukan reply)
-                const forwardableMsg = `Hai! Ayo bergabung di *EcoSistem Digital* dan jadi Pahlawan Lingkungan${kabupaten ? ' ' + kabupaten : ''}. 🌿♻️\n\nKlik link berikut untuk mendaftar:\n${refLink}`;
+                // Pesan 2: Pesan yang bisa diteruskan
+                const forwardableMsg = `Hai! Ayo bergabung di *EcoSistem Digital* dan jadi Pahlawan Lingkungan${kabupaten ? ' ' + kabupaten : ''}. 🌿♻️\n\nCaranya:\n1. Simpan nomor ini: *${botPhone}*\n2. Kirim pesan berikut ke nomor di atas:\n\n*ref=${userProfile.id}*\n\nAtau daftar via web:\nhttps://aplikasi-sampah.vercel.app/auth?ref=${userProfile.id}`;
                 await chat.sendMessage(forwardableMsg);
                 return;
             }
