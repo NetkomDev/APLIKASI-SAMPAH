@@ -205,17 +205,34 @@ async function handleRegistrationFlow(msg, senderNumber) {
             session.data.fullName = messageText;
             session.step = REGISTRATION_STEPS.WAITING_ADDRESS;
             await msg.reply(
-                `Baik, *${messageText}*! 👍\n\n*Langkah 2/2*: Masukkan alamat lengkap Anda:\n_(Contoh: Jl. Merdeka No. 10, RT 03/RW 05, Kel. Sukamaju, Kec. Cibiru, Bandung)_`
+                `Baik, *${messageText}*! 👍\n\n*Langkah 2/2*: Mohon kirimkan *Lokasi Anda* menggunakan fitur berbagi lokasi (Share Location) di WhatsApp. 📍\n\n_(Kami akan mendeteksi alamat otomatis dari lokasi yang Anda kirim, atau Anda juga bisa mengetik alamat lengkap secara manual)_`
             );
             return true;
         }
 
         case REGISTRATION_STEPS.WAITING_ADDRESS: {
-            if (messageText.length < 10) {
-                await msg.reply('⚠️ Alamat terlalu pendek. Silakan masukkan alamat lengkap Anda:');
+            if (msg.type === 'location') {
+                const lat = msg.location.latitude;
+                const lon = msg.location.longitude;
+                try {
+                    const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}&zoom=18&addressdetails=1`, {
+                        headers: { 'User-Agent': 'EcoSistemDigitalBot/1.0' }
+                    });
+                    const data = await response.json();
+                    session.data.address = data.display_name || "Alamat tidak ditemukan";
+                    session.data.latitude = lat;
+                    session.data.longitude = lon;
+                } catch (err) {
+                    console.error('[REG] Nominatim error:', err);
+                    session.data.address = "Gagal mendeteksi lokasi. Harap ketik ulang alamat Anda.";
+                }
+            } else if (msg.type === 'chat' && messageText.length > 5) {
+                session.data.address = messageText;
+            } else {
+                await msg.reply('⚠️ Mohon gunakan fitur lampirkan "Lokasi" (Share Location) atau ketik alamat lengkap Anda secara manual (min 5 karakter).');
                 return true;
             }
-            session.data.address = messageText;
+
             session.step = REGISTRATION_STEPS.WAITING_CONFIRM;
 
             let referrerLine = '';
@@ -225,14 +242,19 @@ async function handleRegistrationFlow(msg, senderNumber) {
             }
 
             await msg.reply(
-                `📋 *Konfirmasi Data Pendaftaran:*\n\n👤 Nama: *${session.data.fullName}*\n📱 No. HP: *${senderNumber}*\n🏠 Alamat: *${session.data.address}*\n${referrerLine}\nApakah data di atas sudah benar?\nKetik *YA* untuk konfirmasi atau *BATAL* untuk membatalkan.`
+                `📍 *Lokasi Otomatis (Jika pakai Share Location)*\n\n📋 *Konfirmasi Data Pendaftaran:*\n\n👤 Nama: *${session.data.fullName}*\n📱 No. HP: *${senderNumber}*\n🏠 Alamat: *${session.data.address}*\n${referrerLine}\nApakah data di atas sudah benar?\n\nKetik *YA* jika benar.\nJika alamat kurang tepat, silakan *ketik alamat yang benar* secara manual untuk mengoreksi.\nKetik *BATAL* untuk membatalkan.`
             );
             return true;
         }
 
         case REGISTRATION_STEPS.WAITING_CONFIRM: {
             if (messageText.toLowerCase() !== 'ya') {
-                await msg.reply('Ketik *YA* untuk konfirmasi pendaftaran, atau *BATAL* untuk membatalkan.');
+                if (messageText.length > 5) {
+                    session.data.address = messageText;
+                    await msg.reply(`✅ Alamat diperbarui menjadi:\n_${messageText}_\n\nApakah data sudah benar?\nKetik *YA* untuk konfirmasi.`);
+                } else {
+                    await msg.reply('⚠️ Alamat perbaikan terlalu pendek. Ketik *YA* untuk konfirmasi, atau ketik alamat koreksi (min 5 karakter).');
+                }
                 return true;
             }
 
