@@ -1,17 +1,0 @@
-#!/usr/bin/expect -f
-set timeout -1
-spawn scp -o StrictHostKeyChecking=no vps-bot/index.js ubuntu@124.156.202.180:/home/ubuntu/ecosistem-bot/vps-bot/index.js
-expect "password:"
-send "Scd-35Q-vJD-BVh"
-expect eof
-
-spawn ssh -o StrictHostKeyChecking=no ubuntu@124.156.202.180
-expect "password:"
-send "Scd-35Q-vJD-BVh"
-expect "$ "
-send "cd /home/ubuntu/ecosistem-bot/vps-bot && npm install ws && pm2 restart ecosistem-bot"
-expect "$ "
-send "pm2 logs ecosistem-bot --lines 15 --nostream"
-expect "$ "
-send "exit"
-expect eof
