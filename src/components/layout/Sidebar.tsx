@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LayoutDashboard, Users, Map, Settings, PieChart, Activity, LogOut, PackageSearch, TreePine } from 'lucide-react';
+import { LayoutDashboard, Users, Map, Settings, PieChart, Activity, LogOut, PackageSearch, TreePine, UserPlus } from 'lucide-react';
 import clsx from 'clsx';
 import { supabase } from '@/infrastructure/config/supabase';
 
@@ -16,6 +16,7 @@ export function Sidebar({ role }: SidebarProps) {
     const adminLinks = [
         { name: 'Command Center', href: '/admin', icon: Activity },
         { name: 'Warga & CRM', href: '/admin/users', icon: Users },
+        { name: 'Onboarding Kurir', href: '/admin/couriers', icon: UserPlus },
         { name: 'Fleet Kurir', href: '/admin/fleet', icon: Map },
         { name: 'Fraud & Transaksi', href: '/admin/transactions', icon: PackageSearch },
         { name: 'Pricing & Finance', href: '/admin/finance', icon: Settings },

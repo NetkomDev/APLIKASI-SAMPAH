@@ -531,6 +531,53 @@ async function handleMenuBantuan(senderNumber) {
 }
 
 // ──────────────────────────────────────────────
+// COURIER REGISTRATION HANDLER
+// ──────────────────────────────────────────────
+
+async function handleDaftarKurir(senderNumber, userProfile) {
+    // Check if already a courier
+    if (userProfile.role === "courier") {
+        return sendWhatsAppMessage(senderNumber, `Anda sudah terdaftar sebagai kurir aktif, ${userProfile.full_name}! 🚛\n\nAkses Dashboard Kurir di sini:\nhttps://beres-bone.vercel.app/courier`);
+    }
+
+    // Check if already applied
+    const { data: existing } = await supabase
+        .from("courier_applications")
+        .select("status, reject_reason")
+        .eq("user_id", userProfile.id)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .single();
+
+    if (existing && existing.status === "pending") {
+        return sendWhatsAppMessage(senderNumber,
+            `⏳ Lamaran kurir Anda sedang dalam *proses peninjauan* oleh admin.\n\nKami akan mengirimkan notifikasi ke WhatsApp ini begitu ada keputusan. Terima kasih atas kesabaran Anda! 🙏`
+        );
+    }
+
+    if (existing && existing.status === "rejected") {
+        return sendCTAUrl(
+            senderNumber,
+            `Lamaran kurir Anda sebelumnya ditolak.\n📋 Alasan: _${existing.reject_reason || "Tidak memenuhi syarat"}_\n\nAnda dapat mendaftar ulang dengan data yang sudah diperbaiki:`,
+            "📝 Daftar Ulang Kurir",
+            "https://beres-bone.vercel.app/courier/register",
+            "🚛 Pendaftaran Kurir BERES",
+            "Pastikan foto KTP dan dokumen sudah jelas"
+        );
+    }
+
+    // New applicant — send CTA to registration form
+    return sendCTAUrl(
+        senderNumber,
+        `Ingin jadi *Pahlawan Lingkungan*? 🦸‍♂️\n\nDaftar sebagai kurir BERES dan dapatkan penghasilan dengan menjemput sampah warga!\n\n✅ Kerja fleksibel\n✅ Notif order langsung ke WA\n✅ Komisi setiap jemputan\n\nKlik tombol di bawah untuk mengisi formulir pendaftaran:`,
+        "📝 Daftar Jadi Kurir",
+        "https://beres-bone.vercel.app/courier/register",
+        "🚛 Rekrutmen Kurir BERES",
+        "Siapkan foto KTP, SIM (opsional), dan Selfie+KTP"
+    );
+}
+
+// ──────────────────────────────────────────────
 // MAIN MESSAGE HANDLER
 // ──────────────────────────────────────────────
 
@@ -599,6 +646,12 @@ async function handleIncomingMessage(senderNumber, messageText, interactionId) {
             case "cs":
             case "help":
                 return await handleMenuBantuan(senderNumber);
+
+            case "daftar kurir":
+            case "kurir":
+            case "jadi kurir":
+            case "gabung kurir":
+                return await handleDaftarKurir(senderNumber, userProfile);
 
             case "menu":
             case "hi":

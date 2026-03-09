@@ -233,10 +233,49 @@ User mengirim pesan ke Bot
 |----------|--------|
 | **Infrastruktur**  | WhatsApp Cloud API (Resmi) |
 | **Integrasi**      | Supabase Edge Functions Webhook |
-| **Process Manager** | PM2 (`ecosistem-bot`) |
-| **Path di VPS** | `/home/ubuntu/ecosistem-bot/vps-bot/` |
+| **Otentikasi API** | System User Permanent Access Token (Tidak Kadaluarsa) |
+| **Process Manager**| PM2 (`ecosistem-bot`) |
+| **Path di VPS**    | `/home/ubuntu/ecosistem-bot/vps-bot/` |
 | **Dashboard Kontrol** | Super Admin → Konfigurasi Bot WA |
 | **QR Code** | Ditampilkan virtual di Dashboard (Base64 via Supabase) |
+
+---
+
+### 3.6 Mengelola Operasional Kurir (Fleet Management)
+
+Sebagai ujung tombak interaksi lapangan, operasional Kurir mengombinasikan **WhatsApp** (untuk notifikasi instan) dan **Progressive Web App (PWA)** (untuk input data kompleks saat menjemput sampah).
+
+#### 3.6.1 Pendaftaran & Onboarding
+1. **Pendaftaran:** Akses registrasi kurir tidak dilepas ke publik secara bebas. Calon kurir mendaftar via form PWA/Web khusus atau mengisi data di admin.
+2. **Approval (Persetujuan):** Admin meninjau kelengkapan dokumen (KTP, SIM, STNK). Jika disetujui, admin merubah profilnya menjadi `role = courier` dan menetapkan area kerjanya (Geofencing operasional).
+3. **Aktivasi:** Begitu disetujui di sistem, bot WhatsApp akan otomatis mengirimkan pesan sambutan kerja beserta tautan masuk ke "Dashboard/PWA Khusus Kurir".
+
+#### 3.6.2 Algoritma Notifikasi Tangkapan Order (Dispatch System)
+Sistem memiliki kontrol cerdas ("Smart Dispatch") ketika warga melakukan request jemputan (via WA/Web):
+1. **Mode Algoritma Prioritas:** Konfigurasi dapat diubah oleh *Super Admin* berdasarkan preferensi bisnis daerah:
+   - **Berdasarkan Jarak Terdekat (Nearest - Default):** Mencari koordinat kurir terdekat (via PostGIS) yang sedang "Online" di aplikasi.
+   - **Berdasarkan Rating Tertinggi:** Mengincar kurir dengan bintang 5 dan zero komplain terlebih dahulu.
+   - **Pemerataan Rezeki (Load Balancing):** Memprioritaskan kurir yang hari itu belum mendapat *orderan*.
+   - **Kelas / Akun Pro:** Memprioritaskan kurir "Senior" jika order berjumlah sangat besar.
+2. **Push Notifikasi:** Warga memesan → Sistem menghitung kecocokan algoritma → Sistem "membunyikan" (Push WA) ke HP kurir target menggunakan *Interactive Message WA* (Tombol "✅ Terima" / "❌ Tolak").
+3. **Sistem Lempar (Fall-back):** Jika kurir utama lambat merespon (misal > 2 menit), sistem melempar Push WA ke semua kurir terdekat (sistem rebutan).
+
+#### 3.6.3 Mekanisme Jemput Sampah (Courier Sub-Portal / PWA)
+Untuk mencegah *fraud* dan mempermudah pencatatan yang akurat, eksekusi timbangan sampah **tidak menggunakan Chat WA biasa** secara penuh di titik jemput, melainkan diarahkan mengakses **PWA Kurir** (`/courier`). Alurnya:
+1. **Validasi Warga:** Kurir tiba di rumah warga, lalu men-*scan* QR Code unik warga via HP Kurir (atau warga memunculkan QR Code dari dashboard).
+2. **Geo-Location Check:** Sistem langsung mencatat koordinat kurir saat membuka form timbangan (Jika meleset > 50 meter dari alamat warga, sistem memberi *Red Flag / Fraud Alert*).
+3. **Pencatatan Presisi:** Kurir menimbang lalu memisahkan data input (Misal: 3 kg Plastik, 2 kg Kertas) pada aplikasi HP.
+4. **Validasi Bukti (Upload):** Kurir wajib memotret bukti angka timbangan dan onggokan kategori sampah tersebut. Terunggah ke *Supabase Storage*.
+5. **Autentikasi Pembayaran:** Setelah kurir menekan "Simpan Tagihan", saldo milik wargalangsung bertambah, dan saldo komisi kurir ikut bertambah. Daftar struk rincian sampah dikirim *real-time* lewat notif WhatsApp bot warga.
+
+#### 3.6.4 Manajemen Performa & Keuangan Kurir
+Di dalam Sub-Portal/PWA Khusus Kurir (`/courier`), kurir mempunyai akses fitur administrasi mandiri:
+1. **Dompet Kurir (Wallet):** Pemantauan log *real-time* penambahan saldo komisi (baik berdasarkan % total harga angkut, total bobot kilogram, maupun per trip penugasan).
+2. **Pencairan Saldo (Withdrawal):** Kurir mengajukan tarik tunai di sub-portal (lewat transfer e-Wallet atau tarik Tunai Admin Pusat). Sistem mencatat rekam riwayat saldo harian.
+3. **Sistem Reputasi & Teguran Peringatan (SP):**
+   - **Rating:** Warga wajib memberikan rating (1-5 Bintang) ke kurir setelah transaksi jemput selesai untuk menjaga pelayanan prima.
+   - **Teguran Pusat:** Jika rating jatuh di bawah batas aman, ada komplain warga (misal sampah tidak terangkut bersih), atau dicurigai *fraud point*, **Warning / Surat Peringatan (SP) digital** akan muncul (popup) di *dashboard* aplikasinya dan dikirim ke *WhatsApp* pribadinya sebagai record validasi untuk admin.
+4. **Riwayat Pengangkutan:** Melacak total kilogram harian yang berhasil ditarik serta target yang tergarap per kuartal.
 
 ---
 
@@ -245,12 +284,28 @@ User mengirim pesan ke Bot
 ### 4.1 Schema Enhancement (Tabel Esensial)
 Di dalam Supabase, struktur PostgreSQL harus memasukkan beberapa entitas berikut:
 - **`profiles`**: Profil user dengan ekstensi `role` (`user` / `courier` / `admin` / `gov` / `superadmin`), dan `achievement_points`.
+  - **Kolom Kurir** (ditambahkan saat onboarding):
+    - `courier_status` (enum: `null` / `pending_approval` / `active` / `suspended` / `terminated`)
+    - `courier_id_code` (text, UNIQUE) — ID unik kurir format `KUR-XXXX`
+    - `vehicle_type` (text) — Jenis kendaraan kurir
+    - `vehicle_plate` (text) — Plat nomor kendaraan
+    - `preferred_zone` (text) — Zona operasional
+    - `is_online` (boolean, default false) — Toggle kurir sedang aktif/tidak
+- **`courier_applications`**: Tabel lamaran kurir (Pre-Registration & Admin Approval). Menyimpan data lengkap calon kurir untuk ditinjau admin sebelum disetujui. Kolom:
+  - `id` (uuid, PK), `user_id` (FK → profiles.id)
+  - Data KTP: `nik`, `full_name`, `birth_place`, `birth_date`, `address_ktp`, `phone_number`
+  - Kendaraan: `vehicle_type` (motor/mobil_pickup/gerobak/sepeda), `vehicle_plate`
+  - Dokumen: `ktp_photo_url`, `sim_photo_url`, `selfie_ktp_url` (Supabase Storage)
+  - Status: `status` (pending/approved/rejected), `reject_reason`, `reviewed_by`, `reviewed_at`
+  - `courier_id_code` (generated on approval), `preferred_zone`
+  - RLS: User lihat milik sendiri, Admin lihat & update semua
 - **`courier_logs`**: Tabel log performa (durasi jemput, lokasi, *rating* dari warga).
 - **`policy_configs`**: Master data pengaturan pemerintah (parameter reward, threshold, target Zero Waste).
 - **`waste_analytics`**: Tabel *materialized view* / *summary* agregasi agar grafik analitik *Government Dashboard* ter-load sangat cepat.
 - **`system_settings`**: Tabel konfigurasi dinamis yang dikelola Super Admin. Berisi key-value pair untuk:
   - Pengaturan tampilan dashboard (logo, tema, widget visibility)
-  - Konfigurasi Webhook & Credentials WhatsApp Cloud API (Token Permanen, WABA ID, Phone ID)  - Parameter operasional global (radius layanan, harga dasar, aturan referral)
+  - Konfigurasi Webhook & Credentials WhatsApp Cloud API (Token Permanen via System User, WABA ID, Phone ID)
+  - Parameter operasional global (radius layanan, harga dasar, aturan referral)
   - Setiap perubahan tercatat di `audit_logs` untuk transparansi.
 - **`audit_logs`**: Log perubahan konfigurasi sistem oleh Super Admin (field: `user_id`, `action`, `table_name`, `old_value`, `new_value`, `timestamp`).
 - **`wa_menu_configs`**: Konfigurasi menu dan template pesan Bot WhatsApp yang dapat diubah real-time tanpa deployment ulang.
@@ -263,6 +318,9 @@ Di dalam Supabase, struktur PostgreSQL harus memasukkan beberapa entitas berikut
   - `is_active` (boolean) — Status aktif/nonaktif
 - **`profiles.district_id`**: Kolom tambahan pada tabel profiles (FK → districts.id) yang menghubungkan akun gov dan admin ke distrik yang sama.
 - **`profiles.district_name`**: Cache nama distrik untuk kemudahan query.
+
+### 4.2 Storage Buckets
+- **`courier-documents`**: Bucket privat untuk menyimpan foto KTP, SIM, dan Selfie+KTP calon kurir. Format: `{user_id}/{doc_type}_{timestamp}.{ext}`. Akses: user pemilik + admin/superadmin. Max 5MB per file (JPG/PNG/WebP).
 
 ### 4.2 Kredensial Super Admin
 - **Email**: `superadmin@ecosistemdigital.id`
