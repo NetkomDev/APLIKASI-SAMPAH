@@ -1,4 +1,5 @@
 import { PackageCheck, Scale, Wallet2, ArrowRightLeft } from 'lucide-react';
+import { CourierQuotaSummary } from '@/components/admin/CourierQuotaSummary';
 
 export default function AdminPage() {
     return (
@@ -25,7 +26,10 @@ export default function AdminPage() {
                 ))}
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* Quota Summary (from SuperAdmin settings) */}
+            <CourierQuotaSummary />
+
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-6">
                 {/* Audit & Validation Area (Primary Task) */}
                 <div className="lg:col-span-2 bg-white rounded-2xl shadow-sm border border-slate-100 p-6 flex flex-col h-[600px]">
                     <div className="flex justify-between items-center mb-6">
@@ -111,3 +115,4 @@ export default function AdminPage() {
         </div>
     );
 }
+

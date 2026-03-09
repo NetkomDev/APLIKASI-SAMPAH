@@ -187,6 +187,9 @@ export function CourierRegistrationForm() {
         ktpPhoto: null, simPhoto: null, selfieKtp: null,
     });
 
+    const [zoneQuotas, setZoneQuotas] = useState<Record<string, { quota: number, filled: number }>>({});
+    const [loadingQuotas, setLoadingQuotas] = useState(false);
+
     useEffect(() => {
         setMounted(true);
         supabase.auth.getSession().then(({ data: { session } }) => {
@@ -208,8 +211,37 @@ export function CourierRegistrationForm() {
         });
     }, []);
 
+    useEffect(() => {
+        if (!form.vehicleType) {
+            setZoneQuotas({});
+            return;
+        }
+
+        const fetchQuotas = async () => {
+            setLoadingQuotas(true);
+            const { data, error } = await supabase.rpc("get_courier_quotas_by_vehicle", {
+                p_vehicle_type: form.vehicleType,
+            });
+
+            if (!error && data) {
+                const qMap: Record<string, { quota: number, filled: number }> = {};
+                data.forEach((item: any) => {
+                    qMap[item.zone_name] = { quota: item.quota, filled: item.filled };
+                });
+                setZoneQuotas(qMap);
+            }
+            setLoadingQuotas(false);
+        };
+
+        fetchQuotas();
+    }, [form.vehicleType]);
+
     const updateForm = (key: keyof FormData, value: string) => {
-        setForm((prev) => ({ ...prev, [key]: value }));
+        setForm((prev) => {
+            const upd = { ...prev, [key]: value };
+            if (key === "vehicleType") upd.preferredZone = "";
+            return upd;
+        });
         setError("");
     };
 
@@ -623,19 +655,40 @@ export function CourierRegistrationForm() {
                                 <div>
                                     <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2 block">Zona Operasional *</label>
                                     <div className="grid grid-cols-1 gap-1.5 max-h-48 overflow-y-auto pr-1">
-                                        {ZONE_OPTIONS.map((z) => (
-                                            <button
-                                                key={z}
-                                                onClick={() => updateForm("preferredZone", z)}
-                                                className={`px-4 py-2.5 rounded-xl border text-left text-sm transition-all
-                                                    ${form.preferredZone === z
-                                                        ? "bg-brand-500/10 border-brand-500/50 text-brand-300 font-semibold"
-                                                        : "bg-slate-800 border-slate-700 text-slate-300 hover:border-slate-600"
-                                                    }`}
-                                            >
-                                                {z}
-                                            </button>
-                                        ))}
+                                        {!form.vehicleType ? (
+                                            <p className="text-sm text-slate-500 italic py-2">Pilih jenis kendaraan terlebih dahulu untuk melihat kuota zona.</p>
+                                        ) : loadingQuotas ? (
+                                            <p className="text-sm text-slate-500 py-2 flex items-center gap-2"><span className="h-4 w-4 border-2 border-brand-500/30 border-t-brand-500 rounded-full animate-spin" /> Memeriksa kuota zona...</p>
+                                        ) : (
+                                            ZONE_OPTIONS.map((z) => {
+                                                const qInfo = zoneQuotas[z];
+                                                const hasQuotaSetup = qInfo !== undefined;
+                                                const isFull = hasQuotaSetup && qInfo.filled >= qInfo.quota;
+                                                const currentRemaining = qInfo ? Math.max(0, qInfo.quota - qInfo.filled) : 0;
+
+                                                return (
+                                                    <button
+                                                        key={z}
+                                                        disabled={isFull}
+                                                        onClick={() => updateForm("preferredZone", z)}
+                                                        className={`w-full flex items-center justify-between px-4 py-2.5 rounded-xl border text-left text-sm transition-all
+                                                            ${isFull
+                                                                ? "bg-slate-800/30 border-slate-800 text-slate-600 cursor-not-allowed"
+                                                                : form.preferredZone === z
+                                                                    ? "bg-brand-500/10 border-brand-500/50 text-brand-300 font-semibold"
+                                                                    : "bg-slate-800 border-slate-700 text-slate-300 hover:border-slate-600"
+                                                            }`}
+                                                    >
+                                                        <span>{z}</span>
+                                                        {hasQuotaSetup && (
+                                                            <span className={`flex-shrink-0 text-[10px] font-bold px-2 py-0.5 rounded-full ${isFull ? "bg-red-500/10 text-red-500 border border-red-500/20" : "bg-brand-500/20 text-brand-400"}`}>
+                                                                {isFull ? "Penuh" : `Sisa Kuota: ${currentRemaining}`}
+                                                            </span>
+                                                        )}
+                                                    </button>
+                                                );
+                                            })
+                                        )}
                                     </div>
                                 </div>
                             </div>

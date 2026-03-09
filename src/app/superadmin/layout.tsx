@@ -6,12 +6,13 @@ import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
 import {
     Shield, Users, Settings, LogOut, ChevronRight,
-    Building2, Bot, BarChart3, Leaf, Menu, X
+    Building2, Bot, BarChart3, Leaf, Menu, X, Truck
 } from "lucide-react";
 
 const sidebarItems = [
     { href: "/superadmin", label: "Dashboard", icon: BarChart3 },
     { href: "/superadmin/districts", label: "Kelola Distrik", icon: Building2 },
+    { href: "/superadmin/courier-quotas", label: "Kuota Kurir", icon: Truck },
     { href: "/superadmin/bot-config", label: "Konfigurasi Bot WA", icon: Bot },
     { href: "/superadmin/settings", label: "Pengaturan Sistem", icon: Settings },
 ];

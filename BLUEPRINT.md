@@ -336,6 +336,13 @@ Di dalam Supabase, struktur PostgreSQL harus memasukkan beberapa entitas berikut
 Insentif diformulakan di dalam sistem menggunakan Supabase Edge Functions:
 $$Incentive\_Score = \sum (Weight_{organic} \times 1.5) + \sum (Weight_{inorganic} \times 1.0)$$
 
+### 4.4 Courier Quota System (Sistem Kuota Kurir)
+Sistem untuk membatasi dan mengelola jumlah kurir aktif berdasarkan jenis kendaraan dan area operasional. Bertujuan untuk menyeimbangkan *supply & demand* serta kelayakan cashflow Bank Sampah.
+- **Tabel `courier_quotas`**: Menyimpan batas maksimal (`quota`) untuk kombinasi `zone_name` dan `vehicle_type`.
+- **Dikelola Oleh**: Super Admin melalui halaman `/superadmin/courier-quotas` (Dashboard Super Admin).
+- **Validasi Frontend**: Di halaman Pendaftaran Kurir (`/courier/register`), sistem akan mengecek sisa kuota (Total Kuota - Jumlah Kurir Pending/Aktif) secara *real-time* via Supabase RPC (`get_courier_quotas_by_vehicle`). Jika penuh, zona tersebut tidak bisa dipilih.
+- **Monitoring Biasa**: Admin Bank Sampah dapat melihat ringkasan alokasi dan kuota kurir aktif secara keseluruhan di dashboard utama (`/admin`).
+
 ---
 
 ## 5. Roadmap Fase Pembangunan
