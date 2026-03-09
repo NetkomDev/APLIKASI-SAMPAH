@@ -537,9 +537,9 @@ export function CourierRegistrationForm() {
                                 <p className="text-sm text-slate-400 mt-1">Masuk atau daftar dengan Nomor WhatsApp.</p>
                             </div>
                             <div className="space-y-4">
-                                <InputField label="Nomor WhatsApp (atau Email)" value={form.email} onChange={(v) => updateForm("email", v)} placeholder="08123456789" type="text" />
-                                <InputField label="Kata Sandi" value={form.password} onChange={(v) => updateForm("password", v)} placeholder="Min. 6 karakter" type="password" />
-                                <InputField label="Konfirmasi Kata Sandi" value={form.confirmPassword} onChange={(v) => updateForm("confirmPassword", v)} placeholder="Ulangi kata sandi" type="password" />
+                                <InputField label="Nomor WhatsApp (atau Email)" value={form.email} onChange={(v) => updateForm("email", v)} placeholder="08123456789" type="text" autoComplete="email" />
+                                <InputField label="Kata Sandi" value={form.password} onChange={(v) => updateForm("password", v)} placeholder="Min. 6 karakter" type="password" autoComplete="new-password" />
+                                <InputField label="Konfirmasi Kata Sandi" value={form.confirmPassword} onChange={(v) => updateForm("confirmPassword", v)} placeholder="Ulangi kata sandi" type="password" autoComplete="new-password" />
                             </div>
                             <button
                                 onClick={handleAuth}
@@ -784,7 +784,7 @@ export function CourierRegistrationForm() {
 // SUB-COMPONENTS
 // ═══════════════════════════════════════════════════════════════
 
-function InputField({ label, value, onChange, placeholder, type = "text", icon: Icon, multiline, maxLength }: {
+function InputField({ label, value, onChange, placeholder, type = "text", icon: Icon, multiline, maxLength, autoComplete }: {
     label: string;
     value: string;
     onChange: (v: string) => void;
@@ -793,6 +793,7 @@ function InputField({ label, value, onChange, placeholder, type = "text", icon: 
     icon?: React.ComponentType<{ className?: string }>;
     multiline?: boolean;
     maxLength?: number;
+    autoComplete?: string;
 }) {
     const [showPassword, setShowPassword] = useState(false);
     const isPassword = type === "password";
@@ -819,6 +820,7 @@ function InputField({ label, value, onChange, placeholder, type = "text", icon: 
                         onChange={(e) => onChange(e.target.value)}
                         placeholder={placeholder}
                         maxLength={maxLength}
+                        autoComplete={autoComplete}
                         className={cls + (isPassword ? " pr-12" : "")}
                     />
                     {isPassword && (
