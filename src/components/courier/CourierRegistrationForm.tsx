@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import {
     Leaf, ArrowRight, ArrowLeft, CheckCircle2, Phone, User, MapPin,
     Truck, Camera, Upload, FileText, Shield, AlertCircle, IdCard,
-    Calendar, Home, Bike, Car, X
+    Calendar, Home, Bike, Car, X, Eye, EyeOff
 } from "lucide-react";
 
 // ─── Types ────────────────────────────────────────────────────
@@ -16,6 +16,7 @@ interface FormData {
     // Auth
     email: string;
     password: string;
+    confirmPassword: string;
     // Personal
     fullName: string;
     nik: string;
@@ -176,7 +177,7 @@ export function CourierRegistrationForm() {
     const [userId, setUserId] = useState<string | null>(null);
 
     const [form, setForm] = useState<FormData>({
-        email: "", password: "",
+        email: "", password: "", confirmPassword: "",
         fullName: "", nik: "", birthPlace: "", birthDate: "", addressKtp: "", phone: "",
         vehicleType: "", vehiclePlate: "",
         preferredZone: "",
@@ -224,6 +225,11 @@ export function CourierRegistrationForm() {
         }
         if (!form.password.trim()) {
             setError("Masukkan kata sandi.");
+            return;
+        }
+
+        if (form.confirmPassword && form.password !== form.confirmPassword) {
+            setError("Kata sandi dan konfirmasinya tidak cocok.");
             return;
         }
 
@@ -283,6 +289,12 @@ export function CourierRegistrationForm() {
 
         // If sign-in failed, try sign up
         if (signInErr) {
+            if (!form.confirmPassword) {
+                setError("Nomor belum terdaftar atau Sandi salah. Jika ingin mendaftar, isi Konfirmasi Sandi lalu klik Lanjutkan.");
+                setIsLoading(false);
+                return;
+            }
+
             const { data: signUpData, error: signUpErr } = await supabase.auth.signUp({
                 email: loginEmail,
                 password: form.password,
@@ -527,6 +539,7 @@ export function CourierRegistrationForm() {
                             <div className="space-y-4">
                                 <InputField label="Nomor WhatsApp (atau Email)" value={form.email} onChange={(v) => updateForm("email", v)} placeholder="08123456789" type="text" />
                                 <InputField label="Kata Sandi" value={form.password} onChange={(v) => updateForm("password", v)} placeholder="Min. 6 karakter" type="password" />
+                                <InputField label="Konfirmasi Kata Sandi" value={form.confirmPassword} onChange={(v) => updateForm("confirmPassword", v)} placeholder="Ulangi kata sandi" type="password" />
                             </div>
                             <button
                                 onClick={handleAuth}
@@ -781,6 +794,9 @@ function InputField({ label, value, onChange, placeholder, type = "text", icon: 
     multiline?: boolean;
     maxLength?: number;
 }) {
+    const [showPassword, setShowPassword] = useState(false);
+    const isPassword = type === "password";
+    const currentType = isPassword ? (showPassword ? "text" : "password") : type;
     const cls = "w-full px-4 py-3.5 bg-slate-800 rounded-xl border border-slate-700 text-sm text-white placeholder:text-slate-600 focus:outline-none focus:ring-2 focus:ring-brand-500/30 focus:border-brand-500/50 transition";
     return (
         <div className="space-y-1.5">
@@ -796,14 +812,25 @@ function InputField({ label, value, onChange, placeholder, type = "text", icon: 
                     className={`${cls} resize-none`}
                 />
             ) : (
-                <input
-                    type={type}
-                    value={value}
-                    onChange={(e) => onChange(e.target.value)}
-                    placeholder={placeholder}
-                    maxLength={maxLength}
-                    className={cls}
-                />
+                <div className="relative">
+                    <input
+                        type={currentType}
+                        value={value}
+                        onChange={(e) => onChange(e.target.value)}
+                        placeholder={placeholder}
+                        maxLength={maxLength}
+                        className={cls + (isPassword ? " pr-12" : "")}
+                    />
+                    {isPassword && (
+                        <button
+                            type="button"
+                            onClick={() => setShowPassword(!showPassword)}
+                            className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-300 transition"
+                        >
+                            {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                        </button>
+                    )}
+                </div>
             )}
         </div>
     );
