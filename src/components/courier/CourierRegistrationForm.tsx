@@ -73,10 +73,10 @@ function StepIndicator({ current, steps }: { current: number; steps: string[] })
                 <div key={i} className="flex-1 flex flex-col items-center gap-1">
                     <div
                         className={`h-1.5 w-full rounded-full transition-all duration-500 ${i < current
-                                ? "bg-brand-500"
-                                : i === current
-                                    ? "bg-brand-400 animate-pulse"
-                                    : "bg-slate-200"
+                            ? "bg-brand-500"
+                            : i === current
+                                ? "bg-brand-400 animate-pulse"
+                                : "bg-slate-200"
                             }`}
                     />
                     <span className={`text-[9px] font-medium tracking-wide ${i <= current ? "text-brand-600" : "text-slate-400"
@@ -217,16 +217,30 @@ export function CourierRegistrationForm() {
 
     // ─── Auth Step Handler ────────────────────────────────────
     const handleAuth = async () => {
-        if (!form.email.trim() || !form.password.trim()) {
-            setError("Masukkan email dan kata sandi.");
+        let loginEmail = form.email.trim();
+        if (!loginEmail) {
+            setError("Masukkan Nomor WhatsApp atau Email.");
             return;
         }
+        if (!form.password.trim()) {
+            setError("Masukkan kata sandi.");
+            return;
+        }
+
+        // Auto-detect if input is a phone number (no @ symbol)
+        if (!loginEmail.includes("@")) {
+            let parsed = loginEmail.replace(/\D/g, "");
+            if (parsed.startsWith("0")) parsed = "62" + parsed.slice(1);
+            if (!parsed.startsWith("62")) parsed = "62" + parsed;
+            loginEmail = `wa_${parsed}@ecosistemdigital.id`;
+        }
+
         setIsLoading(true);
         setError("");
 
         // Try sign in first
         const { data: signInData, error: signInErr } = await supabase.auth.signInWithPassword({
-            email: form.email,
+            email: loginEmail,
             password: form.password,
         });
 
@@ -270,22 +284,36 @@ export function CourierRegistrationForm() {
         // If sign-in failed, try sign up
         if (signInErr) {
             const { data: signUpData, error: signUpErr } = await supabase.auth.signUp({
-                email: form.email,
+                email: loginEmail,
                 password: form.password,
                 options: {
                     data: { full_name: form.fullName || "Calon Kurir" },
                 },
             });
             if (signUpErr) {
-                setError(signUpErr.message);
+                if (signUpErr.message.includes("already registered")) {
+                    setError("Nomor WA/Email sudah terdaftar dengan sandi berbeda, atau terdaftar via Bot WA.");
+                } else {
+                    setError(signUpErr.message);
+                }
                 setIsLoading(false);
                 return;
             }
             if (signUpData?.user) {
                 setUserId(signUpData.user.id);
+                // Extract original phone if it was a WA
+                let originalPhone = "";
+                if (!form.email.includes("@")) {
+                    let p = form.email.replace(/\D/g, "");
+                    if (p.startsWith("0")) p = "62" + p.slice(1);
+                    if (!p.startsWith("62")) p = "62" + p;
+                    originalPhone = p;
+                }
+
                 await supabase.from("profiles").upsert({
                     id: signUpData.user.id,
                     full_name: form.fullName || "Calon Kurir",
+                    phone_number: originalPhone,
                     role: "user",
                 });
                 setIsLoading(false);
@@ -332,7 +360,7 @@ export function CourierRegistrationForm() {
                 birth_place: form.birthPlace,
                 birth_date: form.birthDate,
                 address_ktp: form.addressKtp,
-                phone_number: `62${form.phone}`,
+                phone_number: `62${stripPhone(form.phone)}`,
                 vehicle_type: form.vehicleType,
                 vehicle_plate: form.vehiclePlate || null,
                 preferred_zone: form.preferredZone,
@@ -347,7 +375,7 @@ export function CourierRegistrationForm() {
             // Update profile courier_status
             await supabase.from("profiles").update({
                 courier_status: "pending_approval",
-                phone_number: `62${form.phone}`,
+                phone_number: `62${stripPhone(form.phone)}`,
                 full_name: form.fullName,
                 address: form.addressKtp,
             }).eq("id", userId);
@@ -494,10 +522,10 @@ export function CourierRegistrationForm() {
                         <div className="space-y-6 animate-in fade-in duration-500">
                             <div>
                                 <h2 className="text-xl font-bold text-white">Buat Akun Terlebih Dahulu</h2>
-                                <p className="text-sm text-slate-400 mt-1">Atau masuk dengan akun yang sudah ada.</p>
+                                <p className="text-sm text-slate-400 mt-1">Masuk atau daftar dengan Nomor WhatsApp.</p>
                             </div>
                             <div className="space-y-4">
-                                <InputField label="Email" value={form.email} onChange={(v) => updateForm("email", v)} placeholder="email@anda.com" type="email" />
+                                <InputField label="Nomor WhatsApp (atau Email)" value={form.email} onChange={(v) => updateForm("email", v)} placeholder="08123456789" type="text" />
                                 <InputField label="Kata Sandi" value={form.password} onChange={(v) => updateForm("password", v)} placeholder="Min. 6 karakter" type="password" />
                             </div>
                             <button
@@ -505,7 +533,7 @@ export function CourierRegistrationForm() {
                                 disabled={isLoading}
                                 className="w-full flex items-center justify-center gap-2 py-4 px-6 bg-brand-500 hover:bg-brand-400 disabled:opacity-60 text-white font-bold rounded-2xl transition-all shadow-lg shadow-brand-500/20 active:scale-[0.98]"
                             >
-                                {isLoading ? <Spinner /> : <>Lanjutkan <ArrowRight className="h-4 w-4" /></>}
+                                {isLoading ? <div className="h-5 w-5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <>Lanjutkan <ArrowRight className="h-4 w-4" /></>}
                             </button>
                         </div>
                     )}
