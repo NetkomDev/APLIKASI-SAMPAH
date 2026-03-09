@@ -100,75 +100,42 @@ export default function DistrictsPage() {
         setMessage(null);
 
         try {
-            // 1. Create Gov auth account
-            const { data: govAuth, error: govAuthError } = await supabase.auth.signUp({
-                email: govEmail,
-                password: govPassword,
-                options: {
-                    data: { full_name: govName, phone_number: govPhone },
-                },
-            });
-
-            if (govAuthError) throw new Error(`Gagal membuat akun Gov: ${govAuthError.message}`);
-            if (!govAuth.user) throw new Error("Gagal mendapatkan user Gov.");
-
-            const govId = govAuth.user.id;
-
-            // 2. Create District
-            const { data: district, error: districtError } = await supabase
-                .from("districts")
-                .insert({
-                    name: districtName,
-                    description: districtDesc || null,
-                    gov_id: govId,
-                })
-                .select()
-                .single();
-
-            if (districtError) throw new Error(`Gagal membuat distrik: ${districtError.message}`);
-
-            // 3. Update Gov profile
-            await supabase.from("profiles").upsert({
-                id: govId,
-                full_name: govName,
-                phone_number: govPhone,
-                role: "gov",
-                district_id: district.id,
-                district_name: districtName,
-            });
-
-            // 4. Create Admin (Operator) auth account
-            // We need to sign out the gov session first and use a workaround
-            // Since signUp auto-signs in, we'll use the admin API approach
-            const { data: adminAuth, error: adminAuthError } = await supabase.auth.signUp({
-                email: adminEmail,
-                password: adminPassword,
-                options: {
-                    data: { full_name: adminName, phone_number: adminPhone },
-                },
-            });
-
-            if (adminAuthError) throw new Error(`Gagal membuat akun Operator: ${adminAuthError.message}`);
-            if (!adminAuth.user) throw new Error("Gagal mendapatkan user Operator.");
-
-            const adminId = adminAuth.user.id;
-
-            // 5. Update Admin profile
-            await supabase.from("profiles").upsert({
-                id: adminId,
-                full_name: adminName,
-                phone_number: adminPhone,
-                role: "admin",
-                district_id: district.id,
-                district_name: districtName,
-            });
-
-            // 6. Re-sign in as superadmin
+            // Get current session token for Edge Function auth
             const { data: { session } } = await supabase.auth.getSession();
             if (!session) {
-                // If session lost, redirect to portal
                 window.location.href = "/portal";
                 return;
+            }
+
+            // Call Edge Function (uses service_role key server-side)
+            // This prevents session hijack from supabase.auth.signUp()
+            const response = await fetch(
+                `${process.env.NEXT_PUBLIC_SUPABASE_URL || "https://icyirbezrmixxkzzrufq.supabase.co"}/functions/v1/create-district-accounts`,
+                {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "Authorization": `Bearer ${session.access_token}`,
+                    },
+                    body: JSON.stringify({
+                        districtName,
+                        districtDesc: districtDesc || null,
+                        govName,
+                        govEmail,
+                        govPhone,
+                        govPassword,
+                        adminName,
+                        adminEmail,
+                        adminPhone,
+                        adminPassword,
+                    }),
+                }
+            );
+
+            const result = await response.json();
+
+            if (!response.ok) {
+                throw new Error(result.error || "Gagal membuat distrik.");
             }
 
             setMessage({ type: "success", text: `Distrik "${districtName}" berhasil dibuat dengan akun Gov dan Operator.` });
@@ -203,8 +170,8 @@ export default function DistrictsPage() {
             {/* Message */}
             {message && (
                 <div className={`flex items-start gap-3 p-4 rounded-xl border text-sm ${message.type === "success"
-                        ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-400"
-                        : "bg-red-500/10 border-red-500/20 text-red-400"
+                    ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-400"
+                    : "bg-red-500/10 border-red-500/20 text-red-400"
                     }`}>
                     {message.type === "success" ? <CheckCircle2 className="h-5 w-5 flex-shrink-0 mt-0.5" /> : <AlertCircle className="h-5 w-5 flex-shrink-0 mt-0.5" />}
                     {message.text}
