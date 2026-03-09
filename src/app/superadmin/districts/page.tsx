@@ -216,8 +216,6 @@ export default function DistrictsPage() {
 
             // Call Edge Function (uses service_role key server-side)
             // This prevents session hijack from supabase.auth.signUp()
-            const { data: { session } } = await supabase.auth.getSession();
-
             const response = await fetch(
                 `${process.env.NEXT_PUBLIC_SUPABASE_URL || "https://icyirbezrmixxkzzrufq.supabase.co"}/functions/v1/create-district-accounts`,
                 {
