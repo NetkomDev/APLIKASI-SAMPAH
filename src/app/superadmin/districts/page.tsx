@@ -43,9 +43,17 @@ export default function DistrictsPage() {
     const [editDistrictName, setEditDistrictName] = useState("");
     const [editDistrictDesc, setEditDistrictDesc] = useState("");
     const [editGovName, setEditGovName] = useState("");
+    const [editGovEmail, setEditGovEmail] = useState("");
     const [editGovPhone, setEditGovPhone] = useState("");
+    const [editGovPassword, setEditGovPassword] = useState("");
+    const [showEditGovPassword, setShowEditGovPassword] = useState(false);
+
     const [editAdminName, setEditAdminName] = useState("");
+    const [editAdminEmail, setEditAdminEmail] = useState("");
     const [editAdminPhone, setEditAdminPhone] = useState("");
+    const [editAdminPassword, setEditAdminPassword] = useState("");
+    const [showEditAdminPassword, setShowEditAdminPassword] = useState(false);
+
     const [editIsActive, setEditIsActive] = useState(true);
 
     useEffect(() => {
@@ -94,20 +102,55 @@ export default function DistrictsPage() {
         setAdminPassword("");
     };
 
-    const openEditForm = (d: District) => {
+    const openEditForm = async (d: District) => {
         setEditingDistrict(d);
         setEditDistrictName(d.name);
         setEditDistrictDesc(d.description || "");
         setEditGovName(d.gov_profile?.full_name || "");
         setEditGovPhone(d.gov_profile?.phone_number || "");
+        setEditGovEmail("");
+        setEditGovPassword("");
+        setShowEditGovPassword(false);
 
         const admin = d.admin_profiles?.[0];
         setEditAdminName(admin?.full_name || "");
         setEditAdminPhone(admin?.phone_number || "");
+        setEditAdminEmail("");
+        setEditAdminPassword("");
+        setShowEditAdminPassword(false);
+
         setEditIsActive(d.is_active);
 
         setShowForm(false);
         window.scrollTo({ top: 0, behavior: 'smooth' });
+
+        // Fetch their current emails from Edge Function
+        try {
+            const { data: { session } } = await supabase.auth.getSession();
+            const response = await fetch(
+                `${process.env.NEXT_PUBLIC_SUPABASE_URL || "https://icyirbezrmixxkzzrufq.supabase.co"}/functions/v1/manage-district-accounts`,
+                {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "Authorization": `Bearer ${session?.access_token}`,
+                        "apikey": process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "",
+                    },
+                    body: JSON.stringify({
+                        action: "GET_EMAILS",
+                        ids: [d.gov_id, admin?.id].filter(Boolean)
+                    })
+                }
+            );
+
+            const result = await response.json();
+            if (response.ok && result.emails) {
+                if (d.gov_id && result.emails[d.gov_id]) setEditGovEmail(result.emails[d.gov_id]);
+                if (admin?.id && result.emails[admin.id]) setEditAdminEmail(result.emails[admin.id]);
+            }
+        } catch (error) {
+            console.error("Gagal mendapatkan email pengguna:", error);
+        }
     };
 
     const handleUpdateDistrict = async () => {
@@ -122,61 +165,42 @@ export default function DistrictsPage() {
         setMessage(null);
 
         try {
-            // Update District
-            const { error: districtError } = await supabase
-                .from("districts")
-                .update({
-                    name: editDistrictName,
-                    description: editDistrictDesc || null,
-                    is_active: editIsActive
-                })
-                .eq("id", editingDistrict.id);
-
-            if (districtError) throw new Error(`Gagal update distrik: ${districtError.message}`);
-
-            // Update Gov Profile
-            if (editingDistrict.gov_id) {
-                const { error: govError } = await supabase
-                    .from("profiles")
-                    .update({
-                        full_name: editGovName,
-                        phone_number: editGovPhone,
-                        district_name: editDistrictName
-                    })
-                    .eq("id", editingDistrict.gov_id);
-                if (govError) throw new Error(`Gagal update profil Gov: ${govError.message}`);
-            }
-
-            // Update Admin Profile
+            const { data: { session } } = await supabase.auth.getSession();
             const adminId = editingDistrict.admin_profiles?.[0]?.id;
-            if (adminId) {
-                const { error: adminError } = await supabase
-                    .from("profiles")
-                    .update({
-                        full_name: editAdminName,
-                        phone_number: editAdminPhone,
-                        district_name: editDistrictName
-                    })
-                    .eq("id", adminId);
-                if (adminError) throw new Error(`Gagal update profil Operator: ${adminError.message}`);
-            }
 
-            // Also log it
-            const { data: { user } } = await supabase.auth.getUser();
-            if (user) {
-                await supabase.from("audit_logs").insert({
-                    user_id: user.id,
-                    action: "UPDATE_DISTRICT",
-                    table_name: "districts",
-                    old_value: JSON.stringify(editingDistrict),
-                    new_value: JSON.stringify({
-                        id: editingDistrict.id,
-                        name: editDistrictName,
-                        is_active: editIsActive,
-                        gov_name: editGovName,
-                        admin_name: editAdminName
-                    }),
-                });
+            const response = await fetch(
+                `${process.env.NEXT_PUBLIC_SUPABASE_URL || "https://icyirbezrmixxkzzrufq.supabase.co"}/functions/v1/manage-district-accounts`,
+                {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "Authorization": `Bearer ${session?.access_token}`,
+                        "apikey": process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "",
+                    },
+                    body: JSON.stringify({
+                        action: "UPDATE_DISTRICT",
+                        districtId: editingDistrict.id,
+                        districtName: editDistrictName,
+                        districtDesc: editDistrictDesc,
+                        isActive: editIsActive,
+                        govId: editingDistrict.gov_id,
+                        govName: editGovName,
+                        govEmail: editGovEmail,
+                        govPhone: editGovPhone,
+                        govPassword: editGovPassword,
+                        adminId: adminId,
+                        adminName: editAdminName,
+                        adminEmail: editAdminEmail,
+                        adminPhone: editAdminPhone,
+                        adminPassword: editAdminPassword,
+                    })
+                }
+            );
+
+            const result = await response.json();
+
+            if (!response.ok) {
+                throw new Error(result.error || "Gagal menyimpan perubahan.");
             }
 
             setMessage({ type: "success", text: `Distrik "${editDistrictName}" berhasil diperbarui.` });
@@ -403,7 +427,9 @@ export default function DistrictsPage() {
                         </h3>
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <InputField label="Nama Lengkap *" placeholder="Kepala Dinas LH" value={editGovName} onChange={setEditGovName} />
+                            <InputField label="Email *" placeholder="dinas.lh@bogor.go.id" value={editGovEmail} onChange={setEditGovEmail} type="email" />
                             <InputField label="Nomor WhatsApp" placeholder="08123456789" value={editGovPhone} onChange={setEditGovPhone} type="tel" />
+                            <PasswordField label="Kata Sandi (Kosongkan jika tidak diubah)" value={editGovPassword} onChange={setEditGovPassword} show={showEditGovPassword} toggle={() => setShowEditGovPassword(!showEditGovPassword)} />
                         </div>
                     </div>
 
@@ -424,7 +450,9 @@ export default function DistrictsPage() {
                         )}
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <InputField label="Nama Lengkap *" placeholder="Operator Bank Sampah" value={editAdminName} onChange={setEditAdminName} />
+                            <InputField label="Email *" placeholder="operator@banksampah.id" value={editAdminEmail} onChange={setEditAdminEmail} type="email" />
                             <InputField label="Nomor WhatsApp" placeholder="08198765432" value={editAdminPhone} onChange={setEditAdminPhone} type="tel" />
+                            <PasswordField label="Kata Sandi (Kosongkan jika tidak diubah)" value={editAdminPassword} onChange={setEditAdminPassword} show={showEditAdminPassword} toggle={() => setShowEditAdminPassword(!showEditAdminPassword)} />
                         </div>
                     </div>
 
