@@ -18,9 +18,9 @@ Dokumen ini adalah pedoman dan blueprint resmi untuk membangun "Aplikasi Sampah"
 
 ---
 
-## 2. Arsitektur Teknis Terdistribusi (Tech Stack)
+## 2. Arsitektur Teknis (Tech Stack)
 
-Sistem menggunakan model **"One District, One Project"** di Supabase untuk menjamin keamanan & kedaulatan data daerah.
+Sistem menggunakan model **Single Database Multi-Tenant** di Supabase untuk mengorganisir seluruh Distrik/Kabupaten, Bank Sampah, Kurir, dan Warga dalam satu kesatuan ekosistem yang kohesif namun terisolasi secara data melalui Row Level Security (RLS).
 
 | Layer                | Teknologi Pendukung            | Peran & Fungsi Utama                                                                 |
 |----------------------|--------------------------------|--------------------------------------------------------------------------------------|
@@ -37,55 +37,44 @@ Sistem menggunakan model **"One District, One Project"** di Supabase untuk menja
 
 Sistem Web (Next.js) terbagi menjadi **tiga lapisan kendali utama**, plus satu mekanisme akses tersembunyi:
 
-### 3.1 Operational Admin Dashboard (Manajemen Harian - Tingkat Kabupaten)
-Ditujukan untuk **admin pengelola operasional (operator)** untuk memastikan kelancaran bisnis dan transaksi harian.
+### 3.1 Dashboard Operator Bank Sampah (Manajemen Harin - Tingkat Distrik/Kabupaten)
+Ditujukan untuk **Admin Bank Sampah (Operator)** sebagai pengelola operasional tunggal dalam satu distrik/kabupaten. Admin ini mengelola seluruh kurir dan warga yang terafiliasi di wilayahnya.
 
-1. **Modul Command Center (Real-Time Operations)**
-   - **Live Map Monitoring**: Melacak posisi kurir & titik jemput via Supabase Realtime.
-   - **Queue Management**: Pengelolaan antrean jemputan warga (manual dispatch jika sistem auto gagal).
-   - **Instant Ticker**: Notifikasi realtime masalah sinkronisasi timbangan.
-2. **Modul Manajemen User & CRM (Hubungan Warga)**
-   - **Verifikasi Pendaftaran**: Validasi & koreksi koordinat GPS rumah penduduk.
-   - **Referral Tree**: Monitoring jaringan referral warga untuk deteksi manipulasi (*fraud*).
-   - **User Ledger**: Riwayat saldo, riwayat setor, dan log chat komplain.
-3. **Modul Fleet Management (Kontrol Kurir)**
-   - **Courier Onboarding**: Registrasi kurir, unggah KTP/SIM, & aktivasi.
-   - **Performance Score**: Rating kecepatan, keramahan, dan akurasi, serta tracking rute harian.
-   - **Earning & Payout**: Hitungan komisi dan pengiriman dana ke rekening kurir.
-4. **Modul Manajemen Transaksi & Fraud Detection**
-   - **Transaction Validation**: Audit visual (foto timbangan) vs input kurir.
-   - **Geofence Alert**: Notifikasi jika kurir menginput data >15m dari koordinat terdaftar.
-   - **Manual Adjustment**: Hak akses admin membetulkan selisih timbangan.
-5. **Modul Financial & Pricing Hub**
-   - **Dynamic Pricing**: Form auto-update harga beli per kategori sampah (berimbas langsung ke Bot WA).
-   - **Withdrawal Approval**: Persetujuan pencairan saldo (Tunai / E-Wallet).
-   - **Revenue Monitoring**: Hitungan profit margin antara harga beli dari warga dan harga jual ke pabrik.
-6. **Modul Hub & Inventory (Gudang Antara)**
-   - **Stock In/Out**: Pencatatan lalu lintas berat sampah (Hub vs Pabrik Daur Ulang).
-   - **Quality Check**: Laporan kontaminasi sampah.
+1. **Modul Pengelolaan Entitas (Warga & Kurir)**
+   - **User Ledger**: Data warga pemilik sampah, riwayat setor, transaksi saldo, dan titik penjemputan.
+   - **Fleet/Courier Management**: Admin dapat melihat seluruh daftar kurir yang beroperasi di wilayahnya (berdasar `district_id`), memantau log aktivitas, performa rute, serta kontak lengkap (Nomor WA kurir).
+2. **Modul Manajemen Transaksi & Fraud Detection**
+   - **Command Center & Live Map**: Melacak posisi kurir & titik jemput via Supabase Realtime serta mengatur antrean (*queue*).
+   - **Transaction Validation**: Audit visual (foto timbangan) vs input kurir, penyetujuan validasi harga dan perhitungan komisi otomatis ke dompet kurir.
+   - **Geofence Alert**: Notifikasi jika kurir menginput data jauh dari titik koordinat terdaftar.
+3. **Modul Poduksi & Output Gudang (Inventory)**
+   - **Input Produksi/Output Tracker**: Form khusus bagi Admin Bank Sampah untuk mencatat hasil keluaran pabrik/gudang (seperti: Pupuk Organik, hasil cacahan/daur ulang Plastik, Kaca, Kertas, Logam, dsb.) per harinya.
+   - **Stock In/Out**: Pencatatan lalu lintas berat timbangan dari rumah warga (Inflow) versus barang jadi/mentah siap jual (Outflow).
 
-### 3.2 Strategic Government Dashboard (Pengambil Kebijakan - Tingkat Dinas/Bupati)
-Ditujukan untuk **Dinas Lingkungan Hidup (DLH)** sebagai intelijen manajemen daerah.
+### 3.2 Dashboard Pemerintah / Gov (Pengambil Kebijakan - Tingkat Dinas/Bupati)
+Ditujukan untuk **Dinas Lingkungan Hidup (DLH)** di satu kabupaten spesifik (terhubung lewat `district_id`).
 
-1. **Modul Visualisasi Laporan Bulanan (Environmental Analytics)**
-   - **Grafik Tren Tonase Bulanan**: Perbandingan inflow Organik & Anorganik.
-   - **Indikator Efektivitas Diversi**: Persentase sampah yang dialihkan dari TPA.
-   - **Proyeksi Penghematan TPA**: Hitungan kalkulasi efisiensi uang untuk BBM truk, *tipping fee*, dan pemeliharaan TPA.
+1. **Modul Visualisasi Laporan Harian/Bulanan (Environmental Analytics)**
+   - **Grafik Tren Tonase Harian per Kecamatan**: Memantau pergerakan masuknya sampah dari tiap kelurahan/kecamatan dalam kabupaten tersebut dari hari ke hari secara mendetail.
+   - **Indikator Efektivitas Diversi**: Persentase sampah yang dialihkan dari TPA menuju pengolahan bank sampah.
+   - **Proyeksi Penghematan TPA**: Hitungan kalkulasi efisiensi uang untuk BBM truk, *tipping fee*, dan pemeliharaan alat berat TPA.
 2. **Modul Intelijen Spasial (Geospatial Heatmap)**
-   - Menggunakan ekstensi **PostGIS**.
-   - **Heatmap Produksi Sampah**: Identifikasi titik pembangun TPS3R.
-   - **Peta Partisipasi Warga**: Kode warna untuk intervensi edukasi dari penyuluh lapangan.
+   - Ekstensi **PostGIS** untuk Heatmap Produksi Sampah per koordinat dan peta tingkat partisipasi warga.
 3. **Modul Dampak Ekonomi & Sosial (Economic Impact)**
    - **Total Perputaran Uang**: Uang yang dibayar ke warga & penghasilan kurir.
    - **Efektivitas Pekerjaan**: Keterserapan tenaga kerja via karir sebagai kurir.
 4. **Modul Reward Engine & Intervensi Kebijakan**
    - **Top 100 Contributors**: Pemeringkatan warga/kurir proaktif untuk insentif daerah (subsidi PBB/diskon retribusi sampah otomatis).
 
-### 3.3 Super Admin Dashboard (Pengelola Sistem - Tingkat Developer)
-Ditujukan untuk **developer/pengelola sistem utama** agar seluruh konfigurasi dapat diatur secara dinamis tanpa harus mengubah source code.
+### 3.3 Dashboard Super Admin (Pengelola Sistem Tertinggi / Bapak Ekosistem)
+Sebagai koordinator inti dari platform secara menyeluruh, Super Admin mengawasi **SEMUA** Distrik, Bank Sampah, Kurir, dan Warga di dalam satu database *(Global Visibility)*.
 
-1. **Modul Konfigurasi Tampilan Dashboard**
-   - **Dashboard Branding Manager**: Mengatur logo Pemda, nama dinas, warna tema, dan teks sambutan yang tampil di Dashboard Pemerintah dan Dashboard Operator.
+1. **Modul Makro Analitik & Reporting Murni**
+   - **Global Volume Tracker**: Memantau Total Jumlah Volume Sampah Mentah yang ditarik per-hari dari seluruh distrik/kabupaten.
+   - **Global Output/Production Tracker**: Melihat akumulasi Volume Output / Produksi Akhir (Pupuk, Daur Ulang) yang dihasilkan dari seluruh Bank Sampah per hari.
+2. **Modul Pengorganisasian Hierarki (Distrik & Bank Sampah)**
+   - **Districts Control**: Membuat dan mengelola (Edit/Nonaktifkan) Distrik yang menaungi 1 entitas Pemda/Gov dan 1 entitas Operator/Admin Bank Sampah sepaket.
+   - **Dashboard Branding Manager**: Mengatur logo Pemda, nama dinas, dan pengaturan visual untuk setiap kabupaten.
    - **Widget Visibility Control**: Mengaktifkan/menonaktifkan modul-modul tertentu per dashboard (misal: menyembunyikan modul "Revenue Monitoring" dari Dashboard Operator).
    - **Announcement Banner**: Mengelola banner pengumuman yang muncul di atas semua dashboard tanpa deployment ulang.
 2. **Modul Konfigurasi Bot WhatsApp**
