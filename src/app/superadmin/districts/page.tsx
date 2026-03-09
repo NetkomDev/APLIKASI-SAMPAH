@@ -109,15 +109,10 @@ export default function DistrictsPage() {
 
             // Call Edge Function (uses service_role key server-side)
             // This prevents session hijack from supabase.auth.signUp()
-            const response = await fetch(
-                `${process.env.NEXT_PUBLIC_SUPABASE_URL || "https://icyirbezrmixxkzzrufq.supabase.co"}/functions/v1/create-district-accounts`,
+            const { data: result, error: functionError } = await supabase.functions.invoke(
+                "create-district-accounts",
                 {
-                    method: "POST",
-                    headers: {
-                        "Content-Type": "application/json",
-                        "Authorization": `Bearer ${session.access_token}`,
-                    },
-                    body: JSON.stringify({
+                    body: {
                         districtName,
                         districtDesc: districtDesc || null,
                         govName,
@@ -128,14 +123,17 @@ export default function DistrictsPage() {
                         adminEmail,
                         adminPhone,
                         adminPassword,
-                    }),
+                    }
                 }
             );
 
-            const result = await response.json();
+            if (functionError) {
+                console.error("Edge function error:", functionError);
+                throw new Error(result?.error || functionError.message || "Gagal membuat distrik.");
+            }
 
-            if (!response.ok) {
-                throw new Error(result.error || "Gagal membuat distrik.");
+            if (!result || result.error) {
+                throw new Error(result?.error || "Gagal membuat distrik.");
             }
 
             setMessage({ type: "success", text: `Distrik "${districtName}" berhasil dibuat dengan akun Gov dan Operator.` });
