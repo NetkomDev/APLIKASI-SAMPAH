@@ -319,7 +319,7 @@ export function CourierRegistrationForm() {
             return;
         }
 
-        // If sign-in failed, try sign up
+        // If sign-in failed, prepare for sign up but don't save yet
         if (signInErr) {
             if (!form.confirmPassword) {
                 setError("Nomor belum terdaftar atau Sandi salah. Jika ingin mendaftar, isi Konfirmasi Sandi lalu klik Lanjutkan.");
@@ -327,78 +327,103 @@ export function CourierRegistrationForm() {
                 return;
             }
 
-            const { data: signUpData, error: signUpErr } = await supabase.auth.signUp({
-                email: loginEmail,
-                password: form.password,
-                options: {
-                    data: { full_name: form.fullName || "Calon Kurir" },
-                },
-            });
-            if (signUpErr) {
-                if (signUpErr.message.includes("already registered")) {
-                    setError("Nomor WA/Email sudah terdaftar dengan sandi berbeda, atau terdaftar via Bot WA.");
-                } else {
-                    setError(signUpErr.message);
-                }
-                setIsLoading(false);
-                return;
-            }
-            if (signUpData?.user) {
-                setUserId(signUpData.user.id);
-                // Extract original phone if it was a WA
-                let originalPhone = "";
-                if (!form.email.includes("@")) {
-                    let p = form.email.replace(/\D/g, "");
-                    if (p.startsWith("0")) p = "62" + p.slice(1);
-                    if (!p.startsWith("62")) p = "62" + p;
-                    originalPhone = p;
-                }
+            // Check if phone number is already registered in profiles, to catch wrong passwords
+            let originalPhone = "";
+            if (!form.email.includes("@")) {
+                let p = form.email.replace(/\D/g, "");
+                if (p.startsWith("0")) p = "62" + p.slice(1);
+                if (!p.startsWith("62")) p = "62" + p;
+                originalPhone = p;
 
-                await supabase.from("profiles").upsert({
-                    id: signUpData.user.id,
-                    full_name: form.fullName || "Calon Kurir",
-                    phone_number: originalPhone,
-                    role: "user",
-                });
-                setIsLoading(false);
-                setStep("personal");
-                return;
+                const { data: existingProfile } = await supabase
+                    .from("profiles")
+                    .select("id")
+                    .eq("phone_number", originalPhone)
+                    .maybeSingle();
+
+                if (existingProfile) {
+                    setError("Nomor WA/Email sudah terdaftar dengan sandi berbeda, atau terdaftar via Bot WA.");
+                    setIsLoading(false);
+                    return;
+                }
             }
+
+            // Delay signup to Final Submit
+            setUserId(null);
+            setIsLoading(false);
+            setStep("personal");
+            return;
         }
         setIsLoading(false);
     };
 
-    // ─── Upload single file ──────────────────────────────────
-    const uploadFile = async (file: File, folder: string): Promise<string> => {
-        const ext = file.name.split(".").pop();
-        const filePath = `${userId}/${folder}_${Date.now()}.${ext}`;
-        const { error: uploadErr } = await supabase.storage
-            .from("courier-documents")
-            .upload(filePath, file, { upsert: true });
-        if (uploadErr) throw new Error(`Upload gagal: ${uploadErr.message}`);
-        return filePath;
-    };
-
     // ─── Final Submit ─────────────────────────────────────────
     const handleSubmit = async () => {
-        if (!userId) { setError("Sesi login tidak valid. Silakan ulangi."); return; }
         if (!docs.ktpPhoto || !docs.selfieKtp) { setError("Foto KTP dan Selfie+KTP wajib diunggah."); return; }
 
         setIsLoading(true);
         setError("");
 
         try {
+            let finalUserId = userId;
+
+            // Jika akun belum dibuat (Delayed Registration), buat akun sekarang
+            if (!finalUserId) {
+                let loginEmail = form.email.trim();
+                let originalPhone = "";
+
+                if (!loginEmail.includes("@")) {
+                    let parsed = loginEmail.replace(/\D/g, "");
+                    if (parsed.startsWith("0")) parsed = "62" + parsed.slice(1);
+                    if (!parsed.startsWith("62")) parsed = "62" + parsed;
+                    originalPhone = parsed;
+                    loginEmail = `wa_${parsed}@ecosistemdigital.id`;
+                }
+
+                const { data: signUpData, error: signUpErr } = await supabase.auth.signUp({
+                    email: loginEmail,
+                    password: form.password,
+                    options: {
+                        data: { full_name: form.fullName },
+                    },
+                });
+
+                if (signUpErr) throw new Error(`Gagal mendaftar akun: ${signUpErr.message}`);
+                if (!signUpData?.user) throw new Error("Gagal membuat akun.");
+
+                finalUserId = signUpData.user.id;
+                setUserId(finalUserId);
+
+                await supabase.from("profiles").upsert({
+                    id: finalUserId,
+                    full_name: form.fullName,
+                    phone_number: originalPhone,
+                    role: "user",
+                });
+            }
+
+            // Fungsi upload lokal yang menjamin penggunaan finalUserId yang akurat
+            const uploadFileWithId = async (file: File, folder: string): Promise<string> => {
+                const ext = file.name.split(".").pop();
+                const filePath = `${finalUserId}/${folder}_${Date.now()}.${ext}`;
+                const { error: uploadErr } = await supabase.storage
+                    .from("courier-documents")
+                    .upload(filePath, file, { upsert: true });
+                if (uploadErr) throw new Error(`Upload gagal: ${uploadErr.message}`);
+                return filePath;
+            };
+
             // Upload documents
-            const ktpUrl = await uploadFile(docs.ktpPhoto, "ktp");
-            const selfieUrl = await uploadFile(docs.selfieKtp, "selfie_ktp");
+            const ktpUrl = await uploadFileWithId(docs.ktpPhoto, "ktp");
+            const selfieUrl = await uploadFileWithId(docs.selfieKtp, "selfie_ktp");
             let simUrl: string | null = null;
             if (docs.simPhoto) {
-                simUrl = await uploadFile(docs.simPhoto, "sim");
+                simUrl = await uploadFileWithId(docs.simPhoto, "sim");
             }
 
             // Insert application
             const { error: insertErr } = await supabase.from("courier_applications").insert({
-                user_id: userId,
+                user_id: finalUserId,
                 nik: form.nik,
                 full_name: form.fullName,
                 birth_place: form.birthPlace,
@@ -414,7 +439,7 @@ export function CourierRegistrationForm() {
                 status: "pending",
             });
 
-            if (insertErr) throw new Error(insertErr.message);
+            if (insertErr) throw new Error(`Gagal menyimpan data aplikasi: ${insertErr.message}`);
 
             // Update profile courier_status
             await supabase.from("profiles").update({
@@ -422,7 +447,7 @@ export function CourierRegistrationForm() {
                 phone_number: `62${stripPhone(form.phone)}`,
                 full_name: form.fullName,
                 address: form.addressKtp,
-            }).eq("id", userId);
+            }).eq("id", finalUserId);
 
             setStep("submitted");
         } catch (err: unknown) {
