@@ -1,0 +1,262 @@
+"use client";
+
+import { useState, useEffect } from "react";
+import { supabase } from "@/infrastructure/config/supabase";
+import { PlusCircle, PackageCheck, FileSpreadsheet, Scale, Clock, AlertCircle } from "lucide-react";
+
+interface InventoryRecord {
+    id: string;
+    category: string;
+    weight_kg: number;
+    recorded_at: string;
+    profiles: {
+        full_name: string;
+    };
+}
+
+export default function InventoryPage() {
+    const [records, setRecords] = useState<InventoryRecord[]>([]);
+    const [isLoading, setIsLoading] = useState(true);
+    const [isSubmitting, setIsSubmitting] = useState(false);
+
+    // Form States
+    const [category, setCategory] = useState("Pupuk Organik");
+    const [weight, setWeight] = useState("");
+
+    // Feedback
+    const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
+
+    useEffect(() => {
+        fetchRecords();
+    }, []);
+
+    const fetchRecords = async () => {
+        setIsLoading(true);
+        try {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (!user) return;
+
+            // Fetch profiles to get district_id
+            const { data: profile } = await supabase
+                .from("profiles")
+                .select("district_id")
+                .eq("id", user.id)
+                .single();
+
+            if (!profile?.district_id) return;
+
+            // Notice: The `inventory_outputs` table must exist in Supabase!
+            // Wait to run the SQL migration manually in Supabase SQL Editor.
+            const { data, error } = await supabase
+                .from("inventory_outputs")
+                .select(`
+                    id, 
+                    category, 
+                    weight_kg, 
+                    recorded_at,
+                    profiles:recorded_by (full_name)
+                `)
+                .eq("district_id", profile.district_id)
+                .order("recorded_at", { ascending: false })
+                .limit(50);
+
+            if (error) {
+                // If table doesn't exist yet, simply silence it or log
+                if (error.code !== '42P01') {
+                    console.error("Error fetching inventory:", error);
+                }
+                setRecords([]);
+            } else {
+                setRecords(data as any || []);
+            }
+        } catch (error) {
+            console.error("Critical fail:", error);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    const handleSumbit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!weight || Number(weight) <= 0) {
+            setMessage({ type: 'error', text: 'Berat (Kg) harus lebih dari 0' });
+            return;
+        }
+
+        setIsSubmitting(true);
+        setMessage(null);
+
+        try {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (!user) throw new Error("Unauthenticated");
+
+            const { data: profile } = await supabase
+                .from("profiles")
+                .select("district_id")
+                .eq("id", user.id)
+                .single();
+
+            if (!profile?.district_id) throw new Error("Bukan Admin sebuah Distrik");
+
+            const { error } = await supabase
+                .from("inventory_outputs")
+                .insert({
+                    district_id: profile.district_id,
+                    recorded_by: user.id,
+                    category: category,
+                    weight_kg: Number(weight)
+                });
+
+            if (error && error.code === '42P01') {
+                throw new Error("Tabel 'inventory_outputs' belum ditambahkan di Supabase. Harap hubungi Super Admin untuk menjalankan SQL Migration.");
+            } else if (error) {
+                throw error;
+            }
+
+            setMessage({ type: 'success', text: 'Data produksi berhasil dicatat!' });
+            setWeight("");
+            fetchRecords();
+        } catch (err: any) {
+            setMessage({ type: 'error', text: err.message || "Gagal menyimpan rincian." });
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
+
+    return (
+        <div className="space-y-6 max-w-7xl mx-auto">
+            {/* Header */}
+            <div>
+                <h1 className="text-2xl font-bold text-slate-800 tracking-tight">Produksi & Gudang</h1>
+                <p className="text-sm text-slate-500 mt-1">Catat dan pantau hasil output olahan Bank Sampah (Gudang Induk).</p>
+            </div>
+
+            {message && (
+                <div className={`p-4 rounded-xl border flex items-start gap-3 text-sm ${message.type === 'error' ? 'bg-red-50 text-red-700 border-red-200' : 'bg-emerald-50 text-emerald-700 border-emerald-200'}`}>
+                    {message.type === 'error' ? <AlertCircle className="h-5 w-5 flex-shrink-0" /> : <PackageCheck className="h-5 w-5 flex-shrink-0" />}
+                    <p className="mt-0.5 font-medium">{message.text}</p>
+                </div>
+            )}
+
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                {/* Form Input Panel */}
+                <div className="lg:col-span-1 border border-slate-200 bg-white shadow-sm p-6 rounded-2xl h-fit sticky top-6">
+                    <div className="flex items-center gap-3 mb-6">
+                        <div className="p-2 bg-brand-50 rounded-lg">
+                            <PlusCircle className="h-5 w-5 text-brand-600" />
+                        </div>
+                        <h2 className="text-lg font-bold text-slate-800">Catat Output Baru</h2>
+                    </div>
+
+                    <form onSubmit={handleSumbit} className="space-y-4">
+                        <div>
+                            <label className="block text-xs font-semibold text-slate-600 mb-1.5 uppercase tracking-wide">Kategori Olahan</label>
+                            <select
+                                value={category}
+                                onChange={(e) => setCategory(e.target.value)}
+                                className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-700 font-medium focus:ring-2 focus:ring-brand-500 focus:border-brand-500"
+                            >
+                                <option value="Pupuk Organik">Pupuk Organik (Kompos)</option>
+                                <option value="Cacah Plastik PET">Cacah Plastik PET</option>
+                                <option value="Plastik Daur Ulang">Plastik Daur Ulang</option>
+                                <option value="Kertas / Kardus Press">Kertas / Kardus Press</option>
+                                <option value="Beling / Kaca">Beling / Botol Kaca</option>
+                                <option value="Besi / Logam">Besi / Logam</option>
+                            </select>
+                        </div>
+
+                        <div>
+                            <label className="block text-xs font-semibold text-slate-600 mb-1.5 uppercase tracking-wide">Total Berat Timbangan</label>
+                            <div className="relative">
+                                <Scale className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
+                                <input
+                                    type="number"
+                                    step="0.1"
+                                    min="0"
+                                    placeholder="0.0"
+                                    value={weight}
+                                    onChange={(e) => setWeight(e.target.value)}
+                                    className="w-full pl-11 pr-12 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-800 font-bold focus:ring-2 focus:ring-brand-500 focus:border-brand-500"
+                                    required
+                                />
+                                <span className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-sm">Kg</span>
+                            </div>
+                        </div>
+
+                        <button
+                            type="submit"
+                            disabled={isSubmitting}
+                            className="w-full mt-2 bg-brand-600 hover:bg-brand-500 text-white font-bold py-3.5 rounded-xl text-sm transition-all focus:ring-4 focus:ring-brand-200 active:scale-[0.98] disabled:opacity-70 disabled:cursor-not-allowed"
+                        >
+                            {isSubmitting ? 'Menyimpan...' : 'Simpan Pencatatan'}
+                        </button>
+                    </form>
+                </div>
+
+                {/* Table History Panel */}
+                <div className="lg:col-span-2 border border-slate-200 bg-white shadow-sm p-6 rounded-2xl">
+                    <div className="flex justify-between items-center mb-6">
+                        <div className="flex items-center gap-3">
+                            <div className="p-2 bg-blue-50 rounded-lg">
+                                <FileSpreadsheet className="h-5 w-5 text-blue-600" />
+                            </div>
+                            <h2 className="text-lg font-bold text-slate-800">Riwayat Produksi Gudang</h2>
+                        </div>
+                        <span className="bg-slate-100 text-slate-600 text-xs font-semibold px-3 py-1 rounded-full">50 Terakhir</span>
+                    </div>
+
+                    {isLoading ? (
+                        <div className="py-20 flex justify-center items-center">
+                            <div className="h-8 w-8 border-4 border-slate-200 border-t-brand-500 rounded-full animate-spin"></div>
+                        </div>
+                    ) : records.length === 0 ? (
+                        <div className="py-16 text-center border-2 border-dashed border-slate-100 rounded-xl bg-slate-50">
+                            <PackageCheck className="h-10 w-10 text-slate-300 mx-auto mb-3" />
+                            <p className="text-slate-500 font-medium">Belum ada catatan produksi</p>
+                            <p className="text-xs text-slate-400 mt-1">Gunakan form di samping untuk mencatat output pertama.</p>
+                        </div>
+                    ) : (
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-left border-collapse">
+                                <thead>
+                                    <tr className="border-b border-slate-200 text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                                        <th className="py-4 pl-2">Waktu Catat</th>
+                                        <th className="py-4">Kategori Output</th>
+                                        <th className="py-4 text-right">Berat Timbangan</th>
+                                        <th className="py-4 pl-6">Operator</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-slate-100 text-sm">
+                                    {records.map((r) => (
+                                        <tr key={r.id} className="hover:bg-slate-50/70 transition-colors">
+                                            <td className="py-4 pl-2 whitespace-nowrap">
+                                                <div className="flex items-center gap-2 text-slate-600">
+                                                    <Clock className="h-3.5 w-3.5" />
+                                                    {new Date(r.recorded_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                                                </div>
+                                            </td>
+                                            <td className="py-4 font-medium text-slate-800">
+                                                <span className={`px-2.5 py-1 rounded-md text-xs border ${r.category.includes('Organik') ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
+                                                        r.category.includes('Kertas') ? 'bg-amber-50 text-amber-700 border-amber-200' :
+                                                            'bg-blue-50 text-blue-700 border-blue-200'
+                                                    }`}>
+                                                    {r.category}
+                                                </span>
+                                            </td>
+                                            <td className="py-4 text-right font-black text-slate-700 whitespace-nowrap">
+                                                {r.weight_kg.toLocaleString('id-ID')} <span className="text-xs text-slate-400 font-medium">Kg</span>
+                                            </td>
+                                            <td className="py-4 pl-6 text-slate-600 capitalize">
+                                                {r.profiles?.full_name || 'Sistem'}
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    )}
+                </div>
+            </div>
+        </div>
+    );
+}
