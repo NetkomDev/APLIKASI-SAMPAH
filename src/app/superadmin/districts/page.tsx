@@ -413,14 +413,19 @@ export default function DistrictsPage() {
                         <h3 className="text-base font-bold text-white flex items-center gap-2 mb-4">
                             <Users className="h-5 w-5 text-emerald-400" /> Profil Operator Bank Sampah (Admin)
                         </h3>
-                        {editingDistrict.admin_profiles?.length === 0 ? (
-                            <p className="text-sm text-amber-500 bg-amber-500/10 p-4 rounded-xl border border-amber-500/20">Tidak ada operator yang ditemukan. Anda mungkin perlu mendaftarkan operator terlebih dahulu.</p>
-                        ) : (
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                <InputField label="Nama Lengkap *" placeholder="Operator Bank Sampah" value={editAdminName} onChange={setEditAdminName} />
-                                <InputField label="Nomor WhatsApp" placeholder="08198765432" value={editAdminPhone} onChange={setEditAdminPhone} type="tel" />
+                        {editingDistrict.admin_profiles?.length === 0 && (
+                            <div className="mb-4 text-xs text-amber-500 bg-amber-500/10 p-3 rounded-xl border border-amber-500/20 flex items-start gap-2">
+                                <AlertCircle className="h-4 w-4 mt-0.5 flex-shrink-0" />
+                                <div>
+                                    <p className="font-semibold">Tidak ada operator yang ditemukan</p>
+                                    <p className="mt-1">Mengedit data di sini mungkin tidak akan mengubah apapun karena tidak ada profil Operator yang terhubung ke distrik ini. Anda mungkin perlu memeriksa database secara manual.</p>
+                                </div>
                             </div>
                         )}
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <InputField label="Nama Lengkap *" placeholder="Operator Bank Sampah" value={editAdminName} onChange={setEditAdminName} />
+                            <InputField label="Nomor WhatsApp" placeholder="08198765432" value={editAdminPhone} onChange={setEditAdminPhone} type="tel" />
+                        </div>
                     </div>
 
                     <div className="flex items-center gap-3 pt-4">
