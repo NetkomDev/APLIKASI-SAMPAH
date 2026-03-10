@@ -54,7 +54,7 @@ export default function InventoryPage() {
 
             // Notice: The `inventory_outputs` table must exist in Supabase!
             // Wait to run the SQL migration manually in Supabase SQL Editor.
-            const { data, error } = await supabase
+            let query = supabase
                 .from("inventory_outputs")
                 .select(`
                     id, 
