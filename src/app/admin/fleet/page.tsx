@@ -19,6 +19,7 @@ interface UserProfile {
     vehicle_type?: string | null;
     vehicle_plate?: string | null;
     is_online?: boolean;
+    bank_sampah_name?: string | null;
 }
 
 interface Wallet {
@@ -48,9 +49,10 @@ export default function AdminFleetPage() {
             return;
         }
 
-        // Get admin's Bank Sampah ID to isolate data
-        const { data: adminData } = await supabase.from("profiles").select("bank_sampah_id").eq("id", user.id).single();
-        if (!adminData?.bank_sampah_id) {
+        const { data: adminData } = await supabase.from("profiles").select("bank_sampah_id, role").eq("id", user.id).single();
+
+        // If not superadmin and no bank_sampah_id, deny access
+        if (adminData?.role !== "superadmin" && !adminData?.bank_sampah_id) {
             setProfiles([]);
             setLoading(false);
             return;
@@ -60,10 +62,14 @@ export default function AdminFleetPage() {
 
         let query = supabase
             .from("profiles")
-            .select("id, full_name, phone_number, address, achievement_points, created_at, courier_status, courier_id_code, vehicle_type, vehicle_plate, is_online")
-            .eq("bank_sampah_id", adminData.bank_sampah_id)
+            .select("id, full_name, phone_number, address, achievement_points, created_at, courier_status, courier_id_code, vehicle_type, vehicle_plate, is_online, bank_sampah_name")
             .eq("role", roleToFetch)
             .order("created_at", { ascending: false });
+
+        // Isolate data ONLY if not superadmin
+        if (adminData?.role !== "superadmin") {
+            query = query.eq("bank_sampah_id", adminData.bank_sampah_id);
+        }
 
         const { data, error } = await query;
         if (!error && data) {
@@ -178,6 +184,7 @@ export default function AdminFleetPage() {
                                     </div>
                                     <div>
                                         <p className="font-bold text-slate-900 leading-tight">{p.full_name}</p>
+                                        <p className="text-xs text-brand-600 font-semibold">{p.bank_sampah_name || "Tanpa Cabang"}</p>
                                         <div className="flex items-center gap-1.5 mt-0.5">
                                             <Phone className="w-3 h-3 text-brand-500" />
                                             <span className="text-xs text-slate-500">+{p.phone_number}</span>
@@ -225,6 +232,7 @@ export default function AdminFleetPage() {
                                         </div>
                                         <div>
                                             <p className="font-bold text-slate-900 leading-tight truncate max-w-[140px]">{p.full_name}</p>
+                                            <p className="text-xs text-brand-600 font-semibold truncate max-w-[140px]">{p.bank_sampah_name || "Tanpa Cabang"}</p>
                                             <p className="text-xs font-mono font-medium text-slate-500 mt-0.5">{p.courier_id_code || "-"}</p>
                                         </div>
                                     </div>
