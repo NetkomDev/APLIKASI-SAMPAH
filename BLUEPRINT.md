@@ -20,84 +20,70 @@ Dokumen ini adalah pedoman dan blueprint resmi untuk membangun "Aplikasi Sampah"
 
 ## 2. Arsitektur Teknis (Tech Stack)
 
-Sistem menggunakan model **Single Database Multi-Tenant** di Supabase untuk mengorganisir seluruh Distrik/Kabupaten, Bank Sampah, Kurir, dan Warga dalam satu kesatuan ekosistem yang kohesif namun terisolasi secara data melalui Row Level Security (RLS).
+Sistem dirancang dengan model **1 Kabupaten = 1 Database (1 Supabase Project)**.
+Satu kabupaten ini dikendalikan oleh satu **SuperAdmin** yang menaungi 1 entitas Pemerintah (Dinas DLH) dan **banyak unit Bank Sampah** (misalnya: Bank Sampah Zona 1, Bank Sampah Zona 2, dst).
 
 | Layer                | Teknologi Pendukung            | Peran & Fungsi Utama                                                                 |
 |----------------------|--------------------------------|--------------------------------------------------------------------------------------|
 | **Bot Interface**    | WhatsApp API                   | Alat ujung tombak lapangan untuk registrasi, transaksi, dan notifikasi warga/kurir.  |
-| **Web Dashboard**    | Next.js + Tailwind CSS         | Dashboard untuk Admin Operasional dan Pemerintah (Responsive & High Performance).    |
-| **Backend Engine**   | Supabase Edge Functions        | Memproses logika bot, antrean, & integrasi API pihak ketiga (Payment/Maps).          |
-| **Identity System**  | Supabase Auth                  | Manajemen akses (Role-Based) untuk Admin, Pemerintah Daerah, dan Kurir.              |
-| **Database**         | PostgreSQL + PostGIS (Supabase)| Penyimpanan data tabular, relasional transaksi, serta data spasial (koordinat GPS).  |
-| **Storage**          | Supabase Storage               | Penyimpanan foto bukti timbangan & dokumen pendukung untuk validasi audit.           |
+| **Web Dashboard**    | Next.js + Tailwind CSS         | Dashboard peran ganda terpisah untuk SuperAdmin, Pemerintah, dan Admin Bank Sampah.  |
+| **Backend Engine**   | Supabase Edge Functions        | Memproses logika bot, pembaruan akun admin/gov yang aman, & integrasi pihak ketiga.  |
+| **Identity System**  | Supabase Auth                  | Manajemen akses hierarkis (SuperAdmin -> Pemerintah & Admin Bank Sampah -> Kurir & Warga). |
+| **Database**         | PostgreSQL + PostGIS (Supabase)| Penyimpanan data tabular terpusat 1 Kabupaten, serta data spasial (koordinat area).  |
+| **Storage**          | Supabase Storage               | Penyimpanan foto bukti timbangan & dokumen pendukung kurir untuk validasi audit.     |
 
 ---
 
-## 3. Komponen Antarmuka (Front-End)
+## 3. Alur Hirarki & Dasbor Antarmuka (Front-End)
 
-Sistem Web (Next.js) terbagi menjadi **tiga lapisan kendali utama**, plus satu mekanisme akses tersembunyi:
+Dalam satu instalasi basis data (1 Kabupaten), kendali dibagi menjadi **tiga pilar dashboard utama** yang saling mendukung: `SuperAdmin`, `Pemerintah (Gov)`, dan `Admin Bank Sampah`.
 
-### 3.1 Dashboard Operator Bank Sampah (Manajemen Harin - Tingkat Distrik/Kabupaten)
-Ditujukan untuk **Admin Bank Sampah (Operator)** sebagai pengelola operasional tunggal dalam satu distrik/kabupaten. Admin ini mengelola seluruh kurir dan warga yang terafiliasi di wilayahnya.
+### 3.1. Dashboard Super Admin (Pusat Kendali Kabupaten)
+SuperAdmin adalah kreator dan pemegang hak akses tertinggi dalam 1 kabupaten. SuperAdmin bertugas **mempersiapkan ekosistem** agar dapat digunakan oleh Pemda dan Bank Sampah.
 
-1. **Modul Pengelolaan Entitas (Warga & Kurir)**
-   - **User Ledger**: Data warga pemilik sampah, riwayat setor, transaksi saldo, dan titik penjemputan.
-   - **Fleet/Courier Management**: Admin dapat melihat seluruh daftar kurir yang beroperasi di wilayahnya (berdasar `district_id`), memantau log aktivitas, performa rute, serta kontak lengkap (Nomor WA kurir).
-2. **Modul Manajemen Transaksi & Fraud Detection**
-   - **Command Center & Live Map**: Melacak posisi kurir & titik jemput via Supabase Realtime serta mengatur antrean (*queue*).
-   - **Transaction Validation**: Audit visual (foto timbangan) vs input kurir, penyetujuan validasi harga dan perhitungan komisi otomatis ke dompet kurir.
-   - **Geofence Alert**: Notifikasi jika kurir menginput data jauh dari titik koordinat terdaftar.
-3. **Modul Poduksi & Output Gudang (Inventory)**
-   - **Input Produksi/Output Tracker**: Form khusus bagi Admin Bank Sampah untuk mencatat hasil keluaran pabrik/gudang (seperti: Pupuk Organik, hasil cacahan/daur ulang Plastik, Kaca, Kertas, Logam, dsb.) per harinya.
-   - **Stock In/Out**: Pencatatan lalu lintas berat timbangan dari rumah warga (Inflow) versus barang jadi/mentah siap jual (Outflow).
+1. **Pusat Rekrutmen & Manajemen Entitas Cabang**
+   - Membuat / Mendaftarkan 1 akun khusus untuk **Pemerintah/Dinas DLH**.
+   - Membuat / Mendaftarkan banyak akun untuk **Bank Sampah cabang/unit** (misal: Bank Sampah Unit Utara, Unit Selatan, dll).
+2. **Global Analytics (Makro Kabupaten)**
+   - Memantau total keseluruhan volume sampah mentah yang ditarik per-hari se-kabupaten.
+   - Memantau akumulasi total produk turunan (Pupuk, Kaca Cacah) dari seluruh titik Bank Sampah.
+3. **Konfigurasi Sistem Utama (Master Control)**
+   - Konfigurasi API Bot WhatsApp (Fonnte/Meta), Menu interaktif, dan auto-reply.
+   - Manajemen branding visual (Logo Daerah, banner peringatan aplikasi).
+   - Pengaturan harga beli per kategori sampah (Pricing Master Control).
 
-### 3.2 Dashboard Pemerintah / Gov (Pengambil Kebijakan - Tingkat Dinas/Bupati)
-Ditujukan untuk **Dinas Lingkungan Hidup (DLH)** di satu kabupaten spesifik (terhubung lewat `district_id`).
+### 3.2. Dashboard Pemerintah / Dinas (View & Analytics DLH)
+Dashboard ini didedikasikan bagai para pembuat kebijakan (Dinas Lingkungan Hidup / Bupati) untuk memantau performa *Zero Waste* dalam kabupatennya. Gov **tidak melakukan operasional**, melainkan membaca data analitik teragregasi dari seluruh Bank Sampah.
 
-1. **Modul Visualisasi Laporan Harian/Bulanan (Environmental Analytics)**
-   - **Grafik Tren Tonase Harian per Kecamatan**: Memantau pergerakan masuknya sampah dari tiap kelurahan/kecamatan dalam kabupaten tersebut dari hari ke hari secara mendetail.
-   - **Indikator Efektivitas Diversi**: Persentase sampah yang dialihkan dari TPA menuju pengolahan bank sampah.
-   - **Proyeksi Penghematan TPA**: Hitungan kalkulasi efisiensi uang untuk BBM truk, *tipping fee*, dan pemeliharaan alat berat TPA.
-2. **Modul Intelijen Spasial (Geospatial Heatmap)**
-   - Ekstensi **PostGIS** untuk Heatmap Produksi Sampah per koordinat dan peta tingkat partisipasi warga.
-3. **Modul Dampak Ekonomi & Sosial (Economic Impact)**
-   - **Total Perputaran Uang**: Uang yang dibayar ke warga & penghasilan kurir.
-   - **Efektivitas Pekerjaan**: Keterserapan tenaga kerja via karir sebagai kurir.
-4. **Modul Reward Engine & Intervensi Kebijakan**
-   - **Top 100 Contributors**: Pemeringkatan warga/kurir proaktif untuk insentif daerah (subsidi PBB/diskon retribusi sampah otomatis).
+1. **Grafik Trafik & Kinerja Antar-Kecamatan**
+   - Memantau tren tonase harian sampah masuk (Organik vs Anorganik) per kecamatan/kelurahan.
+   - Melihat perbandingan performa aktifitas antar "Bank Sampah 1" vs "Bank Sampah 2".
+2. **Indikator Efektivitas Lingkungan**
+   - Melihat tingkat *Waste Diversion Rate* (Proyeksi sampah yang berhasil dialihkan dari TPA utama).
+   - Est. Penghematan anggaran retribusi TPA dan bensin truk angkut dinas.
+3. **Pemantauan Populasi & Dampak Sosial**
+   - Melihat total pengguna (Warga) yang aktif menggunakan aplikasi di seluruh kabupaten.
+   - Melihat total perputaran uang subsidi/komisi secara *real-time* ke masyarakat lewat Bank Sampah.
 
-### 3.3 Dashboard Super Admin (Pengelola Sistem Tertinggi / Bapak Ekosistem)
-Sebagai koordinator inti dari platform secara menyeluruh, Super Admin mengawasi **SEMUA** Distrik, Bank Sampah, Kurir, dan Warga di dalam satu database *(Global Visibility)*.
+### 3.3. Dashboard Admin Bank Sampah (Layanan Operasional Titik/Zona)
+Kabupaten memiliki beberapa titik Bank Sampah. Setiap admin yang login akan melihat data spesifik untuk unit Bank Sampahnya sendiri. **Bank Sampah adalah titik kumpul bagi Kurir dan pusat perekaman produksi fabrikasi.**
 
-1. **Modul Makro Analitik & Reporting Murni**
-   - **Global Volume Tracker**: Memantau Total Jumlah Volume Sampah Mentah yang ditarik per-hari dari seluruh distrik/kabupaten.
-   - **Global Output/Production Tracker**: Melihat akumulasi Volume Output / Produksi Akhir (Pupuk, Daur Ulang) yang dihasilkan dari seluruh Bank Sampah per hari.
-2. **Modul Pengorganisasian Hierarki (Distrik & Bank Sampah)**
-   - **Districts Control**: Membuat dan mengelola (Edit/Nonaktifkan) Distrik yang menaungi 1 entitas Pemda/Gov dan 1 entitas Operator/Admin Bank Sampah sepaket.
-   - **Dashboard Branding Manager**: Mengatur logo Pemda, nama dinas, dan pengaturan visual untuk setiap kabupaten.
-   - **Widget Visibility Control**: Mengaktifkan/menonaktifkan modul-modul tertentu per dashboard (misal: menyembunyikan modul "Revenue Monitoring" dari Dashboard Operator).
-   - **Announcement Banner**: Mengelola banner pengumuman yang muncul di atas semua dashboard tanpa deployment ulang.
-2. **Modul Konfigurasi Bot WhatsApp**
-   - **Menu Builder**: Mengatur daftar menu, teks respons, dan alur percakapan Bot WA secara visual.
-   - **Template Manager**: Mengelola template pesan sambutan, notifikasi jemput, konfirmasi setoran, dan pesan broadcast.
-   - **Virtual QR Code**: Menampilkan QR Code untuk menghubungkan Bot WA langsung dari Dashboard (tanpa akses terminal VPS).
-   - **Bot Status Monitor**: Memantau status koneksi bot secara real-time (Connected / Waiting QR / Disconnected).
-   - **Auto-Reply Rules**: Mengatur aturan balasan otomatis berdasarkan kata kunci.
-3. **Modul Pengaturan Operasional Global**
-   - **Service Area Manager**: Mengatur radius/geofence area operasional (polygon wilayah yang dilayani).
-   - **Role & Permission Matrix**: Mengelola peran pengguna dan hak akses per modul.
-   - **Pricing Master Control**: Mengatur harga dasar per kategori sampah yang menjadi acuan seluruh sistem.
-   - **Referral Configuration**: Mengatur mekanisme referral (reward per referral, batas maksimum, dll).
-4. **Modul Monitoring Sistem**
-   - **System Health Check**: Status koneksi Supabase dan Bot WhatsApp.
-   - **Audit Log Viewer**: Melihat seluruh log perubahan konfigurasi (siapa mengubah apa, kapan).
-   - **User Management**: Mengelola akun admin operator dan admin pemerintah (buat, nonaktifkan, reset password).
+1. **Pusat Registrasi & Manajemen Kurir Fleet**
+   - Para Kurir mendaftar/terafiliasi ke salah satu unit Bank Sampah terdekat.
+   - Admin Bank Sampah dapat memverifikasi berkas kurir, memvalidasi kuota, dan memantau armada kurirnya sendiri.
+2. **Command Center Transaksi Warga**
+   - Menerima antrean *drop-off* atau serahan dari kurir wilayahnya.
+   - Melakukan input/validasi timbangan (berat aktual) atas sampah rintisan dan menyetujui transfer saldo ke dompet warga/kurir.
+3. **Produksi & Gudang (Inventory Tracker)**
+   - Saat sampah mentah diolah (misal dicacah/dikompos), Admin Bank Sampah bertugas mencatat input "Barang Jadi / Output Gudang" milik unit mereka.
+   - Data produksi unit inilah yang nantinya ditarik secara global untuk ditonton oleh Gov dan SuperAdmin.
 
 > **PENTING — Aturan Registrasi Akun:**
-> - Akun `gov` (Pemerintah) dan `admin` (Operator Bank Sampah) **TIDAK** memiliki fitur self-registration.
-> - Kedua akun ini **hanya bisa dibuat oleh Super Admin** melalui menu "Kelola Distrik" di `/superadmin/districts`.
-> - Setiap Gov dan Admin **harus dipasangkan** sebagai satu Distrik (district_id yang sama), sehingga data tidak bertukar antar daerah.
-> - Akun warga (`user`) bisa self-register melalui **2 jalur**: Web (`/auth`) atau Bot WhatsApp (lihat §3.5).
+> - Akun `gov` (Pemerintah/Dinas) dan `admin` (Bank Sampah Unit 1, 2, dst) **HANYA** bisa dibuat per akun oleh **SuperAdmin**. Tidak ada form pendaftaran publik (Self-registration) untuk mereka.
+> - Sebaliknya, pendaftaran untuk `courier` (Kurir armada) harus divalidasi oleh `admin` Bank Sampah bersangkutan.
+> - Pendaftaran Warga Umum Bebas via Bot WA atau Website.
+
+---
 
 ### 3.4 Mekanisme Akses Dashboard Internal (Hidden Portal)
 Semua dashboard internal (Operator, Pemerintah, Super Admin) **tidak boleh** memiliki link atau tombol yang terlihat di homepage publik warga.
@@ -299,14 +285,13 @@ Di dalam Supabase, struktur PostgreSQL harus memasukkan beberapa entitas berikut
 - **`audit_logs`**: Log perubahan konfigurasi sistem oleh Super Admin (field: `user_id`, `action`, `table_name`, `old_value`, `new_value`, `timestamp`).
 - **`wa_menu_configs`**: Konfigurasi menu dan template pesan Bot WhatsApp yang dapat diubah real-time tanpa deployment ulang.
 - **`dashboard_widgets`**: Daftar widget/modul per dashboard beserta status aktif/nonaktif, urutan tampil, dan konfigurasi visual.
-- **`districts`**: Tabel master distrik/kabupaten untuk menyambungkan (pairing) akun Gov dan Admin sebagai satu kesatuan. Kolom utama:
+- **`bank_sampah_units`** (sebelumnya `districts`): Tabel pendaftaran unit operasional Bank Sampah (titik kumpul) yang ada di dalam Kabupaten.
   - `id` (uuid, PK)
-  - `name` (text) — Nama kabupaten/distrik
-  - `gov_id` (uuid, FK → profiles.id) — Akun pemerintah yang bertanggung jawab
+  - `name` (text) — Nama unit Bank Sampah (Contoh: "Bank Sampah 1 Zona Utara")
+  - `admin_id` (uuid, FK → profiles.id) — Operator/Admin pengelola lokasi ini.
   - `created_by` (uuid, FK → profiles.id) — Super Admin yang mendaftarkan
   - `is_active` (boolean) — Status aktif/nonaktif
-- **`profiles.district_id`**: Kolom tambahan pada tabel profiles (FK → districts.id) yang menghubungkan akun gov dan admin ke distrik yang sama.
-- **`profiles.district_name`**: Cache nama distrik untuk kemudahan query.
+- **`profiles.bank_sampah_id`**: Kolom tambahan pada tabel profiles (FK → bank_sampah_units.id) yang menghubungkan akun `admin` maupun `courier` ke wilayah operasional/titik kumpul spesifik mereka. *(Akun `gov` dan `superadmin` memiliki akses terbuka ke semua unit)*.
 
 ### 4.2 Storage Buckets
 - **`courier-documents`**: Bucket privat untuk menyimpan foto KTP, SIM, dan Selfie+KTP calon kurir. Format: `{user_id}/{doc_type}_{timestamp}.{ext}`. Akses: user pemilik + admin/superadmin. Max 5MB per file (JPG/PNG/WebP).
