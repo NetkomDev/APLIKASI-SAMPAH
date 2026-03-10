@@ -71,10 +71,14 @@ Kabupaten memiliki beberapa titik Bank Sampah. Setiap admin yang login akan meli
 1. **Pusat Registrasi & Manajemen Kurir Fleet**
    - Para Kurir mendaftar/terafiliasi ke salah satu unit Bank Sampah terdekat.
    - Admin Bank Sampah dapat memverifikasi berkas kurir, memvalidasi kuota, dan memantau armada kurirnya sendiri.
-2. **Command Center Transaksi Warga**
-   - Menerima antrean *drop-off* atau serahan dari kurir wilayahnya.
-   - Melakukan input/validasi timbangan (berat aktual) atas sampah rintisan dan menyetujui transfer saldo ke dompet warga/kurir.
-3. **Produksi & Gudang (Inventory Tracker)**
+2. **Pos Pintu Masuk (Penerimaan Sampah Mentah)**
+   - Akses loket cepat bagi Admin untuk men-Scan QR Code milik rumah Warga / Kurir yang datang menyerahkan sampah.
+   - Melacak sumber sampah secara akurat berdasarkan identitas asli akun warga (Traceability).
+   - Memasukkan data spesifik masuk: Kategori (Metrial Mentah), Total Berat Aktual (Timbangan), dan Kualitas Pilahan Warga.
+3. **Pusat Transaksi & Anti-Fraud**
+   - Memantau dasbor antrian serahan kurir yang tiba di unit Bank Sampahnya.
+   - Memvalidasi kewajaran timbangan lapangan dengan timbangan gudang, serta mengeksekusi konversi ke nilai moneter (pencairan ke e-Wallet warga/kurir).
+4. **Produksi & Gudang (Inventory Tracker)**
    - Saat sampah mentah diolah (misal dicacah/dikompos), Admin Bank Sampah bertugas mencatat input "Barang Jadi / Output Gudang" milik unit mereka.
    - Data produksi unit inilah yang nantinya ditarik secara global untuk ditonton oleh Gov dan SuperAdmin.
 
