@@ -290,69 +290,69 @@ export default function AdminPage() {
 
             {/* CROSS-CHECK MODAL */}
             {selectedTx && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
-                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
-                        <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/80 backdrop-blur-md">
+                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-5xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+                        <div className="px-8 py-6 border-b border-slate-100 flex justify-between items-center bg-slate-50">
                             <div>
-                                <h3 className="font-bold text-lg text-slate-800">Validasi Pintu Masuk (Inbound)</h3>
-                                <p className="text-xs text-slate-500 font-medium">Lakukan kalibrasi berat aktual dari laporan kurir</p>
+                                <h3 className="font-bold text-3xl text-slate-800 tracking-tight">Validasi Pintu Masuk (Inbound)</h3>
+                                <p className="text-base text-slate-500 font-medium mt-1">Lakukan kalibrasi berat aktual dari laporan kurir</p>
                             </div>
-                            <button onClick={() => setSelectedTx(null)} className="p-2 hover:bg-slate-200 rounded-full transition-colors">
-                                <X className="w-5 h-5 text-slate-500" />
+                            <button onClick={() => setSelectedTx(null)} className="p-3 hover:bg-slate-200 rounded-full transition-colors flex items-center justify-center">
+                                <X className="w-8 h-8 text-slate-500" />
                             </button>
                         </div>
 
-                        <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="p-8 grid grid-cols-1 lg:grid-cols-2 gap-8">
                             {/* Courier's Claimed Panel */}
-                            <div className="bg-slate-50 rounded-xl p-5 border border-slate-200 relative overflow-hidden">
-                                <div className="absolute top-0 left-0 w-1 h-full bg-slate-400"></div>
-                                <h4 className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-4 flex items-center gap-2">
-                                    <CheckCircle2 className="w-4 h-4" /> Klaim Kurir
+                            <div className="bg-slate-50 rounded-2xl p-8 border-2 border-slate-200 relative overflow-hidden flex flex-col justify-center">
+                                <div className="absolute top-0 left-0 w-2 h-full bg-slate-400"></div>
+                                <h4 className="text-lg font-bold text-slate-500 uppercase tracking-widest mb-6 flex items-center gap-3">
+                                    <CheckCircle2 className="w-6 h-6" /> Klaim Faktur Kurir
                                 </h4>
 
-                                <div className="space-y-3">
-                                    <div className="flex justify-between items-center border-b border-slate-200 pb-2">
-                                        <span className="text-sm text-slate-600">Total Klaim Organik</span>
-                                        <span className="font-bold font-mono text-slate-800">{selectedTx.total_organic_claimed} Kg</span>
+                                <div className="space-y-6">
+                                    <div className="flex justify-between items-center border-b border-slate-300 pb-4">
+                                        <span className="text-xl text-slate-600 font-medium">Total Organik</span>
+                                        <span className="font-bold font-mono text-4xl text-slate-800">{selectedTx.total_organic_claimed} <span className="text-2xl text-slate-500">Kg</span></span>
                                     </div>
-                                    <div className="flex justify-between items-center border-b border-slate-200 pb-2">
-                                        <span className="text-sm text-slate-600">Total Klaim Anorganik</span>
-                                        <span className="font-bold font-mono text-slate-800">{selectedTx.total_inorganic_claimed} Kg</span>
+                                    <div className="flex justify-between items-center border-b border-slate-300 pb-4">
+                                        <span className="text-xl text-slate-600 font-medium">Total Anorganik</span>
+                                        <span className="font-bold font-mono text-4xl text-slate-800">{selectedTx.total_inorganic_claimed} <span className="text-2xl text-slate-500">Kg</span></span>
                                     </div>
-                                    <div className="pt-1">
-                                        <span className="text-xs text-slate-500 block mb-1">Status Rombongan Pengangkutan</span>
-                                        <span className="inline-block bg-brand-100 text-brand-700 text-xs font-semibold px-2.5 py-1 rounded">
-                                            Faktur Setoran Masuk
+                                    <div className="pt-2">
+                                        <span className="text-sm text-slate-500 block mb-2 uppercase font-bold tracking-wider">Status Faktur</span>
+                                        <span className="inline-block bg-brand-100 text-brand-700 text-lg font-bold px-4 py-2 rounded-lg border border-brand-200">
+                                            Menunggu Audit Gudang
                                         </span>
                                     </div>
                                 </div>
                             </div>
 
                             {/* Admin's Actual Reality Panel */}
-                            <form id="validation-form" onSubmit={handleValidasi} className="bg-brand-50 rounded-xl p-5 border border-brand-200 relative overflow-hidden">
-                                <div className="absolute top-0 left-0 w-1 h-full bg-brand-500"></div>
-                                <h4 className="text-xs font-bold text-brand-700 uppercase tracking-widest mb-4 flex items-center gap-2">
-                                    <Scale className="w-4 h-4" /> Realitas Timbangan Pusat
+                            <form id="validation-form" onSubmit={handleValidasi} className="bg-brand-50 rounded-2xl p-8 border-2 border-brand-300 relative overflow-hidden shadow-inner">
+                                <div className="absolute top-0 left-0 w-2 h-full bg-brand-500"></div>
+                                <h4 className="text-lg font-bold text-brand-700 uppercase tracking-widest mb-6 flex items-center gap-3">
+                                    <Scale className="w-6 h-6" /> Realitas Timbangan Pusat
                                 </h4>
 
-                                <div className="space-y-4">
-                                    <div className="flex items-center justify-between gap-3">
-                                        <label className="text-sm font-semibold text-slate-700">Audit Organik</label>
-                                        <div className="relative w-28">
-                                            <input type="number" step="0.1" min="0" required value={adminOrg} onChange={e => setAdminOrg(e.target.value)} className="w-full text-right font-mono font-bold text-sm py-1.5 pr-8 pl-3 rounded-lg border-brand-200 focus:ring-brand-500 focus:border-brand-500" />
-                                            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-medium text-slate-400">Kg</span>
+                                <div className="space-y-6">
+                                    <div className="flex items-center justify-between gap-4 bg-white p-4 rounded-xl border border-brand-100 shadow-sm">
+                                        <label className="text-xl font-bold text-slate-700">Organik</label>
+                                        <div className="relative w-40">
+                                            <input type="number" step="0.1" min="0" required value={adminOrg} onChange={e => setAdminOrg(e.target.value)} className="w-full text-right font-mono font-bold text-3xl py-3 pr-12 pl-4 rounded-xl border-2 border-brand-300 focus:ring-4 focus:ring-brand-500/20 focus:border-brand-500" />
+                                            <span className="absolute right-4 top-1/2 -translate-y-1/2 text-lg font-bold text-slate-400">Kg</span>
                                         </div>
                                     </div>
-                                    <div className="flex items-center justify-between gap-3">
-                                        <label className="text-sm font-semibold text-slate-700">Audit Anorganik</label>
-                                        <div className="relative w-28">
-                                            <input type="number" step="0.1" min="0" required value={adminInorg} onChange={e => setAdminInorg(e.target.value)} className="w-full text-right font-mono font-bold text-sm py-1.5 pr-8 pl-3 rounded-lg border-brand-200 focus:ring-brand-500 focus:border-brand-500" />
-                                            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-medium text-slate-400">Kg</span>
+                                    <div className="flex items-center justify-between gap-4 bg-white p-4 rounded-xl border border-brand-100 shadow-sm">
+                                        <label className="text-xl font-bold text-slate-700">Anorganik</label>
+                                        <div className="relative w-40">
+                                            <input type="number" step="0.1" min="0" required value={adminInorg} onChange={e => setAdminInorg(e.target.value)} className="w-full text-right font-mono font-bold text-3xl py-3 pr-12 pl-4 rounded-xl border-2 border-brand-300 focus:ring-4 focus:ring-brand-500/20 focus:border-brand-500" />
+                                            <span className="absolute right-4 top-1/2 -translate-y-1/2 text-lg font-bold text-slate-400">Kg</span>
                                         </div>
                                     </div>
-                                    <div>
-                                        <label className="text-xs font-semibold text-slate-700 block mb-1.5">Penilaian Kualitas Akhir</label>
-                                        <select value={adminQuality} onChange={e => setAdminQuality(e.target.value)} className="w-full text-sm py-2 px-3 rounded-lg border-brand-200 focus:ring-brand-500 focus:border-brand-500 bg-white">
+                                    <div className="pt-2">
+                                        <label className="text-sm font-bold text-slate-700 block mb-2 uppercase tracking-wide">Penilaian Kualitas Akhir Gudang</label>
+                                        <select value={adminQuality} onChange={e => setAdminQuality(e.target.value)} className="w-full text-lg font-medium py-4 px-4 rounded-xl border-2 border-brand-300 focus:ring-4 focus:ring-brand-500/20 focus:border-brand-500 bg-white">
                                             <option value="Sangat Bersih (Dipilah Mandiri)">Sangat Bersih (Dipilah Mandiri)</option>
                                             <option value="Standar (Campur Sedikit)">Standar (Campur Sedikit)</option>
                                             <option value="Campur Aduk / Belum Dipilah">Campur Aduk / Belum Dipilah</option>
@@ -362,28 +362,28 @@ export default function AdminPage() {
                                 </div>
                             </form>
 
-                            {/* Discrepancy Note spans 2 columns */}
-                            <div className="md:col-span-2 space-y-2">
-                                <label className="flex items-center gap-2 text-xs font-bold text-slate-700 uppercase">
-                                    <AlertTriangle className="w-4 h-4 text-amber-500" />
-                                    Catatan Selisih (Discrepancy)
+                            {/* Discrepancy Note spans full width */}
+                            <div className="lg:col-span-2 space-y-3 bg-slate-50 p-6 rounded-2xl border-2 border-dashed border-slate-300">
+                                <label className="flex items-center gap-2 text-base font-bold text-slate-700 uppercase tracking-widest">
+                                    <AlertTriangle className="w-6 h-6 text-amber-500" />
+                                    Berita Acara Selisih (Discrepancy Notes)
                                 </label>
                                 <textarea
                                     rows={2}
                                     value={notes}
                                     onChange={e => setNotes(e.target.value)}
-                                    placeholder="Wajib diisi jika berat / kualitas menurun drastis dari klaim kurir. Akan menjadi history SP kurir."
-                                    className="w-full text-sm p-3 border border-slate-200 rounded-xl focus:ring-brand-500 focus:border-brand-500 resize-none bg-slate-50"
+                                    placeholder="Wajib diisi jika timbangan Gudang meleset jauh di bawah timbangan Kurir. Catatan ini akan memicu Peringatan (SP) untuk Kurir."
+                                    className="w-full text-lg p-4 border-2 border-slate-200 rounded-xl focus:ring-4 focus:ring-brand-500/20 focus:border-brand-500 resize-none bg-white font-medium"
                                 />
                             </div>
                         </div>
 
-                        <div className="px-6 py-4 bg-slate-50 border-t border-slate-100 flex justify-end gap-3">
-                            <button type="button" onClick={() => setSelectedTx(null)} disabled={isSubmitting} className="px-4 py-2 bg-white border border-slate-200 text-slate-700 font-semibold rounded-lg hover:bg-slate-100 transition-colors text-sm">
+                        <div className="px-8 py-6 bg-slate-100 border-t border-slate-200 flex justify-end gap-4 shadow-inner">
+                            <button type="button" onClick={() => setSelectedTx(null)} disabled={isSubmitting} className="px-8 py-4 bg-white border-2 border-slate-300 text-slate-700 font-bold rounded-xl hover:bg-slate-50 hover:border-slate-400 transition-all text-lg shadow-sm">
                                 Batal
                             </button>
-                            <button type="submit" form="validation-form" disabled={isSubmitting} className="px-5 py-2 bg-brand-600 border border-brand-600 text-white font-bold rounded-lg hover:bg-brand-500 transition-colors text-sm flex items-center gap-2 disabled:opacity-70">
-                                {isSubmitting ? 'Memproses Validasi...' : 'Setujui & Terima Sampah'}
+                            <button type="submit" form="validation-form" disabled={isSubmitting} className="px-10 py-4 bg-brand-600 border-2 border-brand-600 text-white font-black rounded-xl hover:bg-brand-500 transition-all text-xl flex items-center gap-3 shadow-lg disabled:opacity-70">
+                                {isSubmitting ? 'Memproses Validasi...' : 'PENGESAHAN & TERIMA'}
                             </button>
                         </div>
                     </div>
