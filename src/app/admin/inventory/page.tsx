@@ -36,14 +36,14 @@ export default function InventoryPage() {
             const { data: { user } } = await supabase.auth.getUser();
             if (!user) return;
 
-            // Fetch profiles to get district_id
+            // Fetch profiles to get bank_sampah_id
             const { data: profile } = await supabase
                 .from("profiles")
-                .select("district_id")
+                .select("bank_sampah_id")
                 .eq("id", user.id)
                 .single();
 
-            if (!profile?.district_id) return;
+            if (!profile?.bank_sampah_id) return;
 
             // Notice: The `inventory_outputs` table must exist in Supabase!
             // Wait to run the SQL migration manually in Supabase SQL Editor.
@@ -56,7 +56,7 @@ export default function InventoryPage() {
                     recorded_at,
                     profiles:recorded_by (full_name)
                 `)
-                .eq("district_id", profile.district_id)
+                .eq("bank_sampah_id", profile.bank_sampah_id)
                 .order("recorded_at", { ascending: false })
                 .limit(50);
 
@@ -92,16 +92,16 @@ export default function InventoryPage() {
 
             const { data: profile } = await supabase
                 .from("profiles")
-                .select("district_id")
+                .select("bank_sampah_id")
                 .eq("id", user.id)
                 .single();
 
-            if (!profile?.district_id) throw new Error("Bukan Admin sebuah Distrik");
+            if (!profile?.bank_sampah_id) throw new Error("Bukan Admin / Operator Cabang Bank Sampah");
 
             const { error } = await supabase
                 .from("inventory_outputs")
                 .insert({
-                    district_id: profile.district_id,
+                    bank_sampah_id: profile.bank_sampah_id,
                     recorded_by: user.id,
                     category: category,
                     weight_kg: Number(weight)
@@ -237,8 +237,8 @@ export default function InventoryPage() {
                                             </td>
                                             <td className="py-4 font-medium text-slate-800">
                                                 <span className={`px-2.5 py-1 rounded-md text-xs border ${r.category.includes('Organik') ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
-                                                        r.category.includes('Kertas') ? 'bg-amber-50 text-amber-700 border-amber-200' :
-                                                            'bg-blue-50 text-blue-700 border-blue-200'
+                                                    r.category.includes('Kertas') ? 'bg-amber-50 text-amber-700 border-amber-200' :
+                                                        'bg-blue-50 text-blue-700 border-blue-200'
                                                     }`}>
                                                     {r.category}
                                                 </span>

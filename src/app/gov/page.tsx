@@ -5,7 +5,7 @@ export default function GovPage() {
         <div className="space-y-6">
             <div className="flex justify-between items-center mb-6">
                 <div>
-                    <h2 className="text-xl font-bold text-slate-800">Laporan Agregasi Lingkungan (Distrik)</h2>
+                    <h2 className="text-xl font-bold text-slate-800">Laporan Agregasi Lingkungan (Kabupaten)</h2>
                     <p className="text-sm text-slate-500">Memonitor proyeksi zero waste per kecamatan/kelurahan</p>
                 </div>
                 <select className="bg-white border text-sm text-slate-700 font-medium px-4 py-2 rounded-lg form-select border-slate-300 shadow-sm focus:ring-brand-500 focus:border-brand-500 outline-none">

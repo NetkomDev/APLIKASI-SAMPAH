@@ -6,18 +6,17 @@ import { Building2, Users, Bot, Shield, Scale, Recycle } from "lucide-react";
 import Link from "next/link";
 
 export default function SuperAdminDashboard() {
-    const [stats, setStats] = useState({ districts: 0, govUsers: 0, adminUsers: 0, totalUsers: 0 });
+    const [stats, setStats] = useState({ bankSampah: 0, govUsers: 0, adminUsers: 0, totalUsers: 0 });
 
     useEffect(() => {
         const fetchStats = async () => {
-            const { count: districtCount } = await supabase.from("districts").select("*", { count: "exact", head: true });
-            const { count: govCount } = await supabase.from("profiles").select("*", { count: "exact", head: true }).eq("role", "gov");
-            const { count: adminCount } = await supabase.from("profiles").select("*", { count: "exact", head: true }).eq("role", "admin");
-            const { count: totalCount } = await supabase.from("profiles").select("*", { count: "exact", head: true });
+            const { count: unitCount } = await supabase.from("bank_sampah_units").select("*", { count: "exact", head: true });
+            const { data: profiles, count: totalCount } = await supabase.from("profiles").select("role", { count: "exact" });
+
             setStats({
-                districts: districtCount || 0,
-                govUsers: govCount || 0,
-                adminUsers: adminCount || 0,
+                bankSampah: unitCount || 0,
+                govUsers: profiles?.filter(p => p.role === "gov").length || 0,
+                adminUsers: profiles?.filter(p => p.role === "admin").length || 0,
                 totalUsers: totalCount || 0,
             });
         };
@@ -28,14 +27,14 @@ export default function SuperAdminDashboard() {
         <div className="space-y-8">
             {/* Page Header */}
             <div>
-                <h1 className="text-2xl font-bold text-white tracking-tight">Dashboard Super Admin</h1>
-                <p className="text-sm text-slate-400 mt-1">Ringkasan seluruh sistem Beres | Benahi Residu Sampah</p>
+                <h2 className="text-xl font-bold text-slate-800">SuperAdmin Dashboard (1 Kabupaten)</h2>
+                <p className="text-sm text-slate-500">Pusat kontrol operasional seluruh cabang Bank Sampah</p>
             </div>
 
             {/* Stats Grid */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 {[
-                    { label: "Total Distrik", value: stats.districts, icon: Building2, color: "text-brand-400 bg-brand-500/10 border-brand-500/20" },
+                    { label: "Cabang Bank", value: stats.bankSampah, icon: Building2, color: "text-brand-400 bg-brand-500/10 border-brand-500/20" },
                     { label: "Akun Pemerintah", value: stats.govUsers, icon: Shield, color: "text-blue-400 bg-blue-500/10 border-blue-500/20" },
                     { label: "Akun Operator", value: stats.adminUsers, icon: Users, color: "text-emerald-400 bg-emerald-500/10 border-emerald-500/20" },
                     { label: "Total Pengguna", value: stats.totalUsers, icon: Users, color: "text-orange-400 bg-orange-500/10 border-orange-500/20" },
@@ -100,13 +99,13 @@ export default function SuperAdminDashboard() {
             <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6">
                 <h2 className="text-lg font-bold text-white mb-4">Aksi Cepat</h2>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <Link href="/superadmin/districts" className="flex items-center gap-4 p-4 rounded-xl bg-slate-800/50 border border-slate-700/50 hover:bg-slate-800 hover:border-brand-500/30 transition-all group">
-                        <div className="p-3 rounded-xl bg-brand-500/10 border border-brand-500/20">
-                            <Building2 className="h-5 w-5 text-brand-400" />
+                    <Link href="/superadmin/bank-sampah-units" className="flex items-center gap-4 p-4 rounded-xl bg-slate-800/50 border border-slate-700/50 hover:bg-slate-800 hover:border-brand-500/30 transition-all group">
+                        <div className="h-12 w-12 bg-slate-800 rounded-xl flex items-center justify-center text-brand-400 shadow-sm border border-slate-700/50 mb-4 group-hover:scale-110 group-hover:bg-slate-700 transition-all">
+                            <Building2 className="h-6 w-6" />
                         </div>
                         <div>
-                            <p className="text-sm font-semibold text-white group-hover:text-brand-400 transition-colors">Daftarkan Distrik Baru</p>
-                            <p className="text-xs text-slate-500">Buat akun Gov + Operator satu paket</p>
+                            <h3 className="font-bold text-slate-200">Kelola Cabang & Entitas</h3>
+                            <p className="text-xs text-slate-400 mt-1">Buat akun untuk Pemda dan unit Bank Sampah baru</p>
                         </div>
                     </Link>
                     <Link href="/superadmin/bot-config" className="flex items-center gap-4 p-4 rounded-xl bg-slate-800/50 border border-slate-700/50 hover:bg-slate-800 hover:border-emerald-500/30 transition-all group">

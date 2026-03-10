@@ -11,7 +11,7 @@ import {
 
 const sidebarItems = [
     { href: "/superadmin", label: "Dashboard", icon: BarChart3 },
-    { href: "/superadmin/districts", label: "Kelola Distrik", icon: Building2 },
+    { href: "/superadmin/bank-sampah-units", label: "Cabang Bank Sampah", icon: Building2 },
     { href: "/superadmin/courier-quotas", label: "Kuota Kurir", icon: Truck },
     { href: "/superadmin/bot-config", label: "Konfigurasi Bot WA", icon: Bot },
     { href: "/superadmin/settings", label: "Pengaturan Sistem", icon: Settings },

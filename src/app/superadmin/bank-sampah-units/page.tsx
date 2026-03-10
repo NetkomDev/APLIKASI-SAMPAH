@@ -7,7 +7,7 @@ import {
     Eye, EyeOff, Users, Shield, X
 } from "lucide-react";
 
-interface District {
+interface BankSampahUnit {
     id: string;
     name: string;
     description: string | null;
@@ -19,7 +19,7 @@ interface District {
 }
 
 export default function DistrictsPage() {
-    const [districts, setDistricts] = useState<District[]>([]);
+    const [districts, setDistricts] = useState<BankSampahUnit[]>([]);
     const [showForm, setShowForm] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
     const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
@@ -39,7 +39,7 @@ export default function DistrictsPage() {
     const [showAdminPassword, setShowAdminPassword] = useState(false);
 
     // Edit Form State
-    const [editingDistrict, setEditingDistrict] = useState<District | null>(null);
+    const [editingDistrict, setEditingDistrict] = useState<BankSampahUnit | null>(null);
     const [editDistrictName, setEditDistrictName] = useState("");
     const [editDistrictDesc, setEditDistrictDesc] = useState("");
     const [editGovName, setEditGovName] = useState("");
@@ -62,7 +62,7 @@ export default function DistrictsPage() {
 
     const fetchDistricts = async () => {
         const { data } = await supabase
-            .from("districts")
+            .from("bank_sampah_units")
             .select("*")
             .order("created_at", { ascending: false });
 
@@ -79,7 +79,7 @@ export default function DistrictsPage() {
                     const { data: adminProfiles } = await supabase
                         .from("profiles")
                         .select("id, full_name, phone_number, role")
-                        .eq("district_id", d.id)
+                        .eq("bank_sampah_id", d.id)
                         .eq("role", "admin");
 
                     return { ...d, gov_profile: govProfile, admin_profiles: adminProfiles || [] };
@@ -102,7 +102,7 @@ export default function DistrictsPage() {
         setAdminPassword("");
     };
 
-    const openEditForm = async (d: District) => {
+    const openEditForm = async (d: BankSampahUnit) => {
         setEditingDistrict(d);
         setEditDistrictName(d.name);
         setEditDistrictDesc(d.description || "");
@@ -203,7 +203,7 @@ export default function DistrictsPage() {
                 throw new Error(result.error || "Gagal menyimpan perubahan.");
             }
 
-            setMessage({ type: "success", text: `Distrik "${editDistrictName}" berhasil diperbarui.` });
+            setMessage({ type: "success", text: `Cabang "${editDistrictName}" berhasil diperbarui.` });
             setEditingDistrict(null);
             fetchDistricts();
         } catch (err: unknown) {
@@ -275,7 +275,7 @@ export default function DistrictsPage() {
                 throw new Error(result?.error || "Gagal membuat distrik.");
             }
 
-            setMessage({ type: "success", text: `Distrik "${districtName}" berhasil dibuat dengan akun Gov dan Operator.` });
+            setMessage({ type: "success", text: `Cabang "${districtName}" berhasil dibuat dengan akun Gov dan Operator.` });
             resetForm();
             setShowForm(false);
             fetchDistricts();
@@ -292,7 +292,7 @@ export default function DistrictsPage() {
             {/* Page Header */}
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <div>
-                    <h1 className="text-2xl font-bold text-white tracking-tight">Kelola Distrik</h1>
+                    <h1 className="text-2xl font-bold text-white tracking-tight">Kelola Cabang Bank Sampah</h1>
                     <p className="text-sm text-slate-400 mt-1">Daftarkan Pemerintah Daerah (Gov) beserta Operator Bank Sampah sebagai satu paket.</p>
                 </div>
                 <button
@@ -307,7 +307,7 @@ export default function DistrictsPage() {
                     className="flex items-center gap-2 px-5 py-3 rounded-xl bg-brand-600 hover:bg-brand-500 text-white font-semibold text-sm transition-all shadow-lg shadow-brand-500/20 active:scale-[0.98]"
                 >
                     {(showForm || editingDistrict) ? <X className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
-                    {(showForm || editingDistrict) ? "Batal" : "Distrik Baru"}
+                    {(showForm || editingDistrict) ? "Batal" : "Cabang Baru"}
                 </button>
             </div>
 
@@ -328,11 +328,11 @@ export default function DistrictsPage() {
                     {/* District Info */}
                     <div>
                         <h3 className="text-base font-bold text-white flex items-center gap-2 mb-4">
-                            <Building2 className="h-5 w-5 text-brand-400" /> Informasi Distrik
+                            <Building2 className="h-5 w-5 text-brand-400" /> Informasi Cabang Unit
                         </h3>
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <div className="space-y-1.5">
-                                <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Nama Distrik / Kabupaten *</label>
+                                <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Nama Unit Bank Sampah *</label>
                                 <input type="text" placeholder="Contoh: Kabupaten Bogor" value={districtName} onChange={(e) => setDistrictName(e.target.value)}
                                     className="w-full px-4 py-3 bg-slate-800/50 rounded-xl border border-slate-700 text-sm text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-brand-500/30 focus:border-brand-500/50 transition" />
                             </div>
@@ -388,7 +388,7 @@ export default function DistrictsPage() {
                         ) : (
                             <>
                                 <CheckCircle2 className="h-4 w-4" />
-                                Daftarkan Distrik, Gov & Operator
+                                Daftarkan Cabang, Gov & Operator
                             </>
                         )}
                     </button>
@@ -400,10 +400,10 @@ export default function DistrictsPage() {
                 <div className="bg-slate-900 border border-brand-500/50 shadow-lg shadow-brand-500/10 rounded-2xl p-6 space-y-6 animate-in fade-in duration-300">
                     <div className="flex items-center justify-between mb-4">
                         <h3 className="text-base font-bold text-white flex items-center gap-2">
-                            <Building2 className="h-5 w-5 text-brand-400" /> Edit Distrik
+                            <Building2 className="h-5 w-5 text-brand-400" /> Edit Cabang Unit
                         </h3>
                         <div className="flex items-center gap-3">
-                            <span className="text-sm text-slate-400 font-medium">Status Distrik:</span>
+                            <span className="text-sm text-slate-400 font-medium">Status Cabang:</span>
                             <button
                                 onClick={() => setEditIsActive(!editIsActive)}
                                 className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${editIsActive ? 'bg-emerald-500' : 'bg-slate-600'}`}
@@ -415,7 +415,7 @@ export default function DistrictsPage() {
                     </div>
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <InputField label="Nama Distrik / Kabupaten *" placeholder="Contoh: Kabupaten Bogor" value={editDistrictName} onChange={setEditDistrictName} />
+                        <InputField label="Nama Unit Bank Sampah *" placeholder="Contoh: Kabupaten Bogor" value={editDistrictName} onChange={setEditDistrictName} />
                         <InputField label="Keterangan (Opsional)" placeholder="Dinas Lingkungan Hidup" value={editDistrictDesc} onChange={setEditDistrictDesc} />
                     </div>
 
@@ -490,8 +490,8 @@ export default function DistrictsPage() {
                 {districts.length === 0 ? (
                     <div className="bg-slate-900 border border-slate-800 rounded-2xl p-12 text-center">
                         <Building2 className="h-12 w-12 text-slate-700 mx-auto mb-4" />
-                        <p className="text-slate-400 font-medium">Belum ada distrik terdaftar.</p>
-                        <p className="text-xs text-slate-500 mt-1">Klik &quot;Distrik Baru&quot; untuk memulai.</p>
+                        <p className="text-slate-400 font-medium">Belum ada cabang Bank Sampah terdaftar.</p>
+                        <p className="text-xs text-slate-500 mt-1">Klik &quot;Cabang Baru&quot; untuk memulai.</p>
                     </div>
                 ) : (
                     districts.map((d) => (
@@ -514,7 +514,7 @@ export default function DistrictsPage() {
                                     <button
                                         onClick={() => openEditForm(d)}
                                         className="p-2 bg-slate-800 text-slate-400 hover:text-white hover:bg-slate-700 rounded-xl transition-colors"
-                                        title="Edit Distrik"
+                                        title="Edit Cabang Unit"
                                     >
                                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path></svg>
                                     </button>
