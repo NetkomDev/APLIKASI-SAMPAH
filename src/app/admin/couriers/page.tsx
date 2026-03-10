@@ -75,22 +75,29 @@ export default function AdminCouriersPage() {
     const fetchApplications = useCallback(async () => {
         setLoading(true);
         const { data: { user } } = await supabase.auth.getUser();
-        if (!user) return;
+        if (!user) {
+            setLoading(false);
+            return;
+        }
 
+        // 1. Dapatkan bank_sampah_id milik admin saat ini
+        const { data: adminProfile } = await supabase.from("profiles").select("bank_sampah_id").eq("id", user.id).single();
+
+        if (!adminProfile?.bank_sampah_id) {
+            setApplications([]);
+            setLoading(false);
+            return;
+        }
+
+        // 2. Query lamaran SECARA STRICT hanya yang ditujukan ke Cabang (Bank Sampah) ini
         let query = supabase
             .from("courier_applications")
             .select("*")
+            .eq("target_bank_sampah_id", adminProfile.bank_sampah_id)
             .order("created_at", { ascending: false });
 
-        if (filter === "pending") {
-            query = query.eq("status", "pending");
-        } else if (filter === "approved") {
-            query = query.eq("status", "approved").eq("reviewed_by", user.id);
-        } else if (filter === "rejected") {
-            query = query.eq("status", "rejected").eq("reviewed_by", user.id);
-        } else {
-            // "all" means pending globally, OR reviewed by this specific admin
-            query = query.or(`status.eq.pending,reviewed_by.eq.${user.id}`);
+        if (filter !== "all") {
+            query = query.eq("status", filter);
         }
 
         const { data, error } = await query;

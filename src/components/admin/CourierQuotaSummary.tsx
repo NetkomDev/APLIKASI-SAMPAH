@@ -2,14 +2,23 @@
 
 import { useEffect, useState } from "react";
 import { supabase } from "@/infrastructure/config/supabase";
-import { Truck, MapPin, Loader2 } from "lucide-react";
+import { Truck, Loader2, Bike, Car } from "lucide-react";
 
 interface QuotaSummary {
-    zone: string;
+    vehicleType: string;
+    label: string;
+    icon: React.ComponentType<any>;
     totalLimit: number;
     used: number;
     available: number;
 }
+
+const VEHICLE_MAP: Record<string, { label: string, icon: any }> = {
+    motor: { label: "Motor", icon: Bike },
+    mobil_pickup: { label: "Mobil Pickup", icon: Car },
+    gerobak: { label: "Gerobak", icon: Truck },
+    sepeda: { label: "Sepeda", icon: Bike }
+};
 
 export function CourierQuotaSummary() {
     const [summary, setSummary] = useState<QuotaSummary[]>([]);
@@ -19,43 +28,63 @@ export function CourierQuotaSummary() {
         const fetchQuotas = async () => {
             setLoading(true);
             try {
-                // 1. Fetch the limits (courier_quotas table)
-                const { data: quotaData, error: quotaError } = await supabase.from("courier_quotas").select("*");
+                const { data: { user } } = await supabase.auth.getUser();
+                if (!user) return;
 
-                // 2. Fetch current couriers taking up space (active / pending_approval)
+                const { data: profile } = await supabase.from('profiles').select('bank_sampah_id').eq('id', user.id).single();
+                const bankId = profile?.bank_sampah_id;
+
+                if (!bankId) return;
+
+                // 1. Fetch the limits for THIS specific Bank Sampah
+                const { data: quotaData, error: quotaError } = await supabase
+                    .from("courier_quotas")
+                    .select("*")
+                    .eq("bank_sampah_id", bankId);
+
+                // 2. Fetch current couriers taking up space in THIS Bank Sampah
                 const { data: courierData, error: courierError } = await supabase
                     .from("profiles")
-                    .select("preferred_zone")
+                    .select("vehicle_type")
                     .eq("role", "courier")
+                    .eq("bank_sampah_id", bankId)
                     .in("courier_status", ["active", "pending_approval"]);
 
                 if (!quotaError && quotaData) {
-                    const grouped: Record<string, { totalLimit: number, used: number }> = {};
+                    const grouped: Record<string, { totalLimit: number, used: number }> = {
+                        motor: { totalLimit: 0, used: 0 },
+                        mobil_pickup: { totalLimit: 0, used: 0 },
+                        gerobak: { totalLimit: 0, used: 0 },
+                        sepeda: { totalLimit: 0, used: 0 }
+                    };
 
                     // Aggregate limits
                     quotaData.forEach((q) => {
-                        if (q.quota > 0) {
-                            if (!grouped[q.zone_name]) grouped[q.zone_name] = { totalLimit: 0, used: 0 };
-                            grouped[q.zone_name].totalLimit += q.quota;
+                        if (q.quota > 0 && grouped[q.vehicle_type]) {
+                            grouped[q.vehicle_type].totalLimit += q.quota;
                         }
                     });
 
                     // Aggregate used
                     if (courierData) {
                         courierData.forEach((c) => {
-                            if (c.preferred_zone && grouped[c.preferred_zone]) {
-                                grouped[c.preferred_zone].used += 1;
+                            if (c.vehicle_type && grouped[c.vehicle_type]) {
+                                grouped[c.vehicle_type].used += 1;
                             }
                         });
                     }
 
-                    // Format array
-                    const arr = Object.keys(grouped).map(k => ({
-                        zone: k,
-                        totalLimit: grouped[k].totalLimit,
-                        used: grouped[k].used,
-                        available: Math.max(0, grouped[k].totalLimit - grouped[k].used)
-                    })).sort((a, b) => b.available - a.available).slice(0, 4); // Display top 4 zones with highest availability
+                    // Format array to show only those with limits
+                    const arr = Object.keys(grouped)
+                        .filter(k => grouped[k].totalLimit > 0)
+                        .map(k => ({
+                            vehicleType: k,
+                            label: VEHICLE_MAP[k]?.label || k,
+                            icon: VEHICLE_MAP[k]?.icon || Truck,
+                            totalLimit: grouped[k].totalLimit,
+                            used: grouped[k].used,
+                            available: Math.max(0, grouped[k].totalLimit - grouped[k].used)
+                        }));
 
                     setSummary(arr);
                 }
@@ -73,7 +102,7 @@ export function CourierQuotaSummary() {
             <div className="flex justify-between items-center mb-6">
                 <div className="flex items-center gap-2">
                     <Truck className="h-5 w-5 text-brand-500" />
-                    <h2 className="text-md font-bold text-slate-800">Alokasi & Sisa Kuota Kurir Tersedia</h2>
+                    <h2 className="text-md font-bold text-slate-800">Alokasi & Sisa Kuota Armada Cabang Ini</h2>
                 </div>
                 <span className="text-xs bg-slate-100 text-slate-600 font-medium px-2.5 py-1 rounded-full border border-slate-200">
                     Sistem Kuota
@@ -85,7 +114,7 @@ export function CourierQuotaSummary() {
                     <Loader2 className="h-5 w-5 text-brand-500 animate-spin" />
                 </div>
             ) : summary.length === 0 ? (
-                <p className="text-sm text-slate-500 text-center py-4">Belum ada kuota yang diset oleh Super Admin.</p>
+                <p className="text-sm text-slate-500 text-center py-4">Belum ada kuota armada yang diset untuk Bank Sampah Anda oleh Super Admin.</p>
             ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                     {summary.map((s, i) => {
@@ -93,8 +122,10 @@ export function CourierQuotaSummary() {
                         return (
                             <div key={i} className={`p-4 border rounded-xl transition ${isFull ? 'bg-red-50/50 border-red-100' : 'bg-slate-50/50 border-slate-100 hover:border-brand-200'}`}>
                                 <div className="flex items-center gap-2 mb-3">
-                                    <MapPin className={`h-4 w-4 ${isFull ? 'text-red-400' : 'text-slate-400'}`} />
-                                    <h4 className="font-semibold text-slate-700 text-sm truncate">{s.zone}</h4>
+                                    <div className={`p-1.5 rounded-md ${isFull ? 'bg-red-100' : 'bg-brand-50'}`}>
+                                        <s.icon className={`h-4 w-4 ${isFull ? 'text-red-500' : 'text-brand-500'}`} />
+                                    </div>
+                                    <h4 className="font-semibold text-slate-700 text-sm truncate">{s.label}</h4>
                                 </div>
                                 <div className="flex justify-between items-end">
                                     <div>
@@ -103,7 +134,7 @@ export function CourierQuotaSummary() {
                                             <p className={`font-bold text-2xl ${isFull ? 'text-red-600' : 'text-brand-600'}`}>
                                                 {s.available}
                                             </p>
-                                            <span className="text-xs font-medium text-slate-500">/ {s.totalLimit} posisi</span>
+                                            <span className="text-xs font-medium text-slate-500">/ {s.totalLimit} armada</span>
                                         </div>
                                     </div>
                                     {isFull && (

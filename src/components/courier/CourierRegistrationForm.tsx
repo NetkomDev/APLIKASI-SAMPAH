@@ -28,7 +28,7 @@ interface FormData {
     vehicleType: "motor" | "mobil_pickup" | "gerobak" | "sepeda" | "";
     vehiclePlate: string;
     // Zone
-    preferredZone: string;
+    targetBankId: string;
 }
 
 interface UploadedDocs {
@@ -37,23 +37,16 @@ interface UploadedDocs {
     selfieKtp: File | null;
 }
 
+interface BankSampahOption {
+    id: string;
+    name: string;
+}
+
 const VEHICLE_OPTIONS = [
     { value: "motor", label: "Motor", icon: Bike, desc: "Sepeda motor roda 2" },
     { value: "mobil_pickup", label: "Mobil Pickup", icon: Car, desc: "Mobil bak terbuka" },
     { value: "gerobak", label: "Gerobak", icon: Truck, desc: "Gerobak dorong/tarik" },
     { value: "sepeda", label: "Sepeda", icon: Bike, desc: "Sepeda kayuh + bak" },
-];
-
-const ZONE_OPTIONS = [
-    "Kec. Tanete Riattang",
-    "Kec. Tanete Riattang Barat",
-    "Kec. Tanete Riattang Timur",
-    "Kec. Barebbo",
-    "Kec. Cina",
-    "Kec. Palakka",
-    "Kec. Awangpone",
-    "Kec. Tellu Siattinge",
-    "Lainnya",
 ];
 
 // ─── Helpers ──────────────────────────────────────────────────
@@ -180,18 +173,24 @@ export function CourierRegistrationForm() {
         email: "", password: "", confirmPassword: "",
         fullName: "", nik: "", birthPlace: "", birthDate: "", addressKtp: "", phone: "",
         vehicleType: "", vehiclePlate: "",
-        preferredZone: "",
+        targetBankId: "",
     });
 
     const [docs, setDocs] = useState<UploadedDocs>({
         ktpPhoto: null, simPhoto: null, selfieKtp: null,
     });
 
+    const [bankOptions, setBankOptions] = useState<BankSampahOption[]>([]);
     const [zoneQuotas, setZoneQuotas] = useState<Record<string, { quota: number, filled: number }>>({});
     const [loadingQuotas, setLoadingQuotas] = useState(false);
 
     useEffect(() => {
         setMounted(true);
+        // Fetch active Bank Sampah
+        supabase.from("bank_sampah_units").select("id, name").eq("is_active", true).order("name")
+            .then(({ data }) => {
+                if (data) setBankOptions(data);
+            });
         supabase.auth.getSession().then(({ data: { session } }) => {
             if (session) {
                 setUserId(session.user.id);
@@ -226,7 +225,7 @@ export function CourierRegistrationForm() {
             if (!error && data) {
                 const qMap: Record<string, { quota: number, filled: number }> = {};
                 data.forEach((item: any) => {
-                    qMap[item.zone_name] = { quota: item.quota, filled: item.filled };
+                    qMap[item.bank_sampah_id] = { quota: item.quota, filled: item.filled };
                 });
                 setZoneQuotas(qMap);
             }
@@ -239,7 +238,7 @@ export function CourierRegistrationForm() {
     const updateForm = (key: keyof FormData, value: string) => {
         setForm((prev) => {
             const upd = { ...prev, [key]: value };
-            if (key === "vehicleType") upd.preferredZone = "";
+            if (key === "vehicleType") upd.targetBankId = "";
             return upd;
         });
         setError("");
@@ -432,7 +431,8 @@ export function CourierRegistrationForm() {
                 phone_number: `62${stripPhone(form.phone)}`,
                 vehicle_type: form.vehicleType,
                 vehicle_plate: form.vehiclePlate || null,
-                preferred_zone: form.preferredZone,
+                preferred_zone: bankOptions.find(b => b.id === form.targetBankId)?.name || "",
+                target_bank_sampah_id: form.targetBankId,
                 ktp_photo_url: ktpUrl,
                 sim_photo_url: simUrl,
                 selfie_ktp_url: selfieUrl,
@@ -462,7 +462,7 @@ export function CourierRegistrationForm() {
             case "personal":
                 return !!(form.fullName && form.nik && form.nik.length === 16 && form.birthPlace && form.birthDate && form.addressKtp && form.phone);
             case "vehicle":
-                return !!(form.vehicleType && form.preferredZone);
+                return !!(form.vehicleType && form.targetBankId);
             case "documents":
                 return !!(docs.ktpPhoto && docs.selfieKtp);
             default:
@@ -678,33 +678,33 @@ export function CourierRegistrationForm() {
                                 )}
 
                                 <div>
-                                    <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2 block">Zona Operasional *</label>
+                                    <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2 block">Pilih Cabang Bank Sampah *</label>
                                     <div className="grid grid-cols-1 gap-1.5 max-h-48 overflow-y-auto pr-1">
                                         {!form.vehicleType ? (
-                                            <p className="text-sm text-slate-500 italic py-2">Pilih jenis kendaraan terlebih dahulu untuk melihat kuota zona.</p>
+                                            <p className="text-sm text-slate-500 italic py-2">Pilih jenis kendaraan terlebih dahulu untuk melihat kuota cabang armada.</p>
                                         ) : loadingQuotas ? (
-                                            <p className="text-sm text-slate-500 py-2 flex items-center gap-2"><span className="h-4 w-4 border-2 border-brand-500/30 border-t-brand-500 rounded-full animate-spin" /> Memeriksa kuota zona...</p>
+                                            <p className="text-sm text-slate-500 py-2 flex items-center gap-2"><span className="h-4 w-4 border-2 border-brand-500/30 border-t-brand-500 rounded-full animate-spin" /> Memeriksa ketersediaan kuota...</p>
                                         ) : (
-                                            ZONE_OPTIONS.map((z) => {
-                                                const qInfo = zoneQuotas[z];
+                                            bankOptions.map((bank) => {
+                                                const qInfo = zoneQuotas[bank.id];
                                                 const hasQuotaSetup = qInfo !== undefined;
                                                 const isFull = hasQuotaSetup && qInfo.filled >= qInfo.quota;
                                                 const currentRemaining = qInfo ? Math.max(0, qInfo.quota - qInfo.filled) : 0;
 
                                                 return (
                                                     <button
-                                                        key={z}
+                                                        key={bank.id}
                                                         disabled={isFull}
-                                                        onClick={() => updateForm("preferredZone", z)}
+                                                        onClick={() => updateForm("targetBankId", bank.id)}
                                                         className={`w-full flex items-center justify-between px-4 py-2.5 rounded-xl border text-left text-sm transition-all
                                                             ${isFull
                                                                 ? "bg-slate-800/30 border-slate-800 text-slate-600 cursor-not-allowed"
-                                                                : form.preferredZone === z
+                                                                : form.targetBankId === bank.id
                                                                     ? "bg-brand-500/10 border-brand-500/50 text-brand-300 font-semibold"
                                                                     : "bg-slate-800 border-slate-700 text-slate-300 hover:border-slate-600"
                                                             }`}
                                                     >
-                                                        <span>{z}</span>
+                                                        <span>{bank.name}</span>
                                                         {hasQuotaSetup && (
                                                             <span className={`flex-shrink-0 text-[10px] font-bold px-2 py-0.5 rounded-full ${isFull ? "bg-red-500/10 text-red-500 border border-red-500/20" : "bg-brand-500/20 text-brand-400"}`}>
                                                                 {isFull ? "Penuh" : `Sisa Kuota: ${currentRemaining}`}
@@ -782,10 +782,10 @@ export function CourierRegistrationForm() {
                                     ["Alamat", form.addressKtp],
                                     ["WhatsApp", `+62${form.phone}`],
                                 ]} />
-                                <ConfirmSection title="Kendaraan & Zona" items={[
+                                <ConfirmSection title="Kendaraan & Cabang" items={[
                                     ["Kendaraan", VEHICLE_OPTIONS.find((v) => v.value === form.vehicleType)?.label || "-"],
                                     ["Plat", form.vehiclePlate || "-"],
-                                    ["Zona", form.preferredZone],
+                                    ["Cabang", bankOptions.find(b => b.id === form.targetBankId)?.name || "-"],
                                 ]} />
                                 <ConfirmSection title="Dokumen" items={[
                                     ["KTP", docs.ktpPhoto ? `✅ ${docs.ktpPhoto.name}` : "❌ Belum"],
