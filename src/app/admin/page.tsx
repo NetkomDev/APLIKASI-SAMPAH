@@ -34,15 +34,14 @@ export default function AdminPage() {
             const isSuper = profile?.role === 'superadmin';
 
             if (bankId || isSuper) {
-                // 1. Antrean Validasi Timbangan
+                // 1. Antrean Validasi Timbangan (Faktur Setoran / Manifest Bulk Kurir)
                 let pendingQuery = supabase
-                    .from('transactions')
+                    .from('courier_deposits')
                     .select(`
-                        id, weight_organic, weight_inorganic, courier_sorting_quality, status, created_at,
-                        kurir:profiles!transactions_kurir_id_fkey(full_name),
-                        user:profiles!transactions_user_id_fkey(full_name)
+                        id, total_organic_claimed, total_inorganic_claimed, status, created_at,
+                        kurir:profiles!courier_deposits_kurir_id_fkey(full_name)
                     `)
-                    .in('status', ['pending', 'menimbang', 'antre'])
+                    .eq('status', 'pending_audit')
                     .order('created_at', { ascending: true });
 
                 if (!isSuper) pendingQuery = pendingQuery.eq('bank_sampah_id', bankId);
@@ -111,9 +110,9 @@ export default function AdminPage() {
 
     const handleOpenModal = (tx: any) => {
         setSelectedTx(tx);
-        setAdminOrg(tx.weight_organic?.toString() || '0');
-        setAdminInorg(tx.weight_inorganic?.toString() || '0');
-        setAdminQuality(tx.courier_sorting_quality || 'Campur Aduk / Belum Dipilah');
+        setAdminOrg(tx.total_organic_claimed?.toString() || '0');
+        setAdminInorg(tx.total_inorganic_claimed?.toString() || '0');
+        setAdminQuality('Campur Aduk / Belum Dipilah');
         setNotes('');
     };
 
@@ -124,20 +123,25 @@ export default function AdminPage() {
             const { data: { user } } = await supabase.auth.getUser();
             if (!user) throw new Error("Unauthenticated");
 
-            // Update Transaction with Admin's exact inputs (Cross-validation)
-            const { error } = await supabase
-                .from('transactions')
+            // Update Courier Deposit (Manifest) with Admin Actual measurements
+            const { error: depositError } = await supabase
+                .from('courier_deposits')
                 .update({
-                    admin_weight_organic: Number(adminOrg),
-                    admin_weight_inorganic: Number(adminInorg),
-                    admin_sorting_quality: adminQuality,
+                    actual_organic: Number(adminOrg),
+                    actual_inorganic: Number(adminInorg),
+                    admin_quality_assessment: adminQuality,
                     discrepancy_notes: notes,
                     admin_id: user.id,
-                    status: 'completed' // Marking as valid to trigger rewards / payout
+                    status: 'approved',
+                    approved_at: new Date().toISOString()
                 })
                 .eq('id', selectedTx.id);
 
-            if (error) throw error;
+            if (depositError) throw depositError;
+
+            // Optional: You would also trigger an Edge Function here to automatically
+            // transfer commission to the courier and set all related `transactions` statuses to `completed`.
+            // For now, updating the transaction UI table is done:
 
             setSelectedTx(null);
             fetchStats();
@@ -211,12 +215,12 @@ export default function AdminPage() {
                                             {(tx.kurir?.full_name || 'K').charAt(0).toUpperCase()}
                                         </div>
                                         <div>
-                                            <h4 className="font-semibold text-slate-800 text-sm">{tx.kurir?.full_name || 'Kurir Reguler'}</h4>
-                                            <p className="text-xs text-slate-500 mt-0.5">Warga: {tx.user?.full_name || 'Anonim'}</p>
+                                            <h4 className="font-semibold text-slate-800 text-sm">Kurir: {tx.kurir?.full_name || 'Reguler'}</h4>
+                                            <p className="text-xs text-brand-600 mt-0.5 font-medium flex items-center gap-1"><PackageCheck className="w-3 h-3" /> Faktur Setoran (Bulk)</p>
 
                                             <div className="mt-2 text-xs font-mono text-slate-600 bg-slate-50 p-2 rounded border border-slate-100">
-                                                <p><span className="text-emerald-600 font-semibold">Org:</span> {tx.weight_organic} Kg &nbsp;|&nbsp; <span className="text-blue-600 font-semibold">Anorg:</span> {tx.weight_inorganic} Kg</p>
-                                                <p className="mt-1 text-slate-400 italic">Klaim: &quot;{tx.courier_sorting_quality || 'Campur'}&quot;</p>
+                                                <p><span className="text-emerald-600 font-semibold">Org:</span> {tx.total_organic_claimed} Kg &nbsp;|&nbsp; <span className="text-blue-600 font-semibold">Anorg:</span> {tx.total_inorganic_claimed} Kg</p>
+                                                <p className="mt-1 text-slate-400 italic">Total Klaim Timbangan Kurir</p>
                                             </div>
                                         </div>
                                     </div>
@@ -308,17 +312,17 @@ export default function AdminPage() {
 
                                 <div className="space-y-3">
                                     <div className="flex justify-between items-center border-b border-slate-200 pb-2">
-                                        <span className="text-sm text-slate-600">Berat Organik</span>
-                                        <span className="font-bold font-mono text-slate-800">{selectedTx.weight_organic} Kg</span>
+                                        <span className="text-sm text-slate-600">Total Klaim Organik</span>
+                                        <span className="font-bold font-mono text-slate-800">{selectedTx.total_organic_claimed} Kg</span>
                                     </div>
                                     <div className="flex justify-between items-center border-b border-slate-200 pb-2">
-                                        <span className="text-sm text-slate-600">Berat Anorganik</span>
-                                        <span className="font-bold font-mono text-slate-800">{selectedTx.weight_inorganic} Kg</span>
+                                        <span className="text-sm text-slate-600">Total Klaim Anorganik</span>
+                                        <span className="font-bold font-mono text-slate-800">{selectedTx.total_inorganic_claimed} Kg</span>
                                     </div>
                                     <div className="pt-1">
-                                        <span className="text-xs text-slate-500 block mb-1">Kualitas Pilahan (Versi Kurir)</span>
-                                        <span className="inline-block bg-slate-200 text-slate-700 text-xs font-semibold px-2.5 py-1 rounded">
-                                            {selectedTx.courier_sorting_quality || 'Tidak dinilai'}
+                                        <span className="text-xs text-slate-500 block mb-1">Status Rombongan Pengangkutan</span>
+                                        <span className="inline-block bg-brand-100 text-brand-700 text-xs font-semibold px-2.5 py-1 rounded">
+                                            Faktur Setoran Masuk
                                         </span>
                                     </div>
                                 </div>
