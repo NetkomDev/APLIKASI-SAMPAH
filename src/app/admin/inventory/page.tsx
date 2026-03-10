@@ -9,6 +9,9 @@ interface InventoryRecord {
     category: string;
     weight_kg: number;
     recorded_at: string;
+    quality_grade?: string | null;
+    batch_number?: string | null;
+    notes?: string | null;
     profiles: {
         full_name: string;
     };
@@ -22,6 +25,9 @@ export default function InventoryPage() {
     // Form States
     const [category, setCategory] = useState("Pupuk Organik");
     const [weight, setWeight] = useState("");
+    const [qualityGrade, setQualityGrade] = useState("Grade A (Premium)");
+    const [batchNumber, setBatchNumber] = useState("");
+    const [notes, setNotes] = useState("");
 
     // Feedback
     const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
@@ -54,6 +60,9 @@ export default function InventoryPage() {
                     category, 
                     weight_kg, 
                     recorded_at,
+                    quality_grade,
+                    batch_number,
+                    notes,
                     profiles:recorded_by (full_name)
                 `)
                 .eq("bank_sampah_id", profile.bank_sampah_id)
@@ -98,13 +107,18 @@ export default function InventoryPage() {
 
             if (!profile?.bank_sampah_id) throw new Error("Bukan Admin / Operator Cabang Bank Sampah");
 
+            const autoBatch = `BTN-${new Date().toISOString().slice(2, 10).replace(/-/g, '')}-${Math.floor(Math.random() * 1000)}`;
+
             const { error } = await supabase
                 .from("inventory_outputs")
                 .insert({
                     bank_sampah_id: profile.bank_sampah_id,
                     recorded_by: user.id,
                     category: category,
-                    weight_kg: Number(weight)
+                    weight_kg: Number(weight),
+                    quality_grade: qualityGrade,
+                    batch_number: batchNumber.trim() || autoBatch,
+                    notes: notes.trim() || null
                 });
 
             if (error && error.code === '42P01') {
@@ -115,6 +129,8 @@ export default function InventoryPage() {
 
             setMessage({ type: 'success', text: 'Data produksi berhasil dicatat!' });
             setWeight("");
+            setBatchNumber("");
+            setNotes("");
             fetchRecords();
         } catch (err: any) {
             setMessage({ type: 'error', text: err.message || "Gagal menyimpan rincian." });
@@ -166,6 +182,19 @@ export default function InventoryPage() {
                         </div>
 
                         <div>
+                            <label className="block text-xs font-semibold text-slate-600 mb-1.5 uppercase tracking-wide">Kualitas / Grade</label>
+                            <select
+                                value={qualityGrade}
+                                onChange={(e) => setQualityGrade(e.target.value)}
+                                className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-700 font-medium focus:ring-2 focus:ring-brand-500 focus:border-brand-500"
+                            >
+                                <option value="Grade A (Premium)">Grade A (Premium)</option>
+                                <option value="Grade B (Standar)">Grade B (Standar)</option>
+                                <option value="Grade C (Sortiran/Afkir)">Grade C (Sortiran/Afkir)</option>
+                            </select>
+                        </div>
+
+                        <div>
                             <label className="block text-xs font-semibold text-slate-600 mb-1.5 uppercase tracking-wide">Total Berat Timbangan</label>
                             <div className="relative">
                                 <Scale className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
@@ -180,6 +209,29 @@ export default function InventoryPage() {
                                     required
                                 />
                                 <span className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-sm">Kg</span>
+                            </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label className="block text-xs font-semibold text-slate-600 mb-1.5 uppercase tracking-wide">Nomor Batch (Opsi)</label>
+                                <input
+                                    type="text"
+                                    placeholder="Auto-Generate"
+                                    value={batchNumber}
+                                    onChange={(e) => setBatchNumber(e.target.value)}
+                                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-800 placeholder-slate-400 focus:ring-2 focus:ring-brand-500 focus:border-brand-500 uppercase"
+                                />
+                            </div>
+                            <div className="md:col-span-2">
+                                <label className="block text-xs font-semibold text-slate-600 mb-1.5 uppercase tracking-wide">Catatan Produksi</label>
+                                <textarea
+                                    rows={2}
+                                    placeholder="Opsional: Keterangan tambahan hasil produksi..."
+                                    value={notes}
+                                    onChange={(e) => setNotes(e.target.value)}
+                                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-800 placeholder-slate-400 focus:ring-2 focus:ring-brand-500 focus:border-brand-500 resize-none"
+                                />
                             </div>
                         </div>
 
@@ -236,18 +288,29 @@ export default function InventoryPage() {
                                                 </div>
                                             </td>
                                             <td className="py-4 font-medium text-slate-800">
-                                                <span className={`px-2.5 py-1 rounded-md text-xs border ${r.category.includes('Organik') ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
-                                                    r.category.includes('Kertas') ? 'bg-amber-50 text-amber-700 border-amber-200' :
-                                                        'bg-blue-50 text-blue-700 border-blue-200'
-                                                    }`}>
-                                                    {r.category}
-                                                </span>
+                                                <div className="flex flex-col gap-1.5">
+                                                    <div>
+                                                        <span className={`px-2.5 py-1 rounded-md text-xs border font-semibold ${r.category.includes('Organik') ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
+                                                            r.category.includes('Kertas') ? 'bg-amber-50 text-amber-700 border-amber-200' :
+                                                                'bg-blue-50 text-blue-700 border-blue-200'
+                                                            }`}>
+                                                            {r.category}
+                                                        </span>
+                                                    </div>
+                                                    {r.quality_grade && (
+                                                        <span className="text-xs text-slate-500">Grade: {r.quality_grade.replace('Grade ', '')}</span>
+                                                    )}
+                                                </div>
                                             </td>
-                                            <td className="py-4 text-right font-black text-slate-700 whitespace-nowrap">
-                                                {r.weight_kg.toLocaleString('id-ID')} <span className="text-xs text-slate-400 font-medium">Kg</span>
+                                            <td className="py-4 text-right">
+                                                <p className="font-black text-slate-700 whitespace-nowrap">{r.weight_kg.toLocaleString('id-ID')} <span className="text-xs text-slate-400 font-medium">Kg</span></p>
+                                                <p className="text-[10px] text-slate-400 mt-1 uppercase font-mono">{r.batch_number}</p>
                                             </td>
-                                            <td className="py-4 pl-6 text-slate-600 capitalize">
-                                                {r.profiles?.full_name || 'Sistem'}
+                                            <td className="py-4 pl-6">
+                                                <p className="text-sm font-semibold text-slate-600 capitalize">{r.profiles?.full_name || 'Sistem'}</p>
+                                                {r.notes && (
+                                                    <p className="text-[10px] text-slate-400 mt-1 line-clamp-2 max-w-[120px] italic">"{r.notes}"</p>
+                                                )}
                                             </td>
                                         </tr>
                                     ))}
