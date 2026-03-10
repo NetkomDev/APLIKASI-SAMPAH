@@ -1,17 +1,102 @@
+"use client";
+
+import { useEffect, useState } from 'react';
+import { supabase } from '@/infrastructure/config/supabase';
 import { PackageCheck, Scale, Wallet2, ArrowRightLeft } from 'lucide-react';
 import { CourierQuotaSummary } from '@/components/admin/CourierQuotaSummary';
 
 export default function AdminPage() {
+    const [stats, setStats] = useState({
+        pending: 0,
+        tonnageToday: 0,
+        withdrawals: 0,
+        totalPayout: 0
+    });
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        const fetchStats = async () => {
+            setLoading(true);
+            try {
+                const { data: { user } } = await supabase.auth.getUser();
+                if (!user) return;
+
+                const { data: profile } = await supabase.from('profiles').select('bank_sampah_id').eq('id', user.id).single();
+                const bankId = profile?.bank_sampah_id;
+
+                if (bankId) {
+                    // 1. Menunggu Validasi (Transactions Pending Approval)
+                    const { count: pendingCount } = await supabase
+                        .from('transactions')
+                        .select('*', { count: 'exact', head: true })
+                        .eq('bank_sampah_id', bankId)
+                        .eq('status', 'pending');
+
+                    // 2. Tonase Masuk Hari Ini
+                    const startOfDay = new Date();
+                    startOfDay.setHours(0, 0, 0, 0);
+                    const { data: todayTxs } = await supabase
+                        .from('transactions')
+                        .select('weight')
+                        .eq('bank_sampah_id', bankId)
+                        .gte('created_at', startOfDay.toISOString());
+                    const tonnageToDay = todayTxs?.reduce((acc: number, cur) => acc + (cur.weight || 0), 0) || 0;
+
+                    // 3. Pencairan Dana (Ini cross-join user profiles di bank ini, untuk simplifikasi kita fetch semua user di bank ini)
+                    const { data: bankUsers } = await supabase.from('profiles').select('id').eq('bank_sampah_id', bankId);
+                    const userIds = bankUsers?.map(u => u.id) || [];
+
+                    let withdrawCount = 0;
+                    if (userIds.length > 0) {
+                        const { count } = await supabase
+                            .from('withdraw_requests')
+                            .select('*', { count: 'exact', head: true })
+                            .in('user_id', userIds)
+                            .eq('status', 'pending');
+                        withdrawCount = count || 0;
+                    }
+
+                    // 4. Total Payout (Transactions Completed)
+                    const { data: payoutTxs } = await supabase
+                        .from('transactions')
+                        .select('total_amount')
+                        .eq('bank_sampah_id', bankId)
+                        .eq('status', 'completed');
+                    const totalPayout = payoutTxs?.reduce((acc: number, cur) => acc + (cur.total_amount || 0), 0) || 0;
+
+                    setStats({
+                        pending: pendingCount || 0,
+                        tonnageToday: tonnageToDay,
+                        withdrawals: withdrawCount,
+                        totalPayout: totalPayout
+                    });
+                }
+            } catch (error) {
+                console.error("Error fetching admin stats:", error);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchStats();
+    }, []);
+
+    const formatRupiah = (num: number) => {
+        if (num >= 1000000) return (num / 1000000).toFixed(1) + 'M';
+        if (num >= 1000) return (num / 1000).toFixed(1) + 'K';
+        return num.toString();
+    };
+
     return (
         <div className="space-y-6">
 
             {/* Quick Stats for Hub Operator */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                 {[
-                    { label: 'Menunggu Validasi', value: '18', icon: PackageCheck, color: 'text-amber-500', bg: 'bg-amber-100', subtitle: 'Paket tiba di Bank Sampah' },
-                    { label: 'Tonase Masuk (Hari Ini)', value: '850 Kg', icon: Scale, color: 'text-brand-500', bg: 'bg-brand-100', subtitle: 'Organik & Anorganik' },
-                    { label: 'Pencairan Dana', value: '5', icon: Wallet2, color: 'text-blue-500', bg: 'bg-blue-100', subtitle: 'Permintaan Withdraw' },
-                    { label: 'Total Keluar (Rp)', value: '1.2M', icon: ArrowRightLeft, color: 'text-emerald-500', bg: 'bg-emerald-100', subtitle: 'Dibayarkan ke warga' }
+                    { label: 'Menunggu Validasi', value: loading ? '...' : `${stats.pending}`, icon: PackageCheck, color: 'text-amber-500', bg: 'bg-amber-100', subtitle: 'Paket tiba di Bank Sampah' },
+                    { label: 'Tonase Masuk (Hari Ini)', value: loading ? '...' : `${stats.tonnageToday} Kg`, icon: Scale, color: 'text-brand-500', bg: 'bg-brand-100', subtitle: 'Organik & Anorganik' },
+                    { label: 'Pencairan Dana', value: loading ? '...' : `${stats.withdrawals}`, icon: Wallet2, color: 'text-blue-500', bg: 'bg-blue-100', subtitle: 'Permintaan Withdraw' },
+                    { label: 'Total Keluar (Rp)', value: loading ? '...' : formatRupiah(stats.totalPayout), icon: ArrowRightLeft, color: 'text-emerald-500', bg: 'bg-emerald-100', subtitle: 'Dibayarkan ke warga' }
                 ].map((stat, i) => (
                     <div key={i} className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex items-center gap-4 hover:shadow-md transition">
                         <div className={`p-4 rounded-xl ${stat.bg}`}>
@@ -75,7 +160,7 @@ export default function AdminPage() {
                     <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 flex flex-col h-[290px]">
                         <div className="flex justify-between items-center mb-4">
                             <h2 className="text-md font-bold text-slate-800">Menunggu Pencairan Dana</h2>
-                            <span className="bg-red-100 text-red-600 text-xs font-bold px-2 py-0.5 rounded-full">5</span>
+                            <span className="bg-red-100 text-red-600 text-xs font-bold px-2 py-0.5 rounded-full">{loading ? '-' : stats.withdrawals}</span>
                         </div>
                         <div className="flex-1 overflow-y-auto pr-2 space-y-3">
                             {[1, 2].map((item) => (

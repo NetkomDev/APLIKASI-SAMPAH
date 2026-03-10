@@ -74,13 +74,23 @@ export default function AdminCouriersPage() {
 
     const fetchApplications = useCallback(async () => {
         setLoading(true);
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
+
         let query = supabase
             .from("courier_applications")
             .select("*")
             .order("created_at", { ascending: false });
 
-        if (filter !== "all") {
-            query = query.eq("status", filter);
+        if (filter === "pending") {
+            query = query.eq("status", "pending");
+        } else if (filter === "approved") {
+            query = query.eq("status", "approved").eq("reviewed_by", user.id);
+        } else if (filter === "rejected") {
+            query = query.eq("status", "rejected").eq("reviewed_by", user.id);
+        } else {
+            // "all" means pending globally, OR reviewed by this specific admin
+            query = query.or(`status.eq.pending,reviewed_by.eq.${user.id}`);
         }
 
         const { data, error } = await query;
@@ -98,7 +108,7 @@ export default function AdminCouriersPage() {
 
     // ─── Approve Handler ──────────────────────────────────────
     const handleApprove = async (app: CourierApplication) => {
-        if (!confirm(`Setujui ${app.full_name} sebagai kurir?`)) return;
+        if (!confirm(`Setujui ${app.full_name} sebagai kurir di Bank Sampah Anda?`)) return;
         setProcessingId(app.id);
         setActionMessage(null);
 
@@ -107,15 +117,19 @@ export default function AdminCouriersPage() {
             const { data: codeResult } = await supabase.rpc("generate_courier_id_code");
             const courierCode = codeResult || `KUR-${Math.floor(Math.random() * 10000).toString().padStart(4, "0")}`;
 
-            // Get current user (admin) ID
+            // Get current user (admin) ID and their bank_sampah_id
             const { data: { user } } = await supabase.auth.getUser();
+            if (!user) throw new Error("Akses ditolak. Silakan login kembali.");
+
+            const { data: adminProfile } = await supabase.from("profiles").select("bank_sampah_id, bank_sampah_name").eq("id", user.id).single();
+            if (!adminProfile || !adminProfile.bank_sampah_id) throw new Error("Profil admin tidak valid atau Anda bukan admin bank sampah.");
 
             // 1. Update application
             const { error: appErr } = await supabase
                 .from("courier_applications")
                 .update({
                     status: "approved",
-                    reviewed_by: user?.id,
+                    reviewed_by: user.id,
                     reviewed_at: new Date().toISOString(),
                     courier_id_code: courierCode,
                 })
@@ -123,7 +137,7 @@ export default function AdminCouriersPage() {
 
             if (appErr) throw appErr;
 
-            // 2. Update profile: role → courier, courier_status → active
+            // 2. Update profile: link to bank_sampah_id perfectly
             const { error: profileErr } = await supabase
                 .from("profiles")
                 .update({
@@ -134,6 +148,8 @@ export default function AdminCouriersPage() {
                     vehicle_plate: app.vehicle_plate,
                     preferred_zone: app.preferred_zone,
                     is_online: false,
+                    bank_sampah_id: adminProfile.bank_sampah_id,
+                    bank_sampah_name: adminProfile.bank_sampah_name
                 })
                 .eq("id", app.user_id);
 
@@ -144,7 +160,7 @@ export default function AdminCouriersPage() {
                 .from("user_wallets")
                 .upsert({ user_id: app.user_id, balance: 0 }, { onConflict: "user_id" });
 
-            setActionMessage({ type: "success", text: `✅ ${app.full_name} disetujui sebagai kurir (${courierCode}). Notif WA akan dikirim otomatis.` });
+            setActionMessage({ type: "success", text: `✅ ${app.full_name} resmi bergabung! Notif WA akan dikirim otomatis.` });
             fetchApplications();
         } catch (err) {
             console.error("Approve error:", err);
