@@ -42,14 +42,15 @@ export default function InventoryPage() {
             const { data: { user } } = await supabase.auth.getUser();
             if (!user) return;
 
-            // Fetch profiles to get bank_sampah_id
+            // Fetch profiles to get bank_sampah_id and role
             const { data: profile } = await supabase
                 .from("profiles")
-                .select("bank_sampah_id")
+                .select("bank_sampah_id, role")
                 .eq("id", user.id)
                 .single();
 
-            if (!profile?.bank_sampah_id) return;
+            // Block access only if regular admin without a branch
+            if (!profile?.bank_sampah_id && profile?.role !== 'superadmin') return;
 
             // Notice: The `inventory_outputs` table must exist in Supabase!
             // Wait to run the SQL migration manually in Supabase SQL Editor.
@@ -65,9 +66,15 @@ export default function InventoryPage() {
                     notes,
                     profiles:recorded_by (full_name)
                 `)
-                .eq("bank_sampah_id", profile.bank_sampah_id)
                 .order("recorded_at", { ascending: false })
                 .limit(50);
+
+            // Isolate data ONLY if not superadmin
+            if (profile?.role !== 'superadmin') {
+                query = query.eq("bank_sampah_id", profile.bank_sampah_id);
+            }
+
+            const { data, error } = await query;
 
             if (error) {
                 // If table doesn't exist yet, simply silence it or log
@@ -282,9 +289,14 @@ export default function InventoryPage() {
                                     {records.map((r) => (
                                         <tr key={r.id} className="hover:bg-slate-50/70 transition-colors">
                                             <td className="py-4 pl-2 whitespace-nowrap">
-                                                <div className="flex items-center gap-2 text-slate-600">
-                                                    <Clock className="h-3.5 w-3.5" />
-                                                    {new Date(r.recorded_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                                                <div className="flex flex-col gap-1">
+                                                    <span className="font-bold text-slate-800">
+                                                        {new Date(r.recorded_at).toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' })}
+                                                    </span>
+                                                    <div className="flex items-center gap-1.5 text-xs text-slate-500 font-medium bg-slate-100 w-fit px-2 py-0.5 rounded border border-slate-200">
+                                                        <Clock className="h-3 w-3" />
+                                                        {new Date(r.recorded_at).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}
+                                                    </div>
                                                 </div>
                                             </td>
                                             <td className="py-4 font-medium text-slate-800">
@@ -307,9 +319,14 @@ export default function InventoryPage() {
                                                 <p className="text-[10px] text-slate-400 mt-1 uppercase font-mono">{r.batch_number}</p>
                                             </td>
                                             <td className="py-4 pl-6">
-                                                <p className="text-sm font-semibold text-slate-600 capitalize">{r.profiles?.full_name || 'Sistem'}</p>
+                                                <div className="flex items-center gap-2 mb-1">
+                                                    <div className="w-6 h-6 rounded-full bg-brand-100 flex items-center justify-center text-[10px] font-bold text-brand-700">
+                                                        {(r.profiles?.full_name || 'S').charAt(0).toUpperCase()}
+                                                    </div>
+                                                    <p className="text-sm font-bold text-slate-700 capitalize">{r.profiles?.full_name || 'Sistem Otomatis'}</p>
+                                                </div>
                                                 {r.notes && (
-                                                    <p className="text-[10px] text-slate-400 mt-1 line-clamp-2 max-w-[120px] italic">"{r.notes}"</p>
+                                                    <p className="text-[10px] text-slate-500 line-clamp-2 max-w-[160px] italic border-l-2 border-slate-200 pl-2 ml-1">"{r.notes}"</p>
                                                 )}
                                             </td>
                                         </tr>
