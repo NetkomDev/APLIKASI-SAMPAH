@@ -35,7 +35,7 @@ export default function SuperAdminDashboard() {
     return (
         <div className="space-y-6">
             <div>
-                <h2 className={`text-xl font-extrabold ${tk.textHeading}`}>SuperAdmin Dashboard (1 Kabupaten)</h2>
+                <h2 className={`text-xl font-extrabold ${tk.textHeading}`}>SuperAdmin Dashboard</h2>
                 <p className={`text-sm ${tk.textSecondary} mt-1`}>Pusat kontrol operasional seluruh cabang Bank Sampah</p>
             </div>
 
