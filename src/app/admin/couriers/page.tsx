@@ -4,7 +4,8 @@ import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/infrastructure/config/supabase";
 import {
     Users, CheckCircle2, XCircle, Clock, Eye, ChevronDown, ChevronUp,
-    Phone, MapPin, Truck, AlertTriangle, Search, Filter, IdCard, ArrowLeft
+    Phone, MapPin, Truck, AlertTriangle, Search, Filter, IdCard, ArrowLeft,
+    Plus, UserPlus, Timer, X
 } from "lucide-react";
 import Link from "next/link";
 
@@ -30,6 +31,8 @@ interface CourierApplication {
     reviewed_at: string | null;
     courier_id_code: string | null;
     created_at: string;
+    expires_at: string | null;
+    source: string | null;
 }
 
 type StatusFilter = "all" | "pending" | "approved" | "rejected";
@@ -71,6 +74,14 @@ export default function AdminCouriersPage() {
     const [rejectModalId, setRejectModalId] = useState<string | null>(null);
     const [rejectReason, setRejectReason] = useState("");
     const [actionMessage, setActionMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
+
+    // Manual registration modal state
+    const [showManualModal, setShowManualModal] = useState(false);
+    const [manualForm, setManualForm] = useState({
+        fullName: "", nik: "", phone: "", vehicleType: "motor",
+        vehiclePlate: "", addressKtp: "", birthPlace: "", birthDate: "",
+    });
+    const [manualSubmitting, setManualSubmitting] = useState(false);
 
     const fetchApplications = useCallback(async () => {
         setLoading(true);
@@ -225,9 +236,96 @@ export default function AdminCouriersPage() {
 
     const counts = {
         all: applications.length,
-        pending: applications.filter((a) => a.status === "pending").length,
+        pending: applications.filter((a) => a.status === "pending" && !(a.expires_at && new Date(a.expires_at) < new Date())).length,
         approved: applications.filter((a) => a.status === "approved").length,
         rejected: applications.filter((a) => a.status === "rejected").length,
+        expired: applications.filter((a) => a.status === "pending" && a.expires_at && new Date(a.expires_at) < new Date()).length,
+    };
+
+    // ─── Manual Registration Handler ─────────────────────────
+    const handleManualRegister = async () => {
+        if (!manualForm.fullName || !manualForm.nik || !manualForm.phone) {
+            setActionMessage({ type: "error", text: "Nama, NIK, dan No. Telepon wajib diisi." });
+            return;
+        }
+        setManualSubmitting(true);
+        setActionMessage(null);
+
+        try {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (!user) throw new Error("Sesi login habis.");
+
+            const { data: adminProfile } = await supabase.from("profiles").select("bank_sampah_id, bank_sampah_name").eq("id", user.id).single();
+            if (!adminProfile?.bank_sampah_id) throw new Error("Profil admin tidak valid.");
+
+            // Normalize phone
+            let phone = manualForm.phone.replace(/\D/g, "");
+            if (phone.startsWith("0")) phone = "62" + phone.slice(1);
+            if (!phone.startsWith("62")) phone = "62" + phone;
+
+            // Create the auth account for the courier
+            const email = `wa_${phone}@ecosistemdigital.id`;
+            const tempPassword = `BERES-${manualForm.nik.slice(-4)}-${Date.now().toString(36)}`;
+
+            const { data: signUpData, error: signUpErr } = await supabase.auth.signUp({
+                email,
+                password: tempPassword,
+                options: { data: { full_name: manualForm.fullName } },
+            });
+
+            let courierUserId = signUpData?.user?.id;
+
+            // If sign up failed (might already exist), try finding existing profile
+            if (signUpErr || !courierUserId) {
+                const { data: existingProfile } = await supabase
+                    .from("profiles").select("id").eq("phone_number", phone).maybeSingle();
+                if (existingProfile) {
+                    courierUserId = existingProfile.id;
+                } else {
+                    throw new Error(`Gagal membuat akun: ${signUpErr?.message || "Unknown error"}`);
+                }
+            }
+
+            // Upsert profile
+            await supabase.from("profiles").upsert({
+                id: courierUserId,
+                full_name: manualForm.fullName,
+                phone_number: phone,
+                address: manualForm.addressKtp,
+                role: "user",
+            });
+
+            // Insert into courier_applications with source = 'offline'
+            const { error: insertErr } = await supabase.from("courier_applications").insert({
+                user_id: courierUserId,
+                nik: manualForm.nik,
+                full_name: manualForm.fullName,
+                birth_place: manualForm.birthPlace || "-",
+                birth_date: manualForm.birthDate || new Date().toISOString().split("T")[0],
+                address_ktp: manualForm.addressKtp || "-",
+                phone_number: phone,
+                vehicle_type: manualForm.vehicleType,
+                vehicle_plate: manualForm.vehiclePlate || null,
+                preferred_zone: adminProfile.bank_sampah_name || "",
+                target_bank_sampah_id: adminProfile.bank_sampah_id,
+                ktp_photo_url: "",
+                status: "pending",
+                source: "offline",
+            });
+
+            if (insertErr) throw new Error(`Gagal menyimpan: ${insertErr.message}`);
+
+            // Update courier_status on profile
+            await supabase.from("profiles").update({ courier_status: "pending_approval" }).eq("id", courierUserId);
+
+            setActionMessage({ type: "success", text: `✅ ${manualForm.fullName} berhasil didaftarkan dan menunggu approval.` });
+            setShowManualModal(false);
+            setManualForm({ fullName: "", nik: "", phone: "", vehicleType: "motor", vehiclePlate: "", addressKtp: "", birthPlace: "", birthDate: "" });
+            fetchApplications();
+        } catch (err) {
+            setActionMessage({ type: "error", text: `❌ ${err instanceof Error ? err.message : "Gagal mendaftarkan."}` });
+        }
+        setManualSubmitting(false);
     };
 
     return (
@@ -249,6 +347,13 @@ export default function AdminCouriersPage() {
                             {counts.pending} menunggu review
                         </span>
                     )}
+                    <button
+                        onClick={() => setShowManualModal(true)}
+                        className="inline-flex items-center gap-2 px-4 py-2 bg-brand-600 hover:bg-brand-500 text-white font-semibold rounded-xl transition-colors shadow-sm text-sm"
+                    >
+                        <UserPlus className="w-4 h-4" />
+                        Daftarkan Kurir (Offline)
+                    </button>
                 </div>
             </div>
 
@@ -341,6 +446,86 @@ export default function AdminCouriersPage() {
                     isProcessing={!!processingId}
                 />
             )}
+
+            {/* Manual Registration Modal */}
+            {showManualModal && (
+                <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+                    <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full p-6 space-y-5 animate-in fade-in zoom-in-95 duration-200">
+                        <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 rounded-full bg-brand-100 flex items-center justify-center">
+                                    <UserPlus className="w-5 h-5 text-brand-600" />
+                                </div>
+                                <div>
+                                    <h3 className="text-lg font-bold text-slate-900">Daftarkan Kurir (Offline)</h3>
+                                    <p className="text-xs text-slate-500">Untuk pendaftar walk-in langsung di Bank Sampah</p>
+                                </div>
+                            </div>
+                            <button onClick={() => setShowManualModal(false)} className="p-2 hover:bg-slate-100 rounded-lg transition">
+                                <X className="w-5 h-5 text-slate-400" />
+                            </button>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="col-span-2">
+                                <label className="text-xs font-bold text-slate-600 uppercase tracking-wide block mb-1">Nama Lengkap *</label>
+                                <input type="text" value={manualForm.fullName} onChange={(e) => setManualForm(f => ({...f, fullName: e.target.value}))} placeholder="Nama sesuai KTP" className="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-brand-200 focus:border-brand-300" />
+                            </div>
+                            <div>
+                                <label className="text-xs font-bold text-slate-600 uppercase tracking-wide block mb-1">NIK *</label>
+                                <input type="text" maxLength={16} value={manualForm.nik} onChange={(e) => setManualForm(f => ({...f, nik: e.target.value.replace(/\D/g, "")}))} placeholder="16 digit" className="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm font-mono focus:ring-2 focus:ring-brand-200 focus:border-brand-300" />
+                            </div>
+                            <div>
+                                <label className="text-xs font-bold text-slate-600 uppercase tracking-wide block mb-1">No. Telepon/WA *</label>
+                                <input type="text" value={manualForm.phone} onChange={(e) => setManualForm(f => ({...f, phone: e.target.value}))} placeholder="08xxxxxxxxxx" className="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-brand-200 focus:border-brand-300" />
+                            </div>
+                            <div>
+                                <label className="text-xs font-bold text-slate-600 uppercase tracking-wide block mb-1">Tempat Lahir</label>
+                                <input type="text" value={manualForm.birthPlace} onChange={(e) => setManualForm(f => ({...f, birthPlace: e.target.value}))} className="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-brand-200 focus:border-brand-300" />
+                            </div>
+                            <div>
+                                <label className="text-xs font-bold text-slate-600 uppercase tracking-wide block mb-1">Tanggal Lahir</label>
+                                <input type="date" value={manualForm.birthDate} onChange={(e) => setManualForm(f => ({...f, birthDate: e.target.value}))} className="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-brand-200 focus:border-brand-300" />
+                            </div>
+                            <div className="col-span-2">
+                                <label className="text-xs font-bold text-slate-600 uppercase tracking-wide block mb-1">Alamat KTP</label>
+                                <input type="text" value={manualForm.addressKtp} onChange={(e) => setManualForm(f => ({...f, addressKtp: e.target.value}))} className="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-brand-200 focus:border-brand-300" />
+                            </div>
+                            <div>
+                                <label className="text-xs font-bold text-slate-600 uppercase tracking-wide block mb-1">Kendaraan</label>
+                                <select value={manualForm.vehicleType} onChange={(e) => setManualForm(f => ({...f, vehicleType: e.target.value}))} className="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-brand-200 focus:border-brand-300 bg-white">
+                                    <option value="motor">Motor</option>
+                                    <option value="mobil_pickup">Mobil Pickup</option>
+                                    <option value="gerobak">Gerobak</option>
+                                    <option value="sepeda">Sepeda</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label className="text-xs font-bold text-slate-600 uppercase tracking-wide block mb-1">Plat Nomor</label>
+                                <input type="text" value={manualForm.vehiclePlate} onChange={(e) => setManualForm(f => ({...f, vehiclePlate: e.target.value.toUpperCase()}))} placeholder="DD 1234 XX" className="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm font-mono focus:ring-2 focus:ring-brand-200 focus:border-brand-300" />
+                            </div>
+                        </div>
+
+                        <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl flex items-start gap-2 text-xs text-amber-700">
+                            <AlertTriangle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+                            <p>Pendaftar offline akan masuk sebagai <b>"Menunggu Review"</b>. Anda dapat langsung menyetujui setelah disimpan.</p>
+                        </div>
+
+                        <div className="flex gap-3">
+                            <button onClick={() => setShowManualModal(false)} className="flex-1 py-3 text-sm font-medium text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-xl transition">
+                                Batal
+                            </button>
+                            <button
+                                onClick={handleManualRegister}
+                                disabled={manualSubmitting}
+                                className="flex-1 py-3 text-sm font-bold text-white bg-brand-600 hover:bg-brand-500 disabled:opacity-50 rounded-xl transition flex items-center justify-center gap-2"
+                            >
+                                {manualSubmitting ? <><div className="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> Menyimpan...</> : <><Plus className="w-4 h-4" /> Simpan Pendaftaran</>}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }
@@ -399,8 +584,18 @@ function ApplicationCard({
                         <span className="text-xs text-slate-400 flex items-center gap-1"><Truck className="w-3 h-3" /> {VEHICLE_LABELS[app.vehicle_type] || app.vehicle_type}</span>
                     </div>
                 </div>
-                <span className="text-[10px] text-slate-400 flex-shrink-0">
+                <span className="text-[10px] text-slate-400 flex-shrink-0 flex flex-col items-end gap-0.5">
                     {new Date(app.created_at).toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" })}
+                    {app.source && app.source !== "online" && (
+                        <span className={`px-1.5 py-0.5 rounded text-[8px] font-bold ${app.source === "offline" ? "bg-slate-100 text-slate-500" : "bg-green-50 text-green-600"}`}>
+                            {app.source === "offline" ? "WALK-IN" : "WA BOT"}
+                        </span>
+                    )}
+                    {app.status === "pending" && app.expires_at && new Date(app.expires_at) < new Date() && (
+                        <span className="px-1.5 py-0.5 rounded text-[8px] font-bold bg-red-50 text-red-600 flex items-center gap-0.5">
+                            <Timer className="w-2.5 h-2.5" /> KADALUARSA
+                        </span>
+                    )}
                 </span>
                 {isExpanded ? <ChevronUp className="w-4 h-4 text-slate-400" /> : <ChevronDown className="w-4 h-4 text-slate-400" />}
             </button>

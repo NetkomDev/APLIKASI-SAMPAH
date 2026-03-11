@@ -225,9 +225,31 @@ User mengirim pesan ke Bot
 Sebagai ujung tombak interaksi lapangan, operasional Kurir mengombinasikan **WhatsApp** (untuk notifikasi instan) dan **Progressive Web App (PWA)** (untuk input data kompleks saat menjemput sampah).
 
 #### 3.6.1 Pendaftaran & Onboarding
-1. **Pendaftaran:** Akses registrasi kurir tidak dilepas ke publik secara bebas. Calon kurir mendaftar via form PWA/Web khusus atau mengisi data di admin.
-2. **Approval (Persetujuan):** Admin meninjau kelengkapan dokumen (KTP, SIM, STNK). Jika disetujui, admin merubah profilnya menjadi `role = courier` dan menetapkan area kerjanya (Geofencing operasional).
-3. **Aktivasi:** Begitu disetujui di sistem, bot WhatsApp akan otomatis mengirimkan pesan sambutan kerja beserta tautan masuk ke "Dashboard/PWA Khusus Kurir".
+1. **Pendaftaran Online (via WA/PWA):**
+   - Calon kurir mendaftar melalui Bot WhatsApp yang mengarahkan ke form PWA multi-step (`/courier/register`).
+   - Calon kurir wajib memilih **Bank Sampah tujuan** (`target_bank_sampah_id`) di formulir pendaftaran. Ini menentukan admin mana yang berhak melihat dan mengevaluasi lamarannya.
+   - Kuota armada per Bank Sampah dan per jenis kendaraan ditentukan oleh Super Admin via halaman Kuota Armada (`/superadmin/courier-quotas`).
+   - Form mencakup: Autentikasi Akun, Data Diri (NIK, TTL, Alamat), Jenis Kendaraan & Plat, dan Upload Dokumen (KTP, SIM, Selfie+KTP).
+   - Sumber pendaftaran dicatat (`source: 'online'`).
+2. **Pendaftaran Offline (Walk-In di Bank Sampah):**
+   - Admin Bank Sampah dapat mendaftarkan kurir yang datang langsung ke Bank Sampah melalui tombol **"Daftarkan Kurir (Offline)"** di halaman `/admin/couriers`.
+   - Form sederhana tanpa perlu upload dokumen (karena admin memverifikasi langsung secara fisik).
+   - Sumber pendaftaran dicatat (`source: 'offline'`).
+3. **Approval (Persetujuan):**
+   - Admin **hanya melihat** lamaran yang ditujukan ke cabang Bank Sampah-nya (isolasi data via `target_bank_sampah_id`).
+   - Admin meninjau kelengkapan dokumen, lalu klik **"Setujui Kurir"** atau **"Tolak"** (dengan wajib sertakan alasan penolakan).
+   - Saat disetujui: sistem otomatis generate kode kurir unik (`KUR-XXXX` via database function), update `profiles.role = 'courier'`, set `courier_status = 'active'`, dan membuat wallet kurir.
+4. **Tenggang Waktu (Expiry):**
+   - Setiap lamaran memiliki batas waktu (`expires_at`, default 7 hari setelah `created_at`).
+   - Jika admin tidak meninjau dalam waktu tersebut, lamaran ditandai **KADALUARSA** secara visual di dashboard.
+   - Kurir yang kadaluarsa dapat digantikan oleh pendaftar lain.
+5. **Aktivasi:**
+   - Begitu disetujui di sistem, bot WhatsApp akan otomatis mengirimkan pesan sambutan kerja beserta arahan untuk melapor ke Bank Sampah tempatnya mendaftar untuk pembekalan.
+   - Data kurir yang diterima dan yang mendaftar juga tampil di **Dashboard Pemerintah/Dinas** serta **Dashboard Super Admin** sebagai data valid untuk pengambilan kebijakan.
+6. **Visibilitas Data Kurir:**
+   - **Dashboard Admin Bank Sampah** (`/admin/fleet`): Melihat semua kurir aktif di cabangnya + lamaran baru.
+   - **Dashboard Pemerintah** (`/gov`): Melihat statistik agregasi kurir seluruh kabupaten (total aktif, pendaftar baru, komposisi armada per jenis kendaraan).
+   - **Dashboard Super Admin** (`/superadmin`): Melihat dan mengelola kuota armada, data kurir seluruh cabang.
 
 #### 3.6.2 Algoritma Notifikasi Tangkapan Order (Dispatch System)
 Sistem memiliki kontrol cerdas ("Smart Dispatch") ketika warga melakukan request jemputan (via WA/Web):

@@ -1,6 +1,40 @@
-import { BarChart3, TrendingUp, TrendingDown, Target, Building2, Droplets } from 'lucide-react';
+"use client";
+
+import { useEffect, useState } from 'react';
+import { supabase } from '@/infrastructure/config/supabase';
+import { BarChart3, TrendingUp, TrendingDown, Target, Building2, Droplets, Truck, Users, Clock, Bike, Car } from 'lucide-react';
 
 export default function GovPage() {
+    const [courierStats, setCourierStats] = useState({
+        active: 0, pending: 0, total: 0,
+        motor: 0, mobil_pickup: 0, gerobak: 0, sepeda: 0,
+    });
+
+    useEffect(() => {
+        const fetchStats = async () => {
+            // Active couriers
+            const { data: activeCouriers } = await supabase
+                .from('profiles').select('id, vehicle_type')
+                .eq('role', 'courier').eq('courier_status', 'active');
+
+            // Pending applications
+            const { count: pendingCount } = await supabase
+                .from('courier_applications').select('*', { count: 'exact', head: true })
+                .eq('status', 'pending');
+
+            const couriers = activeCouriers || [];
+            setCourierStats({
+                active: couriers.length,
+                pending: pendingCount || 0,
+                total: couriers.length + (pendingCount || 0),
+                motor: couriers.filter(c => c.vehicle_type === 'motor').length,
+                mobil_pickup: couriers.filter(c => c.vehicle_type === 'mobil_pickup').length,
+                gerobak: couriers.filter(c => c.vehicle_type === 'gerobak').length,
+                sepeda: couriers.filter(c => c.vehicle_type === 'sepeda').length,
+            });
+        };
+        fetchStats();
+    }, []);
     return (
         <div className="space-y-6">
             <div className="flex justify-between items-center mb-6">
@@ -76,6 +110,48 @@ export default function GovPage() {
                             </span>
                         </div>
                         <p className="text-xs text-slate-500 mt-2">Pencegahan pembusukan sampah organik di TPA.</p>
+                    </div>
+                </div>
+            </div>
+
+            {/* Fleet / Courier Statistics */}
+            <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6">
+                <div className="flex justify-between items-center mb-5">
+                    <div>
+                        <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2">
+                            <Truck className="w-5 h-5 text-brand-500" />
+                            Statistik Armada Kurir
+                        </h3>
+                        <p className="text-xs text-slate-500 mt-0.5">Seluruh unit Bank Sampah di kabupaten</p>
+                    </div>
+                </div>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div className="bg-emerald-50 border border-emerald-100 rounded-xl p-4 text-center">
+                        <Users className="w-5 h-5 text-emerald-600 mx-auto mb-2" />
+                        <p className="text-2xl font-black text-emerald-700">{courierStats.active}</p>
+                        <p className="text-xs font-semibold text-emerald-600 mt-1">Kurir Aktif</p>
+                    </div>
+                    <div className="bg-amber-50 border border-amber-100 rounded-xl p-4 text-center">
+                        <Clock className="w-5 h-5 text-amber-600 mx-auto mb-2" />
+                        <p className="text-2xl font-black text-amber-700">{courierStats.pending}</p>
+                        <p className="text-xs font-semibold text-amber-600 mt-1">Pendaftar Baru</p>
+                    </div>
+                    <div className="col-span-2 bg-slate-50 border border-slate-200 rounded-xl p-4">
+                        <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">Komposisi Armada</p>
+                        <div className="grid grid-cols-4 gap-2">
+                            {[
+                                { label: "Motor", count: courierStats.motor, icon: Bike, color: "text-blue-600" },
+                                { label: "Pickup", count: courierStats.mobil_pickup, icon: Car, color: "text-slate-600" },
+                                { label: "Gerobak", count: courierStats.gerobak, icon: Truck, color: "text-amber-600" },
+                                { label: "Sepeda", count: courierStats.sepeda, icon: Bike, color: "text-emerald-600" },
+                            ].map(v => (
+                                <div key={v.label} className="text-center">
+                                    <v.icon className={`w-4 h-4 ${v.color} mx-auto mb-1`} />
+                                    <p className="text-lg font-bold text-slate-800">{v.count}</p>
+                                    <p className="text-[10px] text-slate-500 font-medium">{v.label}</p>
+                                </div>
+                            ))}
+                        </div>
                     </div>
                 </div>
             </div>
