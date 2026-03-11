@@ -153,7 +153,7 @@ export default function PricingFinancePage() {
 
             <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
                 <div>
-                    <h1 className="text-2xl font-bold text-slate-900">Pricing & Finance</h1>
+                    <h1 className="text-2xl font-bold text-slate-900">Pencairan Dana</h1>
                     <p className="text-sm text-slate-500 mt-1">Kelola pencairan dana warga dan kurir (Withdrawal).</p>
                 </div>
             </div>

@@ -23,7 +23,8 @@ export default function InventoryPage() {
     const [isSubmitting, setIsSubmitting] = useState(false);
 
     // Form States
-    const [category, setCategory] = useState("Pupuk Organik");
+    const [outboundCategories, setOutboundCategories] = useState<{id: string, name: string}[]>([]);
+    const [category, setCategory] = useState("");
     const [weight, setWeight] = useState("");
     const [qualityGrade, setQualityGrade] = useState("Grade A (Premium)");
     const [batchNumber, setBatchNumber] = useState("");
@@ -41,6 +42,13 @@ export default function InventoryPage() {
         try {
             const { data: { user } } = await supabase.auth.getUser();
             if (!user) return;
+
+            // Fetch pricing categories
+            const { data: cats } = await supabase.from('commodity_prices').select('id, name').eq('trade_type', 'sell_to_market').order('name');
+            if (cats && cats.length > 0) {
+                setOutboundCategories(cats);
+                setCategory(cats[0].name);
+            }
 
             // Fetch profiles to get bank_sampah_id and role
             const { data: profile } = await supabase
@@ -179,12 +187,13 @@ export default function InventoryPage() {
                                 onChange={(e) => setCategory(e.target.value)}
                                 className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-700 font-medium focus:ring-2 focus:ring-brand-500 focus:border-brand-500"
                             >
-                                <option value="Pupuk Organik">Pupuk Organik (Kompos)</option>
-                                <option value="Cacah Plastik PET">Cacah Plastik PET</option>
-                                <option value="Plastik Daur Ulang">Plastik Daur Ulang</option>
-                                <option value="Kertas / Kardus Press">Kertas / Kardus Press</option>
-                                <option value="Beling / Kaca">Beling / Botol Kaca</option>
-                                <option value="Besi / Logam">Besi / Logam</option>
+                                {outboundCategories.length === 0 ? (
+                                    <option value="">Memuat kategori...</option>
+                                ) : (
+                                    outboundCategories.map(cat => (
+                                        <option key={cat.id} value={cat.name}>{cat.name}</option>
+                                    ))
+                                )}
                             </select>
                         </div>
 

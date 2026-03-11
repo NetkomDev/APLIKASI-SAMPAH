@@ -18,7 +18,7 @@ export function Sidebar({ role }: SidebarProps) {
         { name: 'Warga & Kurir', href: '/admin/fleet', icon: Users },
         { name: 'Fraud & Transaksi', href: '/admin/transactions', icon: PackageSearch },
         { name: 'Produksi & Gudang', href: '/admin/inventory', icon: PackageCheck },
-        { name: 'Pricing & Finance', href: '/admin/finance', icon: Settings },
+        { name: 'Pencairan Dana', href: '/admin/finance', icon: Settings },
     ];
 
     const govLinks = [
