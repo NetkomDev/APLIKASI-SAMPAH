@@ -32,9 +32,18 @@ export default function MarketAndPricingPage() {
     const [buyers, setBuyers] = useState<B2BBuyer[]>([]);
     const [loading, setLoading] = useState(true);
 
-    // Edit states
+    // Edit Commodity States
     const [editingPriceId, setEditingPriceId] = useState<string | null>(null);
-    const [editPriceValue, setEditPriceValue] = useState<number>(0);
+    const [editCommodityData, setEditCommodityData] = useState<Partial<CommodityPrice>>({});
+
+    // Add Commodity States
+    const [isAddingCommodity, setIsAddingCommodity] = useState(false);
+    const [newCommodity, setNewCommodity] = useState<Partial<CommodityPrice>>({ 
+        trade_type: 'buy_from_citizen', 
+        unit: 'kg', 
+        is_active: true,
+        category: 'organic'
+    });
 
     const [isAddingBuyer, setIsAddingBuyer] = useState(false);
     const [newBuyer, setNewBuyer] = useState<Partial<B2BBuyer>>({ status: 'active' });
@@ -60,11 +69,40 @@ export default function MarketAndPricingPage() {
         }
     };
 
-    const handleUpdatePrice = async (id: string) => {
+    const handleSaveCommodity = async () => {
+        try {
+            if (!newCommodity.name || !newCommodity.price_per_kg) {
+                alert("Harap lengkapi nama item dan harga.");
+                return;
+            }
+
+            const { error } = await supabase
+                .from('commodity_prices')
+                .insert([{
+                    ...newCommodity,
+                    price_per_kg: newCommodity.price_per_kg || 0
+                }]);
+
+            if (error) throw error;
+            setIsAddingCommodity(false);
+            setNewCommodity({ trade_type: 'buy_from_citizen', unit: 'kg', is_active: true, category: 'organic' });
+            fetchData();
+        } catch (error) {
+            console.error(error);
+            alert("Gagal menyimpan item");
+        }
+    };
+
+    const handleUpdateCommodity = async (id: string) => {
         try {
             const { error } = await supabase
                 .from('commodity_prices')
-                .update({ price_per_kg: editPriceValue, updated_at: new Date().toISOString() })
+                .update({ 
+                    name: editCommodityData.name,
+                    price_per_kg: editCommodityData.price_per_kg,
+                    category: editCommodityData.category,
+                    updated_at: new Date().toISOString() 
+                })
                 .eq('id', id);
 
             if (error) throw error;
@@ -72,7 +110,23 @@ export default function MarketAndPricingPage() {
             fetchData();
         } catch (error) {
             console.error(error);
-            alert("Gagal update harga");
+            alert("Gagal update item");
+        }
+    };
+
+    const handleDeleteCommodity = async (id: string) => {
+        if (!confirm("Apakah Anda yakin ingin menghapus item ini?")) return;
+        try {
+            const { error } = await supabase
+                .from('commodity_prices')
+                .delete()
+                .eq('id', id);
+
+            if (error) throw error;
+            fetchData();
+        } catch (error) {
+            console.error(error);
+            alert("Gagal menghapus item");
         }
     };
 
@@ -112,7 +166,7 @@ export default function MarketAndPricingPage() {
     };
 
     return (
-        <div className="space-y-6">
+        <div className="space-y-6 pb-20">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
                     <h1 className="text-2xl font-bold text-white tracking-tight">Market & Pricing</h1>
@@ -140,52 +194,98 @@ export default function MarketAndPricingPage() {
                 <div className="flex justify-center py-20"><div className="w-8 h-8 border-4 border-slate-700 border-t-brand-500 rounded-full animate-spin"></div></div>
             ) : activeTab === 'prices' ? (
                 <div className="space-y-6">
+                    <div className="flex justify-end p-2 border-b border-slate-800 pb-4">
+                        <button onClick={() => setIsAddingCommodity(true)} className="bg-brand-600 hover:bg-brand-500 text-white px-4 py-2 rounded-xl text-sm font-bold flex items-center gap-2 shadow-lg shadow-brand-500/20">
+                            <Plus className="w-4 h-4" /> Tambah Item Baru
+                        </button>
+                    </div>
+
                     {/* Beli Dari Warga */}
                     <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6">
                         <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
                             <Store className="w-5 h-5 text-emerald-400" /> Beli dari Warga (Inbound)
                         </h3>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            {prices.filter(p => p.trade_type === 'buy_from_citizen').map(price => (
-                                <div key={price.id} className="bg-slate-800 border border-slate-700/50 p-4 rounded-xl flex flex-col justify-between group">
-                                    <div className="flex justify-between items-start mb-4">
-                                        <div>
-                                            <p className="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1">{price.category}</p>
-                                            <h4 className="text-lg font-bold text-white">{price.name}</h4>
-                                        </div>
+                        {prices.filter(p => p.trade_type === 'buy_from_citizen').length === 0 ? (
+                            <p className="text-slate-500 text-center py-8 bg-slate-800/20 rounded-xl border border-dashed border-slate-700">Belum ada item komoditas inbound.</p>
+                        ) : (
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                {prices.filter(p => p.trade_type === 'buy_from_citizen').map(price => (
+                                    <div key={price.id} className="bg-slate-800 border border-slate-700/50 p-4 rounded-xl flex flex-col justify-between group relative overflow-hidden">
+                                        
+                                        {editingPriceId === price.id ? (
+                                            <div className="flex flex-col gap-3 h-full justify-between">
+                                                <div>
+                                                    <label className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Nama Item</label>
+                                                    <input 
+                                                        type="text" 
+                                                        value={editCommodityData.name || ''} 
+                                                        onChange={(e) => setEditCommodityData({...editCommodityData, name: e.target.value})}
+                                                        className="w-full bg-slate-950 border border-slate-700 text-white px-3 py-1.5 rounded-lg text-sm focus:outline-none focus:border-brand-500"
+                                                    />
+                                                </div>
+                                                <div className="flex gap-2">
+                                                    <div className="w-1/2">
+                                                        <label className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Kategori</label>
+                                                        <select 
+                                                            value={editCommodityData.category || ''} 
+                                                            onChange={(e) => setEditCommodityData({...editCommodityData, category: e.target.value})}
+                                                            className="w-full bg-slate-950 border border-slate-700 text-slate-300 px-3 py-1.5 rounded-lg text-sm focus:outline-none focus:border-brand-500"
+                                                        >
+                                                            <option value="organic">Organic</option>
+                                                            <option value="inorganic">Inorganic</option>
+                                                            <option value="processed">Processed</option>
+                                                            <option value="other">Other</option>
+                                                        </select>
+                                                    </div>
+                                                    <div className="w-1/2 relative">
+                                                        <label className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Harga (Rp)</label>
+                                                        <input 
+                                                            type="number" 
+                                                            value={editCommodityData.price_per_kg || ''} 
+                                                            onChange={(e) => setEditCommodityData({...editCommodityData, price_per_kg: Number(e.target.value)})}
+                                                            className="w-full bg-slate-950 border border-slate-700 text-white pl-3 pr-2 py-1.5 rounded-lg text-sm focus:outline-none focus:border-brand-500"
+                                                        />
+                                                    </div>
+                                                </div>
+                                                <div className="flex justify-end gap-2 mt-2 border-t border-slate-700 pt-3">
+                                                    <button onClick={() => setEditingPriceId(null)} className="flex-1 py-1.5 bg-slate-700 text-slate-300 hover:bg-slate-600 rounded-lg text-sm font-medium transition">Batal</button>
+                                                    <button onClick={() => handleUpdateCommodity(price.id)} className="flex-1 py-1.5 bg-emerald-600 text-white hover:bg-emerald-500 rounded-lg text-sm font-medium transition">Simpan</button>
+                                                </div>
+                                            </div>
+                                        ) : (
+                                            <>
+                                                <div className="flex justify-between items-start mb-4">
+                                                    <div>
+                                                        <p className="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1">{price.category}</p>
+                                                        <h4 className="text-lg font-bold text-white leading-tight">{price.name}</h4>
+                                                    </div>
+                                                </div>
+                                                <div className="flex justify-between items-end mt-4">
+                                                    <div>
+                                                        <span className="text-2xl font-mono font-bold text-brand-400">Rp {price.price_per_kg.toLocaleString('id-ID')}</span>
+                                                        <span className="text-sm font-medium text-slate-500 ml-1">/{price.unit}</span>
+                                                    </div>
+                                                    <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                        <button 
+                                                            onClick={() => { setEditingPriceId(price.id); setEditCommodityData(price); }}
+                                                            className="p-2 bg-slate-700 hover:bg-brand-600 text-white rounded-lg transition-colors"
+                                                        >
+                                                            <Edit className="w-4 h-4" />
+                                                        </button>
+                                                        <button 
+                                                            onClick={() => handleDeleteCommodity(price.id)}
+                                                            className="p-2 bg-slate-700 hover:bg-red-600 text-white rounded-lg transition-colors"
+                                                        >
+                                                            <Trash2 className="w-4 h-4" />
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            </>
+                                        )}
                                     </div>
-                                    
-                                    {editingPriceId === price.id ? (
-                                        <div className="flex items-center gap-2 mt-auto">
-                                            <div className="relative flex-1">
-                                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 font-medium text-sm">Rp</span>
-                                                <input 
-                                                    type="number" 
-                                                    value={editPriceValue} 
-                                                    onChange={(e) => setEditPriceValue(Number(e.target.value))}
-                                                    className="w-full bg-slate-950 border border-brand-500 text-white pl-9 pr-3 py-2 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-brand-500"
-                                                />
-                                            </div>
-                                            <button onClick={() => handleUpdatePrice(price.id)} className="p-2 bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 rounded-lg"><Check className="w-4 h-4" /></button>
-                                            <button onClick={() => setEditingPriceId(null)} className="p-2 bg-slate-700 text-slate-300 hover:bg-slate-600 rounded-lg"><X className="w-4 h-4" /></button>
-                                        </div>
-                                    ) : (
-                                        <div className="flex justify-between items-end mt-auto">
-                                            <div>
-                                                <span className="text-2xl font-mono font-bold text-brand-400">Rp {price.price_per_kg.toLocaleString('id-ID')}</span>
-                                                <span className="text-sm font-medium text-slate-500 ml-1">/{price.unit}</span>
-                                            </div>
-                                            <button 
-                                                onClick={() => { setEditingPriceId(price.id); setEditPriceValue(price.price_per_kg); }}
-                                                className="p-2 bg-slate-700 hover:bg-brand-600 text-white rounded-lg transition-colors opacity-0 group-hover:opacity-100"
-                                            >
-                                                <Edit className="w-4 h-4" />
-                                            </button>
-                                        </div>
-                                    )}
-                                </div>
-                            ))}
-                        </div>
+                                ))}
+                            </div>
+                        )}
                     </div>
 
                     {/* Jual Ke Market */}
@@ -193,47 +293,86 @@ export default function MarketAndPricingPage() {
                         <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
                             <Factory className="w-5 h-5 text-amber-400" /> Jual Keluar Gudang (Outbound)
                         </h3>
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                            {prices.filter(p => p.trade_type === 'sell_to_market').map(price => (
-                                <div key={price.id} className="bg-slate-800 border border-slate-700/50 p-4 rounded-xl flex flex-col justify-between group">
-                                    <div className="flex justify-between items-start mb-4">
-                                        <div>
-                                            <p className="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1">{price.category}</p>
-                                            <h4 className="text-base font-bold text-white">{price.name}</h4>
-                                        </div>
+                        {prices.filter(p => p.trade_type === 'sell_to_market').length === 0 ? (
+                            <p className="text-slate-500 text-center py-8 bg-slate-800/20 rounded-xl border border-dashed border-slate-700">Belum ada item komoditas outbound.</p>
+                        ) : (
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                {prices.filter(p => p.trade_type === 'sell_to_market').map(price => (
+                                    <div key={price.id} className="bg-slate-800 border border-slate-700/50 p-4 rounded-xl flex flex-col justify-between group relative overflow-hidden">
+                                        {editingPriceId === price.id ? (
+                                            <div className="flex flex-col gap-3 h-full justify-between">
+                                                <div>
+                                                    <label className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Nama Item</label>
+                                                    <input 
+                                                        type="text" 
+                                                        value={editCommodityData.name || ''} 
+                                                        onChange={(e) => setEditCommodityData({...editCommodityData, name: e.target.value})}
+                                                        className="w-full bg-slate-950 border border-slate-700 text-white px-3 py-1.5 rounded-lg text-sm focus:outline-none focus:border-brand-500"
+                                                    />
+                                                </div>
+                                                <div className="flex gap-2">
+                                                    <div className="w-1/2">
+                                                        <label className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Kategori</label>
+                                                        <select 
+                                                            value={editCommodityData.category || ''} 
+                                                            onChange={(e) => setEditCommodityData({...editCommodityData, category: e.target.value})}
+                                                            className="w-full bg-slate-950 border border-slate-700 text-slate-300 px-3 py-1.5 rounded-lg text-sm focus:outline-none focus:border-brand-500"
+                                                        >
+                                                            <option value="organic">Organic</option>
+                                                            <option value="inorganic">Inorganic</option>
+                                                            <option value="processed">Processed</option>
+                                                            <option value="other">Other</option>
+                                                        </select>
+                                                    </div>
+                                                    <div className="w-1/2 relative">
+                                                        <label className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Harga (Rp)</label>
+                                                        <input 
+                                                            type="number" 
+                                                            value={editCommodityData.price_per_kg || ''} 
+                                                            onChange={(e) => setEditCommodityData({...editCommodityData, price_per_kg: Number(e.target.value)})}
+                                                            className="w-full bg-slate-950 border border-slate-700 text-white pl-3 pr-2 py-1.5 rounded-lg text-sm focus:outline-none focus:border-brand-500"
+                                                        />
+                                                    </div>
+                                                </div>
+                                                <div className="flex justify-end gap-2 mt-2 border-t border-slate-700 pt-3">
+                                                    <button onClick={() => setEditingPriceId(null)} className="flex-1 py-1.5 bg-slate-700 text-slate-300 hover:bg-slate-600 rounded-lg text-sm font-medium transition">Batal</button>
+                                                    <button onClick={() => handleUpdateCommodity(price.id)} className="flex-1 py-1.5 bg-emerald-600 text-white hover:bg-emerald-500 rounded-lg text-sm font-medium transition">Simpan</button>
+                                                </div>
+                                            </div>
+                                        ) : (
+                                            <>
+                                                <div className="flex justify-between items-start mb-4">
+                                                    <div>
+                                                        <p className="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1">{price.category}</p>
+                                                        <h4 className="text-base font-bold text-white leading-tight">{price.name}</h4>
+                                                    </div>
+                                                </div>
+                                                <div className="flex justify-between items-end mt-4">
+                                                    <div>
+                                                        <span className="text-xl font-mono font-bold text-amber-400">Rp {price.price_per_kg.toLocaleString('id-ID')}</span>
+                                                        <span className="text-xs font-medium text-slate-500 ml-1">/{price.unit}</span>
+                                                    </div>
+                                                    <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                        <button 
+                                                            onClick={() => { setEditingPriceId(price.id); setEditCommodityData(price); }}
+                                                            className="p-2 bg-slate-700 hover:bg-amber-600 text-white rounded-lg transition-colors"
+                                                        >
+                                                            <Edit className="w-4 h-4" />
+                                                        </button>
+                                                        <button 
+                                                            onClick={() => handleDeleteCommodity(price.id)}
+                                                            className="p-2 bg-slate-700 hover:bg-red-600 text-white rounded-lg transition-colors"
+                                                        >
+                                                            <Trash2 className="w-4 h-4" />
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            </>
+                                        )}
                                     </div>
-                                    
-                                    {editingPriceId === price.id ? (
-                                        <div className="flex items-center gap-2 mt-auto">
-                                            <div className="relative flex-1">
-                                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 font-medium text-sm">Rp</span>
-                                                <input 
-                                                    type="number" 
-                                                    value={editPriceValue} 
-                                                    onChange={(e) => setEditPriceValue(Number(e.target.value))}
-                                                    className="w-full bg-slate-950 border border-brand-500 text-white pl-9 pr-3 py-2 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-brand-500"
-                                                />
-                                            </div>
-                                            <button onClick={() => handleUpdatePrice(price.id)} className="p-2 bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 rounded-lg"><Check className="w-4 h-4" /></button>
-                                            <button onClick={() => setEditingPriceId(null)} className="p-2 bg-slate-700 text-slate-300 hover:bg-slate-600 rounded-lg"><X className="w-4 h-4" /></button>
-                                        </div>
-                                    ) : (
-                                        <div className="flex justify-between items-end mt-auto">
-                                            <div>
-                                                <span className="text-xl font-mono font-bold text-amber-400">Rp {price.price_per_kg.toLocaleString('id-ID')}</span>
-                                                <span className="text-xs font-medium text-slate-500 ml-1">/{price.unit}</span>
-                                            </div>
-                                            <button 
-                                                onClick={() => { setEditingPriceId(price.id); setEditPriceValue(price.price_per_kg); }}
-                                                className="p-2 bg-slate-700 hover:bg-amber-600 text-white rounded-lg transition-colors opacity-0 group-hover:opacity-100"
-                                            >
-                                                <Edit className="w-4 h-4" />
-                                            </button>
-                                        </div>
-                                    )}
-                                </div>
-                            ))}
-                        </div>
+                                ))}
+                            </div>
+                        )}
                     </div>
                 </div>
             ) : (
@@ -294,6 +433,57 @@ export default function MarketAndPricingPage() {
                                     ))}
                                 </tbody>
                             </table>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Modal Add Commodity */}
+            {isAddingCommodity && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm">
+                    <div className="bg-slate-900 border border-slate-800 rounded-2xl shadow-xl w-full max-w-lg overflow-hidden flex flex-col max-h-[90vh]">
+                        <div className="px-6 py-4 border-b border-slate-800 flex justify-between items-center">
+                            <h3 className="font-bold text-white text-lg flex items-center gap-2"><Tag className="w-5 h-5 text-brand-400"/> Tambah Item Komoditas</h3>
+                            <button onClick={() => setIsAddingCommodity(false)} className="text-slate-400 hover:text-white"><X className="w-5 h-5"/></button>
+                        </div>
+                        <div className="p-6 overflow-y-auto space-y-5">
+                            <div>
+                                <label className="block text-xs font-bold text-slate-400 mb-1.5 uppercase">Tipe Ekosistem *</label>
+                                <select value={newCommodity.trade_type} onChange={e => setNewCommodity({...newCommodity, trade_type: e.target.value as any})} className="w-full bg-slate-950 border border-slate-800 rounded-xl text-white px-4 py-3 text-sm focus:border-brand-500 focus:outline-none">
+                                    <option value="buy_from_citizen">Inbound (Beli dari Warga Masyarakat)</option>
+                                    <option value="sell_to_market">Outbound (Jual Produksi ke Market B2B)</option>
+                                </select>
+                            </div>
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block text-xs font-bold text-slate-400 mb-1.5 uppercase">Kategori *</label>
+                                    <select value={newCommodity.category} onChange={e => setNewCommodity({...newCommodity, category: e.target.value})} className="w-full bg-slate-950 border border-slate-800 rounded-xl text-white px-4 py-3 text-sm focus:border-brand-500 focus:outline-none">
+                                        <option value="organic">Organic</option>
+                                        <option value="inorganic">Inorganic</option>
+                                        <option value="processed">Processed (Hasil Olahan)</option>
+                                        <option value="other">Lainnya</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-bold text-slate-400 mb-1.5 uppercase">Satuan *</label>
+                                    <input type="text" value={newCommodity.unit || ''} onChange={e => setNewCommodity({...newCommodity, unit: e.target.value})} className="w-full bg-slate-950 border border-slate-800 rounded-xl text-white px-4 py-3 text-sm focus:border-brand-500 focus:outline-none" placeholder="kg" />
+                                </div>
+                            </div>
+                            <div>
+                                <label className="block text-xs font-bold text-slate-400 mb-1.5 uppercase">Nama Item *</label>
+                                <input type="text" value={newCommodity.name || ''} onChange={e => setNewCommodity({...newCommodity, name: e.target.value})} className="w-full bg-slate-950 border border-slate-800 rounded-xl text-white px-4 py-3 text-sm focus:border-brand-500 focus:outline-none" placeholder="Contoh: Plastik PET / Besi Tua" />
+                            </div>
+                            <div>
+                                <label className="block text-xs font-bold text-slate-400 mb-1.5 uppercase">Harga Patokan (Rp) *</label>
+                                <div className="relative">
+                                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 font-bold text-sm">Rp</span>
+                                    <input type="number" min="0" value={newCommodity.price_per_kg || ''} onChange={e => setNewCommodity({...newCommodity, price_per_kg: Number(e.target.value)})} className="w-full bg-slate-950 border border-slate-800 rounded-xl text-white pl-10 pr-4 py-3 text-lg font-mono focus:border-brand-500 focus:outline-none shadow-inner" placeholder="0" />
+                                </div>
+                            </div>
+                        </div>
+                        <div className="px-6 py-4 border-t border-slate-800 bg-slate-950/50 flex justify-end gap-3">
+                            <button onClick={() => setIsAddingCommodity(false)} className="px-4 py-2 text-sm font-bold text-slate-400 hover:text-white transition">Batal</button>
+                            <button onClick={handleSaveCommodity} className="px-6 py-2.5 text-sm font-bold bg-brand-600 hover:bg-brand-500 text-white rounded-xl transition shadow-lg shadow-brand-500/20">Simpan Item Tarif</button>
                         </div>
                     </div>
                 </div>
