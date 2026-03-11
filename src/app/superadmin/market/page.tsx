@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/infrastructure/config/supabase";
 import { Tag, Factory, Plus, Edit, Trash2, Check, X, Search, BriefcaseBusiness, Store } from "lucide-react";
+import { useSuperAdminTheme, t } from "@/components/superadmin/ThemeProvider";
 
 interface CommodityPrice {
     id: string;
@@ -27,6 +28,8 @@ interface B2BBuyer {
 }
 
 export default function MarketAndPricingPage() {
+    const { theme } = useSuperAdminTheme();
+    const tk = t(theme);
     const [activeTab, setActiveTab] = useState<'prices' | 'buyers'>('prices');
     const [prices, setPrices] = useState<CommodityPrice[]>([]);
     const [buyers, setBuyers] = useState<B2BBuyer[]>([]);
@@ -169,8 +172,8 @@ export default function MarketAndPricingPage() {
         <div className="space-y-6 pb-20">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
-                    <h1 className="text-2xl font-bold text-white tracking-tight">Market & Pricing</h1>
-                    <p className="text-sm text-slate-400 mt-1">Kelola harga beli komunitas dan jaringan buyer B2B penjualan.</p>
+                    <h1 className={`text-2xl font-extrabold ${tk.textHeading} tracking-tight`}>Market & Pricing</h1>
+                    <p className={`text-sm ${tk.textSecondary} mt-1`}>Kelola harga beli komunitas dan jaringan buyer B2B penjualan.</p>
                 </div>
             </div>
 

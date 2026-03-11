@@ -3,8 +3,11 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/infrastructure/config/supabase";
 import { Settings, Save, LayoutTemplate, BriefcaseBusiness, CheckCircle2, AlertCircle } from "lucide-react";
+import { useSuperAdminTheme, t } from "@/components/superadmin/ThemeProvider";
 
 export default function SettingsPage() {
+    const { theme } = useSuperAdminTheme();
+    const tk = t(theme);
     const [settings, setSettings] = useState<Record<string, string>>({});
     const [isLoading, setIsLoading] = useState(true);
     const [isSaving, setIsSaving] = useState(false);
@@ -66,8 +69,8 @@ export default function SettingsPage() {
         <div className="space-y-6 max-w-4xl mx-auto">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
-                    <h1 className="text-2xl font-bold text-white tracking-tight">Pengaturan Sistem Utama</h1>
-                    <p className="text-sm text-slate-400 mt-1">Konfigurasi visual dan aturan operasional global aplikasi.</p>
+                    <h1 className={`text-2xl font-extrabold ${tk.textHeading} tracking-tight`}>Pengaturan Sistem Utama</h1>
+                    <p className={`text-sm ${tk.textSecondary} mt-1`}>Konfigurasi visual dan aturan operasional global aplikasi.</p>
                 </div>
                 <button
                     onClick={handleSave}

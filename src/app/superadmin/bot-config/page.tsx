@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/infrastructure/config/supabase";
 import { Bot, MessageSquare, Save, Settings as SettingsIcon, Smartphone, CheckCircle2, AlertCircle } from "lucide-react";
+import { useSuperAdminTheme, t } from "@/components/superadmin/ThemeProvider";
 
 interface WaMenuConfig {
     id: string;
@@ -19,6 +20,8 @@ interface SystemSetting {
 }
 
 export default function BotConfigPage() {
+    const { theme } = useSuperAdminTheme();
+    const tk = t(theme);
     const [menus, setMenus] = useState<WaMenuConfig[]>([]);
     const [settings, setSettings] = useState<Record<string, string>>({});
     const [isLoading, setIsLoading] = useState(true);
@@ -125,8 +128,8 @@ export default function BotConfigPage() {
         <div className="space-y-6">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <div>
-                    <h1 className="text-2xl font-bold text-white tracking-tight">Konfigurasi Bot WhatsApp</h1>
-                    <p className="text-sm text-slate-400 mt-1">Atur template pesan, menu respons otomatis, dan pantau status bot WhatsApp.</p>
+                    <h1 className={`text-2xl font-extrabold ${tk.textHeading} tracking-tight`}>Konfigurasi Bot WhatsApp</h1>
+                    <p className={`text-sm ${tk.textSecondary} mt-1`}>Atur template pesan, menu respons otomatis, dan pantau status bot WhatsApp.</p>
                 </div>
             </div>
 

@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/infrastructure/config/supabase";
 import { Building2, Plus, CheckCircle2, AlertCircle, Eye, EyeOff, Users, Shield, X, Edit2 } from "lucide-react";
+import { useSuperAdminTheme, t } from "@/components/superadmin/ThemeProvider";
 
 interface GovProfile {
     id: string;
@@ -20,6 +21,8 @@ interface BankSampahUnit {
 }
 
 export default function BankSampahUnitsPage() {
+    const { theme } = useSuperAdminTheme();
+    const tk = t(theme);
     const [govUser, setGovUser] = useState<GovProfile | null>(null);
     const [branches, setBranches] = useState<BankSampahUnit[]>([]);
 
@@ -202,8 +205,8 @@ export default function BankSampahUnitsPage() {
         <div className="space-y-8 max-w-6xl mx-auto pb-10">
             {/* Page Header */}
             <div>
-                <h1 className="text-2xl font-bold text-white tracking-tight">Kelola Cabang & Entitas Daerah</h1>
-                <p className="text-sm text-slate-400 mt-1">Sistem Teritorial 1 Kabupaten: Kelola Akun Tunggal Dinas DLH dan Jaringan Operasional Bank Sampah.</p>
+                <h1 className={`text-2xl font-extrabold ${tk.textHeading} tracking-tight`}>Kelola Cabang & Entitas Daerah</h1>
+                <p className={`text-sm ${tk.textSecondary} mt-1`}>Sistem Teritorial 1 Kabupaten: Kelola Akun Tunggal Dinas DLH dan Jaringan Operasional Bank Sampah.</p>
             </div>
 
             {/* Message Alert */}
@@ -224,13 +227,13 @@ export default function BankSampahUnitsPage() {
             ) : (
                 <>
                     {/* SECTION 1: GOV ACCOUNT (SINGLETON) */}
-                    <div className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden">
-                        <div className="bg-slate-800/50 px-6 py-4 flex items-center justify-between border-b border-slate-800">
+                    <div className={`${tk.cardBg} border rounded-2xl overflow-hidden transition-colors duration-300`}>
+                        <div className={`${tk.cardInner} px-6 py-4 flex items-center justify-between border-b`}>
                             <div className="flex items-center gap-3">
                                 <div className="p-2 bg-blue-500/10 rounded-lg">
                                     <Shield className="h-5 w-5 text-blue-400" />
                                 </div>
-                                <h2 className="text-base font-bold text-white">Akun Pemantau (Dinas LHK Kabupaten)</h2>
+                                <h2 className={`text-base font-bold ${tk.textPrimary}`}>Akun Pemantau (Dinas LHK Kabupaten)</h2>
                             </div>
                             {!isEditingGov && (
                                 <button onClick={() => handleOpenGovForm(!!govUser)} className="text-sm font-semibold text-brand-400 hover:text-brand-300 transition flex items-center gap-1.5 px-3 py-1.5 rounded-lg hover:bg-slate-800">
@@ -256,13 +259,13 @@ export default function BankSampahUnitsPage() {
                                     </div>
                                 </div>
                             ) : govUser ? (
-                                <div className="flex items-center gap-4 bg-slate-800/20 p-4 rounded-xl border border-slate-700/50">
-                                    <div className="h-12 w-12 rounded-full border-2 border-slate-700 bg-slate-800 flex items-center justify-center text-slate-400 font-bold">
+                                <div className={`flex items-center gap-4 ${tk.cardInner} p-4 rounded-xl border transition-colors duration-300`}>
+                                    <div className="h-12 w-12 rounded-full border-2 border-brand-300 bg-gradient-to-br from-brand-500 to-emerald-600 flex items-center justify-center text-white font-bold">
                                         {govUser.full_name.substring(0, 2).toUpperCase()}
                                     </div>
                                     <div>
-                                        <h3 className="text-white font-bold">{govUser.full_name}</h3>
-                                        <p className="text-sm text-brand-400">{govUser.phone_number || "Nomor WA belum diisi"}</p>
+                                        <h3 className={`${tk.textPrimary} font-bold`}>{govUser.full_name}</h3>
+                                        <p className="text-sm text-brand-500">{govUser.phone_number || "Nomor WA belum diisi"}</p>
                                     </div>
                                 </div>
                             ) : (
@@ -276,8 +279,8 @@ export default function BankSampahUnitsPage() {
                     {/* SECTION 2: BRANCHES (BANK SAMPAH) */}
                     <div className="space-y-4">
                         <div className="flex items-center justify-between pt-4">
-                            <h2 className="text-lg font-bold text-white flex items-center gap-2">
-                                <Building2 className="h-5 w-5 text-brand-400" /> Daftar Unit Bank Sampah
+                            <h2 className={`text-lg font-extrabold ${tk.textHeading} flex items-center gap-2`}>
+                                <Building2 className="h-5 w-5 text-brand-500" /> Daftar Unit Bank Sampah
                             </h2>
                             <button onClick={() => setShowBranchForm(!showBranchForm)} className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-emerald-600/10 hover:bg-emerald-600/20 text-emerald-400 font-bold text-sm transition border border-emerald-500/20">
                                 {showBranchForm ? <><X className="h-4 w-4" /> Batal</> : <><Plus className="h-4 w-4" /> Tambah Cabang</>}
@@ -285,10 +288,10 @@ export default function BankSampahUnitsPage() {
                         </div>
 
                         {showBranchForm && (
-                            <div className="bg-slate-900 border border-brand-500/30 rounded-2xl p-6 space-y-6 animate-in fade-in slide-in-from-top-4 duration-300">
+                            <div className={`${tk.cardBg} border border-brand-500/30 rounded-2xl p-6 space-y-6 animate-in fade-in slide-in-from-top-4 duration-300 transition-colors`}>
                                 <div className="flex justify-between items-center mb-4">
-                                    <h3 className="text-base font-bold text-white flex items-center gap-2">
-                                        <Building2 className="h-5 w-5 text-slate-400" /> {editingBranch ? 'Edit Data Cabang' : 'Pendaftaran Cabang Baru'}
+                                    <h3 className={`text-base font-bold ${tk.textPrimary} flex items-center gap-2`}>
+                                        <Building2 className="h-5 w-5 text-brand-500" /> {editingBranch ? 'Edit Data Cabang' : 'Pendaftaran Cabang Baru'}
                                     </h3>
                                     {editingBranch && (
                                         <div className="flex items-center gap-3">
@@ -308,7 +311,7 @@ export default function BankSampahUnitsPage() {
                                 <div className="border-t border-slate-800" />
 
                                 <div>
-                                    <h3 className="text-sm font-bold text-white flex items-center gap-2 mb-4">
+                                    <h3 className={`text-sm font-bold ${tk.textPrimary} flex items-center gap-2 mb-4`}>
                                         <Users className="h-4 w-4 text-emerald-400" /> Profil Akun Kepala/Operator Cabang
                                     </h3>
                                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -327,20 +330,20 @@ export default function BankSampahUnitsPage() {
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             {branches.length === 0 ? (
-                                <div className="col-span-1 md:col-span-2 bg-slate-900 border border-slate-800 rounded-2xl p-12 text-center">
-                                    <Building2 className="h-12 w-12 text-slate-700 mx-auto mb-4" />
-                                    <p className="text-slate-400 font-medium">Belum ada cabang Bank Sampah.</p>
+                                <div className={`col-span-1 md:col-span-2 ${tk.cardBg} border rounded-2xl p-12 text-center transition-colors`}>
+                                    <Building2 className="h-12 w-12 text-slate-400 mx-auto mb-4" />
+                                    <p className={`${tk.textSecondary} font-medium`}>Belum ada cabang Bank Sampah.</p>
                                 </div>
                             ) : (
                                 branches.map((b) => (
-                                    <div key={b.id} className="bg-slate-900 border border-slate-800 rounded-2xl p-5 hover:border-slate-700 transition relative group">
+                                    <div key={b.id} className={`${tk.cardBg} border rounded-2xl p-5 ${tk.hoverCard} transition-all relative group`}>
                                         <button onClick={() => handleOpenBranchForm(b)} className="absolute top-4 right-4 p-2 bg-slate-800 rounded-lg text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity hover:text-brand-400 hover:bg-slate-700">
                                             <Edit2 className="h-4 w-4" />
                                         </button>
 
                                         <div className="flex justify-between items-start mb-4 pr-10">
                                             <div>
-                                                <h3 className="text-base font-bold text-white capitalize">{b.name}</h3>
+                                                <h3 className={`text-base font-bold ${tk.textPrimary} capitalize`}>{b.name}</h3>
                                                 {b.description && <p className="text-xs text-slate-500 mt-0.5">{b.description}</p>}
                                             </div>
                                             <span className={`px-2 py-1 text-[10px] font-bold uppercase rounded-md ${b.is_active ? 'bg-emerald-500/10 text-emerald-400' : 'bg-slate-800 text-slate-500'}`}>
@@ -348,11 +351,11 @@ export default function BankSampahUnitsPage() {
                                             </span>
                                         </div>
 
-                                        <div className="bg-slate-800/40 p-3 rounded-xl border border-slate-800">
-                                            <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2 flex items-center gap-1.5"><Users className="h-3 w-3" /> Info Operator</p>
+                                        <div className={`${tk.cardInner} p-3 rounded-xl border transition-colors`}>
+                                            <p className={`text-[10px] font-bold ${tk.textMuted} uppercase tracking-wider mb-2 flex items-center gap-1.5`}><Users className="h-3 w-3" /> Info Operator</p>
                                             {b.admin_profiles?.map((adm, i) => (
                                                 <div key={i} className="flex flex-col">
-                                                    <span className="text-sm font-semibold text-slate-200">{adm.full_name}</span>
+                                                    <span className={`text-sm font-semibold ${tk.textPrimary}`}>{adm.full_name}</span>
                                                     <span className="text-xs text-brand-500">{adm.phone_number || "WA tidak tersedia"}</span>
                                                 </div>
                                             ))}
@@ -374,11 +377,13 @@ export default function BankSampahUnitsPage() {
 function InputField({ label, placeholder, value, onChange, type = "text" }: {
     label: string; placeholder: string; value: string; onChange: (v: string) => void; type?: string;
 }) {
+    const { theme } = useSuperAdminTheme();
+    const tk = t(theme);
     return (
         <div className="space-y-1.5">
-            <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">{label}</label>
+            <label className={`text-xs font-semibold ${tk.textSecondary} uppercase tracking-wider`}>{label}</label>
             <input type={type} placeholder={placeholder} value={value} onChange={(e) => onChange(e.target.value)}
-                className="w-full px-4 py-3 bg-slate-800/50 rounded-xl border border-slate-700 text-sm text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:border-brand-500/50 transition-colors" />
+                className={`w-full px-4 py-3 rounded-xl border text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/30 focus:border-brand-500/50 transition-colors ${tk.inputBg}`} />
         </div>
     );
 }
@@ -386,12 +391,14 @@ function InputField({ label, placeholder, value, onChange, type = "text" }: {
 function PasswordField({ label, value, onChange, show, toggle }: {
     label: string; value: string; onChange: (v: string) => void; show: boolean; toggle: () => void;
 }) {
+    const { theme } = useSuperAdminTheme();
+    const tk = t(theme);
     return (
         <div className="space-y-1.5">
-            <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">{label}</label>
+            <label className={`text-xs font-semibold ${tk.textSecondary} uppercase tracking-wider`}>{label}</label>
             <div className="relative">
                 <input type={show ? "text" : "password"} placeholder="Ketik Sandi Login" value={value} onChange={(e) => onChange(e.target.value)}
-                    className="w-full px-4 pr-12 py-3 bg-slate-800/50 rounded-xl border border-slate-700 text-sm text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:border-brand-500/50 transition-colors" />
+                    className={`w-full px-4 pr-12 py-3 rounded-xl border text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/30 focus:border-brand-500/50 transition-colors ${tk.inputBg}`} />
                 <button type="button" onClick={toggle} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 hover:text-brand-400 transition" tabIndex={-1}>
                     {show ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>

@@ -6,8 +6,9 @@ import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
 import {
     Shield, Users, Settings, LogOut, ChevronRight,
-    Building2, Bot, BarChart3, Leaf, Menu, X, Truck, Store
+    Building2, Bot, BarChart3, Leaf, Menu, X, Truck, Store, Sun, Moon
 } from "lucide-react";
+import { SuperAdminThemeProvider, useSuperAdminTheme, t } from "@/components/superadmin/ThemeProvider";
 
 const sidebarItems = [
     { href: "/superadmin", label: "Dashboard", icon: BarChart3 },
@@ -19,28 +20,27 @@ const sidebarItems = [
 ];
 
 export default function SuperAdminLayout({ children }: { children: ReactNode }) {
+    return (
+        <SuperAdminThemeProvider>
+            <InnerLayout>{children}</InnerLayout>
+        </SuperAdminThemeProvider>
+    );
+}
+
+function InnerLayout({ children }: { children: ReactNode }) {
     const router = useRouter();
     const pathname = usePathname();
+    const { theme, toggleTheme } = useSuperAdminTheme();
+    const tk = t(theme);
     const [loading, setLoading] = useState(true);
     const [sidebarOpen, setSidebarOpen] = useState(false);
 
     useEffect(() => {
         const checkAuth = async () => {
             const { data: { session } } = await supabase.auth.getSession();
-            if (!session) {
-                router.push("/portal");
-                return;
-            }
-            const { data: profile } = await supabase
-                .from("profiles")
-                .select("role")
-                .eq("id", session.user.id)
-                .single();
-
-            if (!profile || profile.role !== "superadmin") {
-                router.push("/portal");
-                return;
-            }
+            if (!session) { router.push("/portal"); return; }
+            const { data: profile } = await supabase.from("profiles").select("role").eq("id", session.user.id).single();
+            if (!profile || profile.role !== "superadmin") { router.push("/portal"); return; }
             setLoading(false);
         };
         checkAuth();
@@ -53,31 +53,31 @@ export default function SuperAdminLayout({ children }: { children: ReactNode }) 
 
     if (loading) {
         return (
-            <div className="min-h-screen bg-slate-900 flex items-center justify-center">
-                <div className="h-8 w-8 border-2 border-brand-400/30 border-t-brand-400 rounded-full animate-spin" />
+            <div className={`min-h-screen ${tk.loaderBg} flex items-center justify-center`}>
+                <div className={`h-8 w-8 border-2 ${tk.loaderColor} rounded-full animate-spin`} />
             </div>
         );
     }
 
     return (
-        <div className="min-h-screen bg-slate-950 flex">
+        <div data-sa-theme={theme} className={`min-h-screen ${tk.pageBg} flex transition-colors duration-300`}>
             {/* Mobile overlay */}
             {sidebarOpen && (
-                <div className="fixed inset-0 bg-black/60 z-40 lg:hidden" onClick={() => setSidebarOpen(false)} />
+                <div className={`fixed inset-0 ${tk.overlayBg} z-40 lg:hidden`} onClick={() => setSidebarOpen(false)} />
             )}
 
             {/* Sidebar */}
-            <aside className={`fixed lg:static inset-y-0 left-0 z-50 w-72 bg-slate-900 border-r border-slate-800 flex flex-col transform transition-transform duration-300 lg:translate-x-0 ${sidebarOpen ? "translate-x-0" : "-translate-x-full"}`}>
+            <aside className={`fixed lg:static inset-y-0 left-0 z-50 w-72 ${tk.sidebarBg} border-r flex flex-col transform transition-all duration-300 lg:translate-x-0 ${sidebarOpen ? "translate-x-0" : "-translate-x-full"}`}>
                 {/* Sidebar Header */}
-                <div className="h-20 px-6 flex items-center gap-3 border-b border-slate-800">
-                    <div className="bg-brand-500/20 p-2.5 rounded-xl border border-brand-500/30">
-                        <Shield className="h-5 w-5 text-brand-400" />
+                <div className={`h-20 px-6 flex items-center gap-3 border-b ${tk.sidebarSep}`}>
+                    <div className={`p-2.5 rounded-xl border ${tk.sidebarIcon}`}>
+                        <Shield className="h-5 w-5" />
                     </div>
                     <div>
-                        <h1 className="text-sm font-bold text-white tracking-tight">Super Admin</h1>
-                        <p className="text-[11px] text-slate-500">Beres | Benahi Residu Sampah</p>
+                        <h1 className={`text-sm font-bold ${tk.sidebarTitle} tracking-tight`}>Super Admin</h1>
+                        <p className={`text-[11px] ${tk.sidebarSubtitle}`}>Beres | Benahi Residu Sampah</p>
                     </div>
-                    <button onClick={() => setSidebarOpen(false)} className="ml-auto lg:hidden text-slate-500 hover:text-white">
+                    <button onClick={() => setSidebarOpen(false)} className={`ml-auto lg:hidden ${tk.sidebarText} hover:text-slate-800`}>
                         <X className="h-5 w-5" />
                     </button>
                 </div>
@@ -91,10 +91,7 @@ export default function SuperAdminLayout({ children }: { children: ReactNode }) 
                                 key={item.href}
                                 href={item.href}
                                 onClick={() => setSidebarOpen(false)}
-                                className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all ${isActive
-                                    ? "bg-brand-500/10 text-brand-400 border border-brand-500/20"
-                                    : "text-slate-400 hover:bg-slate-800 hover:text-white"
-                                    }`}
+                                className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all ${isActive ? `${tk.sidebarActive} border` : `${tk.sidebarText} ${tk.sidebarHover}`}`}
                             >
                                 <item.icon className="h-5 w-5" />
                                 {item.label}
@@ -105,10 +102,10 @@ export default function SuperAdminLayout({ children }: { children: ReactNode }) 
                 </nav>
 
                 {/* Logout */}
-                <div className="px-4 py-4 border-t border-slate-800">
+                <div className={`px-4 py-4 border-t ${tk.sidebarSep}`}>
                     <button
                         onClick={handleLogout}
-                        className="flex items-center gap-3 w-full px-4 py-3 rounded-xl text-sm font-medium text-red-400 hover:bg-red-500/10 transition-all"
+                        className={`flex items-center gap-3 w-full px-4 py-3 rounded-xl text-sm font-medium ${tk.btnDanger} transition-all`}
                     >
                         <LogOut className="h-5 w-5" />
                         Keluar
@@ -119,14 +116,37 @@ export default function SuperAdminLayout({ children }: { children: ReactNode }) 
             {/* Main Content */}
             <div className="flex-1 flex flex-col min-w-0">
                 {/* Top Bar */}
-                <header className="h-20 px-6 flex items-center border-b border-slate-800 bg-slate-900/50 backdrop-blur-md sticky top-0 z-30">
-                    <button onClick={() => setSidebarOpen(true)} className="lg:hidden mr-4 text-slate-400 hover:text-white">
-                        <Menu className="h-6 w-6" />
-                    </button>
-                    <div className="flex items-center gap-2">
-                        <Leaf className="h-5 w-5 text-brand-400" />
-                        <span className="text-sm font-bold text-white">Panel Kontrol Sistem</span>
+                <header className={`h-16 px-6 flex items-center justify-between border-b ${tk.headerBg} backdrop-blur-xl sticky top-0 z-30 transition-colors duration-300`}>
+                    <div className="flex items-center gap-3">
+                        <button onClick={() => setSidebarOpen(true)} className={`lg:hidden mr-2 ${tk.textSecondary}`}>
+                            <Menu className="h-6 w-6" />
+                        </button>
+                        <Leaf className="h-5 w-5 text-brand-500" />
+                        <span className={`text-sm font-bold ${tk.textPrimary}`}>Panel Kontrol Sistem</span>
                     </div>
+
+                    {/* Theme Toggle */}
+                    <button
+                        onClick={toggleTheme}
+                        className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all duration-300 ${
+                            theme === "dark"
+                                ? "bg-amber-500/10 text-amber-400 border border-amber-500/20 hover:bg-amber-500/20"
+                                : "bg-slate-800 text-slate-200 border border-slate-700 hover:bg-slate-700"
+                        }`}
+                        title={theme === "dark" ? "Ganti ke Tema Terang" : "Ganti ke Tema Gelap"}
+                    >
+                        {theme === "dark" ? (
+                            <>
+                                <Sun className="h-4 w-4" />
+                                <span className="hidden sm:inline">Tema Terang</span>
+                            </>
+                        ) : (
+                            <>
+                                <Moon className="h-4 w-4" />
+                                <span className="hidden sm:inline">Tema Gelap</span>
+                            </>
+                        )}
+                    </button>
                 </header>
 
                 {/* Page Content */}

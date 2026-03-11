@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/infrastructure/config/supabase";
 import { Truck, MapPin, Bike, Car, Save, Loader2, AlertCircle, CheckCircle2 } from "lucide-react";
+import { useSuperAdminTheme, t } from "@/components/superadmin/ThemeProvider";
 
 interface CourierQuota {
     id?: string;
@@ -25,6 +26,8 @@ const VEHICLES = [
 ];
 
 export default function CourierQuotasPage() {
+    const { theme } = useSuperAdminTheme();
+    const tk = t(theme);
     const [bankUnits, setBankUnits] = useState<BankSampah[]>([]);
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
@@ -148,11 +151,11 @@ export default function CourierQuotasPage() {
             {/* Header */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
-                    <h1 className="text-2xl font-bold tracking-tight text-white flex items-center gap-2">
-                        <Truck className="h-6 w-6 text-brand-400" />
+                    <h1 className={`text-2xl font-extrabold tracking-tight ${tk.textHeading} flex items-center gap-2`}>
+                        <Truck className="h-6 w-6 text-brand-500" />
                         Kuota Kurir per Cabang
                     </h1>
-                    <p className="text-slate-400 mt-1 text-sm">
+                    <p className={`${tk.textSecondary} mt-1 text-sm`}>
                         Atur jumlah maksimal armada yang diziinkan untuk setiap Cabang Bank Sampah.
                     </p>
                 </div>
@@ -182,10 +185,10 @@ export default function CourierQuotasPage() {
             )}
 
             {/* Table / Grid */}
-            <div className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-xl">
+            <div className={`${tk.cardBg} border rounded-2xl overflow-hidden shadow-sm transition-colors duration-300`}>
                 <div className="overflow-x-auto">
-                    <table className="w-full text-left text-sm text-slate-300">
-                        <thead className="bg-slate-800/50 text-slate-400 text-xs uppercase font-semibold">
+                    <table className={`w-full text-left text-sm ${tk.textSecondary}`}>
+                        <thead className={`${tk.cardInner} text-xs uppercase font-semibold`}>
                             <tr>
                                 <th className="px-6 py-4 rounded-tl-2xl">
                                     <div className="flex items-center gap-2">
@@ -204,8 +207,8 @@ export default function CourierQuotasPage() {
                         </thead>
                         <tbody className="divide-y divide-slate-800">
                             {bankUnits.map((bank) => (
-                                <tr key={bank.id} className="hover:bg-slate-800/30 transition-colors">
-                                    <td className="px-6 py-4 font-medium text-white max-w-[200px] truncate">
+                                <tr key={bank.id} className="hover:bg-brand-50/5 transition-colors">
+                                    <td className={`px-6 py-4 font-medium ${tk.textPrimary} max-w-[200px] truncate`}>
                                         {bank.name}
                                     </td>
                                     {VEHICLES.map((v) => {
@@ -217,7 +220,7 @@ export default function CourierQuotasPage() {
                                                     min={0}
                                                     value={q}
                                                     onChange={(e) => handleQuotaChange(bank.id, bank.name, v.type, parseInt(e.target.value) || 0)}
-                                                    className="w-20 text-center px-3 py-2 bg-slate-950 border border-slate-700 rounded-lg text-white focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500/50 transition-all font-medium"
+                                                    className={`w-20 text-center px-3 py-2 rounded-lg font-medium focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500/50 transition-all ${tk.inputBg}`}
                                                 />
                                             </td>
                                         );
