@@ -66,31 +66,10 @@
 
 /* ── SuperAdmin Light Theme Override ────────────────────────── */
 /* When data-sa-theme="light", remap Tailwind slate-dark utilities
-   to light equivalents using Tailwind @theme overrides.
-   This lets ALL existing pages instantly support light mode. */
-[data-sa-theme="light"] {
-  --color-slate-50: #f8fafc;
-  --color-slate-100: #f1f5f9;
-  
-  /* Text colors that used to be light, need to be dark against light bg */
-  --color-slate-200: #0f172a;
-  --color-slate-300: #1e293b;
-  --color-slate-400: #334155;
-  --color-slate-500: #475569;
-  
-  /* Border colors that were dark, need to be light */
-  --color-slate-600: #cbd5e1;
-  --color-slate-700: #e2e8f0;
-  
-  /* Background colors that were dark, need to be light */
-  --color-slate-800: #f1f5f9;
-  --color-slate-850: #f8fafc;
-  --color-slate-900: #ffffff;
-  --color-slate-950: #f8fafc;
-}
-
+   to light equivalents using explicit utility overrides.
+   This avoids "--color-slate" variable collisions that ruined text colors. */
 [data-sa-theme="light"] .text-white {
-  color: #0f172a !important;
+  color: #000000 !important;
 }
 
 [data-sa-theme="light"] .bg-slate-950 {
@@ -132,9 +111,9 @@
 [data-sa-theme="light"] .bg-slate-950 select,
 [data-sa-theme="light"] input.bg-slate-950,
 [data-sa-theme="light"] select.bg-slate-950 {
-  background-color: #f8fafc !important;
+  background-color: #ffffff !important;
   color: #0f172a !important;
-  border-color: #e2e8f0 !important;
+  border-color: #cbd5e1 !important;
 }
 
 [data-sa-theme="light"] .border-slate-800,
@@ -147,17 +126,18 @@
   border-color: #e2e8f0 !important;
 }
 
+/* Explicit deeply-contrasted text overrides for any legacy pages */
 [data-sa-theme="light"] .text-slate-200,
 [data-sa-theme="light"] .text-slate-300 {
-  color: #1e293b !important;
+  color: #0f172a !important;
 }
 
 [data-sa-theme="light"] .text-slate-400 {
-  color: #334155 !important;
+  color: #1e293b !important;
 }
 
 [data-sa-theme="light"] .text-slate-500 {
-  color: #475569 !important;
+  color: #334155 !important;
 }
 
 [data-sa-theme="light"] .divide-slate-800 > :not([hidden]) ~ :not([hidden]) {
