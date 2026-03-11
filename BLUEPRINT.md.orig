@@ -71,13 +71,13 @@ Kabupaten memiliki beberapa titik Bank Sampah. Setiap admin yang login akan meli
 1. **Pusat Registrasi & Manajemen Kurir Fleet**
    - Para Kurir mendaftar/terafiliasi ke salah satu unit Bank Sampah terdekat.
    - Admin Bank Sampah dapat memverifikasi berkas kurir, memvalidasi kuota, dan memantau armada kurirnya sendiri.
-2. **Pos Pintu Masuk (Penerimaan Setoran Muatan Kurir)**
-   - Saat menjemput, Kurir men-scan QR, menimbang, dan memberi nilai kualitas setiap kantong/wadah warga. Setelah muatan tercampur di bagasi kurir, Kurir membuat **Faktur Setoran (Manifest/Deposit)** menuju Bank Sampah.
-   - Admin Bank Sampah tidak lagi mengaudit timbangan warga satu-persatu. Admin hanya menimbang ulang total muatan bulk/keseluruhan (Organik/Anorganik) dari armada kurir tersebut yang tiba di gudang.
-   - Jika *Total Timbangan Gudang* vs *Total Klaim Warga yang dikumpulkan Kurir* memiliki selisih merugikan ekstrem (meleset jauh), sistem mencatat *Discrepancy* (Selisih) sebagai Rapor Merah kurir (evaluasi internal Bank Sampah).
-3. **Pusat Transaksi & Pembayaran Warga/Kurir**
-   - Transaksi Warga (Status: **Picked Up**) otomatis diakui nilainya sesaat setelah kurir mem-validasi di pintu rumah warga, menghidari protes warga terhadap timbangan akhir gudang.
-   - Hak Komisi Kurir (Upah Tarik) baru dijatuhkan (cair/approved) setelah Admin Bank Sampah menyetujui *Faktur Setoran (Deposit)* milik Kurir tersebut di Pintu Masuk Gudang.
+2. **Pos Pintu Masuk (Penerimaan Sampah Mentah)**
+   - Akses loket cepat bagi Admin untuk men-Scan QR Code milik rumah Warga / Kurir yang datang menyerahkan sampah.
+   - Melacak sumber sampah secara akurat berdasarkan identitas asli akun warga (Traceability).
+   - Memasukkan data spesifik masuk: Kategori (Metrial Mentah), Total Berat Aktual (Timbangan), dan Kualitas Pilahan Warga.
+3. **Pusat Transaksi & Anti-Fraud**
+   - Memantau dasbor antrian serahan kurir yang tiba di unit Bank Sampahnya.
+   - Memvalidasi kewajaran timbangan lapangan dengan timbangan gudang, serta mengeksekusi konversi ke nilai moneter (pencairan ke e-Wallet warga/kurir).
 4. **Produksi & Gudang (Inventory Tracker)**
    - Saat sampah mentah diolah (misal dicacah/dikompos), Admin Bank Sampah bertugas mencatat input "Barang Jadi / Output Gudang" milik unit mereka.
    - Data produksi unit inilah yang nantinya ditarik secara global untuk ditonton oleh Gov dan SuperAdmin.
@@ -244,10 +244,8 @@ Untuk mencegah *fraud* dan mempermudah pencatatan yang akurat, eksekusi timbanga
 1. **Validasi Warga:** Kurir tiba di rumah warga, lalu men-*scan* QR Code unik warga via HP Kurir (atau warga memunculkan QR Code dari dashboard).
 2. **Geo-Location Check:** Sistem langsung mencatat koordinat kurir saat membuka form timbangan (Jika meleset > 50 meter dari alamat warga, sistem memberi *Red Flag / Fraud Alert*).
 3. **Pencatatan Presisi:** Kurir menimbang lalu memisahkan data input (Misal: 3 kg Plastik, 2 kg Kertas) pada aplikasi HP.
-4. **Validasi Bukti (Upload):** Kurir wajib memotret bukti angka timbangan dan kondisi sampah warga (`transaction`). Data masuk ke sistem dengan status `Picked Up` (diangkut).
-5. **Autentikasi Pembayaran & Setor Gudang:** 
-   - Saldo warga akan ditambahkan berdasarkan laporan timbangan Kurir di titik jemput (sehingga warga percaya dan tidak komplain ke Gudang).
-   - Namun, Kurir harus membuat **Faktur Setoran Bulk (Manifest)** di akhir sesi rutenya untuk menyetor total muatan ke Admin Bank Sampah. Komisi pencairan kurir dicairkan setelah divalidasi oleh Admin via Pos Pintu Masuk (Discrepancy Check).
+4. **Validasi Bukti (Upload):** Kurir wajib memotret bukti angka timbangan dan onggokan kategori sampah tersebut. Terunggah ke *Supabase Storage*.
+5. **Autentikasi Pembayaran:** Setelah kurir menekan "Simpan Tagihan", saldo milik wargalangsung bertambah, dan saldo komisi kurir ikut bertambah. Daftar struk rincian sampah dikirim *real-time* lewat notif WhatsApp bot warga.
 
 #### 3.6.4 Manajemen Performa & Keuangan Kurir
 Di dalam Sub-Portal/PWA Khusus Kurir (`/courier`), kurir mempunyai akses fitur administrasi mandiri:
@@ -280,12 +278,6 @@ Di dalam Supabase, struktur PostgreSQL harus memasukkan beberapa entitas berikut
   - Status: `status` (pending/approved/rejected), `reject_reason`, `reviewed_by`, `reviewed_at`
   - `courier_id_code` (generated on approval), `preferred_zone`
   - RLS: User lihat milik sendiri, Admin lihat & update semua
-- **`courier_deposits` (Manifest Setoran Kurir)**: Tabel agregat yang membungkus banyak `transactions` milik warga dalam satu rombongan pengangkutan (bulk).
-  - Kolom: `id` (PK), `kurir_id` (FK), `bank_sampah_id` (FK)
-  - Klaim Total Kurir: `total_organic_claimed`, `total_inorganic_claimed`
-  - Realitas Audit Admin: `actual_organic`, `actual_inorganic`, `admin_quality_assessment`, `discrepancy_notes`
-  - Status: `status` (pending_audit, approved, rejected)
-- **`transactions` (Update)**: Di dalam tabel transaksi warga, terdapat `courier_deposit_id` (FK) untuk melacak ke dalam kelompok setoran mana kantong warga tersebut dilebur.
 - **`courier_logs`**: Tabel log performa (durasi jemput, lokasi, *rating* dari warga).
 - **`policy_configs`**: Master data pengaturan pemerintah (parameter reward, threshold, target Zero Waste).
 - **`waste_analytics`**: Tabel *materialized view* / *summary* agregasi agar grafik analitik *Government Dashboard* ter-load sangat cepat.

@@ -38,7 +38,7 @@ export default function AdminPage() {
                 let pendingQuery = supabase
                     .from('courier_deposits')
                     .select(`
-                        id, total_organic_claimed, total_inorganic_claimed, status, created_at,
+                        id, total_organic_claimed, total_inorganic_claimed, transaction_count, status, created_at,
                         kurir:profiles!courier_deposits_kurir_id_fkey(full_name)
                     `)
                     .eq('status', 'pending_audit')
@@ -220,7 +220,7 @@ export default function AdminPage() {
 
                                             <div className="mt-2 text-xs font-mono text-slate-600 bg-slate-50 p-2 rounded border border-slate-100">
                                                 <p><span className="text-emerald-600 font-semibold">Org:</span> {tx.total_organic_claimed} Kg &nbsp;|&nbsp; <span className="text-blue-600 font-semibold">Anorg:</span> {tx.total_inorganic_claimed} Kg</p>
-                                                <p className="mt-1 text-slate-400 italic">Total Klaim Timbangan Kurir</p>
+                                                <p className="mt-1 text-slate-400 italic">Total Klaim Timbangan Kurir • {tx.transaction_count || 0} rumah</p>
                                             </div>
                                         </div>
                                     </div>
