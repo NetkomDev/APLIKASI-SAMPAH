@@ -50,7 +50,10 @@ SuperAdmin adalah kreator dan pemegang hak akses tertinggi dalam 1 kabupaten. Su
 3. **Konfigurasi Sistem Utama (Master Control)**
    - Konfigurasi API Bot WhatsApp (Fonnte/Meta), Menu interaktif, dan auto-reply.
    - Manajemen branding visual (Logo Daerah, banner peringatan aplikasi).
-   - Pengaturan harga beli per kategori sampah (Pricing Master Control).
+4. **Manajemen Harga & Market B2B (Pricing Control)**
+   - Mengatur secara terpusat **Harga Beli Sampah** warga (Organik/Anorganik) untuk seluruh ekosistem melalui tabel `commodity_prices`.
+   - Menentukan **Harga Jual Produk** hasil olahan gudang (Pupuk, Maggot, Cacahan Plastik) ke market.
+   - Mencatat profil buyer (*B2B Demand*), target volume, target harga beli dari tabel `b2b_buyers` sebagai landasan target pengepulan/produksi di gudang Bank Sampah.
 
 ### 3.2. Dashboard Pemerintah / Dinas (View & Analytics DLH)
 Dashboard ini didedikasikan bagai para pembuat kebijakan (Dinas Lingkungan Hidup / Bupati) untuk memantau performa *Zero Waste* dalam kabupatennya. Gov **tidak melakukan operasional**, melainkan membaca data analitik teragregasi dari seluruh Bank Sampah.

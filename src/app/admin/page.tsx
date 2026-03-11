@@ -13,6 +13,7 @@ export default function AdminPage() {
         totalPayout: 0
     });
     const [pendingTxs, setPendingTxs] = useState<any[]>([]);
+    const [prices, setPrices] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
 
     // Validation Modal State
@@ -96,6 +97,10 @@ export default function AdminPage() {
                     withdrawals: withdrawCount,
                     totalPayout: totalPayout
                 });
+
+                // Fetch Prices for the dashboard display
+                const { data: pricingData } = await supabase.from('commodity_prices').select('*').eq('is_active', true);
+                if (pricingData) setPrices(pricingData);
             }
         } catch (error) {
             console.error("Error fetching admin stats:", error);
@@ -271,19 +276,18 @@ export default function AdminPage() {
                     <div className="bg-slate-900 rounded-2xl shadow-sm border border-slate-800 p-6 flex flex-col h-[286px] text-white relative overflow-hidden">
                         <div className="absolute top-0 right-0 w-32 h-32 bg-brand-500/20 rounded-full blur-2xl transform translate-x-1/2 -translate-y-1/2"></div>
                         <h2 className="text-md font-bold mb-2">Harga Beli Dinamis</h2>
-                        <p className="text-xs text-slate-400 mb-6">Atur harga beli warga hari ini. Harga akan otomatis update di Bot WhatsApp.</p>
+                        <p className="text-xs text-slate-400 mb-6">Harga beli warga hari ini. Harga dikelola oleh Super Admin & terupdate otomatis di Bot WhatsApp.</p>
 
                         <div className="space-y-3">
-                            <div className="flex justify-between items-center bg-slate-800 p-3 rounded-lg">
-                                <span className="text-sm">Organik</span>
-                                <span className="font-mono text-brand-400 font-bold">Rp 400 /kg</span>
-                            </div>
-                            <div className="flex justify-between items-center bg-slate-800 p-3 rounded-lg">
-                                <span className="text-sm">Anorganik (Plastik)</span>
-                                <span className="font-mono text-brand-400 font-bold">Rp 1.200 /kg</span>
-                            </div>
+                            {prices.filter(p => p.trade_type === 'buy_from_citizen').length === 0 ? (
+                                <p className="text-xs text-slate-500 text-center py-4">Memuat data harga...</p>
+                            ) : prices.filter(p => p.trade_type === 'buy_from_citizen').map(price => (
+                                <div key={price.id} className="flex justify-between items-center bg-slate-800 p-3 rounded-lg">
+                                    <span className="text-sm">{price.name}</span>
+                                    <span className="font-mono text-brand-400 font-bold">Rp {price.price_per_kg.toLocaleString('id-ID')} <span className="text-xs text-slate-500 font-sans font-normal">/{price.unit}</span></span>
+                                </div>
+                            ))}
                         </div>
-                        <button className="w-full mt-auto py-2 bg-brand-600 hover:bg-brand-500 text-sm font-medium rounded-lg transition">Sesuaikan Harga</button>
                     </div>
                 </div>
             </div>
