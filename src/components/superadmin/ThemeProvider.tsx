@@ -41,28 +41,28 @@ export function t(theme: Theme) {
     const isDark = theme === "dark";
     return {
         // Backgrounds
-        pageBg: isDark ? "bg-slate-950" : "bg-gradient-to-br from-slate-50 via-white to-emerald-50/30",
-        sidebarBg: isDark ? "bg-slate-900 border-slate-800" : "bg-white border-slate-200",
-        headerBg: isDark ? "bg-slate-900/50 border-slate-800" : "bg-white/80 border-slate-200/60",
-        cardBg: isDark ? "bg-slate-900 border-slate-800" : "bg-white border-slate-100 shadow-sm",
-        cardInner: isDark ? "bg-slate-800/30 border-slate-700/50" : "bg-slate-50 border-slate-200/60",
-        inputBg: isDark ? "bg-slate-800 border-slate-700 text-white placeholder-slate-500" : "bg-white border-slate-300 text-slate-900 placeholder-slate-500",
-        selectBg: isDark ? "bg-slate-800 border-slate-700 text-white" : "bg-white border-slate-300 text-slate-900",
+        pageBg: isDark ? "bg-slate-950" : "bg-gradient-to-br from-brand-50/80 via-emerald-50/50 to-teal-50",
+        sidebarBg: isDark ? "bg-slate-900 border-slate-800" : "bg-white/80 backdrop-blur-xl border-brand-100",
+        headerBg: isDark ? "bg-slate-900/50 border-slate-800" : "bg-white/70 backdrop-blur-xl border-brand-100/60",
+        cardBg: isDark ? "bg-slate-900 border-slate-800" : "bg-white border-brand-100 shadow-[0_8px_30px_rgb(16,185,129,0.06)] hover:shadow-[0_8px_30px_rgb(16,185,129,0.12)] transition-shadow",
+        cardInner: isDark ? "bg-slate-800/30 border-slate-700/50" : "bg-brand-50/50 border-brand-100/60",
+        inputBg: isDark ? "bg-slate-800 border-slate-700 text-white placeholder-slate-500" : "bg-white/80 border-brand-200 text-slate-900 placeholder-slate-500 focus:border-brand-500 focus:ring-brand-500/20 shadow-sm transition-all",
+        selectBg: isDark ? "bg-slate-800 border-slate-700 text-white" : "bg-white/80 border-brand-200 text-slate-900 focus:border-brand-500 shadow-sm transition-all",
 
         // Text  
         textPrimary: isDark ? "text-white" : "text-slate-900",
-        textSecondary: isDark ? "text-slate-400" : "text-slate-700",
-        textMuted: isDark ? "text-slate-500" : "text-slate-600",
-        textHeading: isDark ? "text-white" : "text-slate-950",
+        textSecondary: isDark ? "text-slate-400" : "text-slate-600",
+        textMuted: isDark ? "text-slate-500" : "text-slate-500",
+        textHeading: isDark ? "text-white" : "text-slate-900",
 
         // Sidebar
-        sidebarText: isDark ? "text-slate-400" : "text-slate-700",
-        sidebarHover: isDark ? "hover:bg-slate-800 hover:text-white" : "hover:bg-slate-100 hover:text-slate-900",
-        sidebarActive: isDark ? "bg-brand-500/10 text-brand-400 border-brand-500/20" : "bg-brand-50 text-brand-600 border-brand-200",
-        sidebarTitle: isDark ? "text-white" : "text-slate-800",
-        sidebarSubtitle: isDark ? "text-slate-500" : "text-slate-400",
-        sidebarIcon: isDark ? "bg-brand-500/20 border-brand-500/30 text-brand-400" : "bg-brand-50 border-brand-200 text-brand-600",
-        sidebarSep: isDark ? "border-slate-800" : "border-slate-200",
+        sidebarText: isDark ? "text-slate-400" : "text-slate-600",
+        sidebarHover: isDark ? "hover:bg-slate-800 hover:text-white" : "hover:bg-emerald-50 hover:text-brand-700",
+        sidebarActive: isDark ? "bg-brand-500/10 text-brand-400 border-brand-500/20" : "bg-gradient-to-r from-brand-50 to-emerald-100 border-brand-200 text-brand-700 shadow-sm",
+        sidebarTitle: isDark ? "text-white" : "text-slate-900",
+        sidebarSubtitle: isDark ? "text-slate-500" : "text-slate-500",
+        sidebarIcon: isDark ? "bg-brand-500/20 border-brand-500/30 text-brand-400" : "bg-white border-brand-200 text-brand-600 shadow-sm",
+        sidebarSep: isDark ? "border-slate-800" : "border-brand-100",
 
         // Buttons
         btnPrimary: "bg-brand-600 hover:bg-brand-500 text-white",
