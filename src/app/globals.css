@@ -71,20 +71,26 @@
 [data-sa-theme="light"] {
   --color-slate-50: #f8fafc;
   --color-slate-100: #f1f5f9;
-  --color-slate-200: #e2e8f0;
-  --color-slate-300: #cbd5e1;
-  --color-slate-400: #94a3b8;
-  --color-slate-500: #64748b;
-  --color-slate-600: #475569;
-  --color-slate-700: #a0aec0;
-  --color-slate-800: #e2e8f0;
-  --color-slate-850: #eef2f7;
+  
+  /* Text colors that used to be light, need to be dark against light bg */
+  --color-slate-200: #0f172a;
+  --color-slate-300: #1e293b;
+  --color-slate-400: #334155;
+  --color-slate-500: #475569;
+  
+  /* Border colors that were dark, need to be light */
+  --color-slate-600: #cbd5e1;
+  --color-slate-700: #e2e8f0;
+  
+  /* Background colors that were dark, need to be light */
+  --color-slate-800: #f1f5f9;
+  --color-slate-850: #f8fafc;
   --color-slate-900: #ffffff;
   --color-slate-950: #f8fafc;
 }
 
 [data-sa-theme="light"] .text-white {
-  color: #1e293b !important;
+  color: #0f172a !important;
 }
 
 [data-sa-theme="light"] .bg-slate-950 {
@@ -127,7 +133,7 @@
 [data-sa-theme="light"] input.bg-slate-950,
 [data-sa-theme="light"] select.bg-slate-950 {
   background-color: #f8fafc !important;
-  color: #1e293b !important;
+  color: #0f172a !important;
   border-color: #e2e8f0 !important;
 }
 
@@ -143,15 +149,15 @@
 
 [data-sa-theme="light"] .text-slate-200,
 [data-sa-theme="light"] .text-slate-300 {
-  color: #334155 !important;
+  color: #1e293b !important;
 }
 
 [data-sa-theme="light"] .text-slate-400 {
-  color: #64748b !important;
+  color: #334155 !important;
 }
 
 [data-sa-theme="light"] .text-slate-500 {
-  color: #94a3b8 !important;
+  color: #475569 !important;
 }
 
 [data-sa-theme="light"] .divide-slate-800 > :not([hidden]) ~ :not([hidden]) {
