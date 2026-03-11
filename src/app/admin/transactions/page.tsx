@@ -2,35 +2,32 @@
 
 import { useEffect, useState } from "react";
 import { supabase } from "@/infrastructure/config/supabase";
-import { Search, AlertTriangle, Filter, Eye, ChevronDown, CheckCircle2, ShieldAlert } from "lucide-react";
-import Link from "next/link";
+import { Search, AlertTriangle, ShieldAlert, CheckCircle2, XCircle, Truck, Info } from "lucide-react";
 
-interface TransactionData {
+interface CourierDeposit {
     id: string;
     created_at: string;
     status: string;
-    weight_organic: number;
-    weight_inorganic: number;
-    admin_weight_organic: number | null;
-    admin_weight_inorganic: number | null;
+    total_organic_claimed: number;
+    total_inorganic_claimed: number;
+    actual_organic: number | null;
+    actual_inorganic: number | null;
     discrepancy_notes: string | null;
-    amount_earned: number;
-    citizen: { full_name: string; phone_number: string } | null;
-    courier: { full_name: string; phone_number: string } | null;
-    courier_sorting_quality: string | null;
+    transaction_count: number;
+    kurir: { full_name: string; phone_number: string } | null;
 }
 
 export default function FraudAndTransactionsPage() {
-    const [transactions, setTransactions] = useState<TransactionData[]>([]);
+    const [deposits, setDeposits] = useState<CourierDeposit[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState("");
     const [filterStatus, setFilterStatus] = useState("all");
 
     useEffect(() => {
-        fetchTransactions();
+        fetchDeposits();
     }, []);
 
-    const fetchTransactions = async () => {
+    const fetchDeposits = async () => {
         setLoading(true);
         try {
             const { data: { user } } = await supabase.auth.getUser();
@@ -41,13 +38,11 @@ export default function FraudAndTransactionsPage() {
             const isSuper = profile?.role === 'superadmin';
 
             let query = supabase
-                .from('transactions')
+                .from('courier_deposits')
                 .select(`
-                    id, created_at, status, weight_organic, weight_inorganic, amount_earned,
-                    admin_weight_organic, admin_weight_inorganic, discrepancy_notes,
-                    courier_sorting_quality,
-                    citizen:profiles!transactions_user_id_fkey(full_name, phone_number),
-                    courier:profiles!transactions_kurir_id_fkey(full_name, phone_number)
+                    id, created_at, status, total_organic_claimed, total_inorganic_claimed,
+                    actual_organic, actual_inorganic, discrepancy_notes, transaction_count,
+                    kurir:profiles!courier_deposits_kurir_id_fkey(full_name, phone_number)
                 `)
                 .order('created_at', { ascending: false })
                 .limit(100);
@@ -59,24 +54,21 @@ export default function FraudAndTransactionsPage() {
             const { data, error } = await query;
             if (error) throw error;
             
-            // Format data
-            if (data) {
-                setTransactions(data as unknown as TransactionData[]);
-            }
+            if (data) setDeposits(data as unknown as CourierDeposit[]);
         } catch (error) {
-            console.error("Error fetching transactions:", error);
+            console.error("Error fetching deposits:", error);
         } finally {
             setLoading(false);
         }
     };
 
-    const hasFraudAlert = (tx: TransactionData) => {
-        if (tx.admin_weight_organic === null && tx.admin_weight_inorganic === null) return false;
+    const hasFraudAlert = (dep: CourierDeposit) => {
+        if (dep.actual_organic === null && dep.actual_inorganic === null) return false;
         
-        const claimTotal = (tx.weight_organic || 0) + (tx.weight_inorganic || 0);
-        const actualTotal = (tx.admin_weight_organic || 0) + (tx.admin_weight_inorganic || 0);
+        const claimTotal = (dep.total_organic_claimed || 0) + (dep.total_inorganic_claimed || 0);
+        const actualTotal = (dep.actual_organic || 0) + (dep.actual_inorganic || 0);
         
-        // If discrepancy is > 20% or > 2kg
+        // Discrepancy > 2kg or > 20%
         const diff = Math.abs(claimTotal - actualTotal);
         if (diff > 2) return true;
         if (claimTotal > 0 && (diff / claimTotal) > 0.2) return true;
@@ -88,33 +80,32 @@ export default function FraudAndTransactionsPage() {
         if (isFraud) {
             return (
                 <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-red-100 text-red-700 border border-red-200">
-                    <AlertTriangle className="w-3 h-3" /> Fraud Alert
+                    <AlertTriangle className="w-3 h-3" /> Indikasi Fraud
                 </span>
             );
         }
         
         switch (status) {
-            case 'completed':
-                return <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-700"><CheckCircle2 className="w-3 h-3"/>Selesai</span>;
+            case 'approved':
+                return <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-700"><CheckCircle2 className="w-3 h-3"/>Selesai Audit</span>;
             case 'pending_audit':
-                return <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-amber-100 text-amber-700">Audit/Gudang</span>;
-            case 'picked_up':
-                return <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-blue-100 text-blue-700">Di Kurir</span>;
+                return <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-amber-100 text-amber-700">Antre Timbang</span>;
+            case 'rejected':
+                return <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-slate-100 text-slate-700 uppercase"><XCircle className="w-3 h-3"/>Ditolak</span>;
             default:
                 return <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-slate-100 text-slate-700 uppercase">{status}</span>;
         }
     };
 
-    const filteredData = transactions.filter(tx => {
-        if (filterStatus === 'fraud') return hasFraudAlert(tx);
-        if (filterStatus !== 'all' && tx.status !== filterStatus) return false;
+    const filteredData = deposits.filter(dep => {
+        if (filterStatus === 'fraud') return hasFraudAlert(dep);
+        if (filterStatus !== 'all' && dep.status !== filterStatus) return false;
         
         if (searchQuery) {
             const lowQuery = searchQuery.toLowerCase();
-            const citizenMatch = tx.citizen?.full_name?.toLowerCase().includes(lowQuery);
-            const courierMatch = tx.courier?.full_name?.toLowerCase().includes(lowQuery);
-            const idMatch = tx.id.toLowerCase().includes(lowQuery);
-            return citizenMatch || courierMatch || idMatch;
+            const courierMatch = dep.kurir?.full_name?.toLowerCase().includes(lowQuery);
+            const idMatch = dep.id.toLowerCase().includes(lowQuery);
+            return courierMatch || idMatch;
         }
         return true;
     });
@@ -123,8 +114,15 @@ export default function FraudAndTransactionsPage() {
         <div className="space-y-6 pb-20">
             <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
                 <div>
-                    <h1 className="text-2xl font-bold text-slate-900">Fraud & Transaksi</h1>
-                    <p className="text-sm text-slate-500 mt-1">Pantau lalu-lintas sampah warga, setoran kurir, dan deteksi kecurangan otomatis.</p>
+                    <h1 className="text-2xl font-bold text-slate-900">Fraud & Manifest</h1>
+                    <p className="text-sm text-slate-500 mt-1">Audit kesesuaian klaim total Armada Kurir vs aktual timbangan Gudang.</p>
+                </div>
+            </div>
+
+            <div className="bg-blue-50 border border-blue-100 p-4 rounded-xl flex items-start gap-3 text-sm text-blue-800">
+                <Info className="w-5 h-5 flex-shrink-0 mt-0.5 text-blue-600" />
+                <div>
+                    <strong>Info Operasional:</strong> Admin Bank Sampah menimbang <b>Akumulasi Total</b> satu armada kurir (bukan sampah warga satu per satu). Sistem mendeteksi <i>Fraud</i> otomatis jika klaim total armada meleset parah dengan angka timbangan aktual gudang.
                 </div>
             </div>
 
@@ -132,16 +130,16 @@ export default function FraudAndTransactionsPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between">
                     <div>
-                        <p className="text-sm font-semibold text-slate-500 mb-1">Total Transaksi</p>
-                        <h3 className="text-2xl font-black text-slate-800">{transactions.length}</h3>
+                        <p className="text-sm font-semibold text-slate-500 mb-1">Total Setoran / Manifest</p>
+                        <h3 className="text-2xl font-black text-slate-800">{deposits.length}</h3>
                     </div>
                 </div>
                 <div className="bg-red-50 p-5 rounded-2xl border border-red-100 shadow-sm flex items-center justify-between cursor-pointer hover:bg-red-100 transition-colors" onClick={() => setFilterStatus('fraud')}>
                     <div>
                         <p className="text-sm font-semibold text-red-600 mb-1 flex items-center gap-1.5">
-                            <ShieldAlert className="w-4 h-4" /> Deteksi Fraud
+                            <ShieldAlert className="w-4 h-4" /> Manifest Fraud Alert
                         </p>
-                        <h3 className="text-2xl font-black text-red-700">{transactions.filter(hasFraudAlert).length}</h3>
+                        <h3 className="text-2xl font-black text-red-700">{deposits.filter(hasFraudAlert).length}</h3>
                     </div>
                 </div>
             </div>
@@ -153,7 +151,7 @@ export default function FraudAndTransactionsPage() {
                         <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
                         <input 
                             type="text" 
-                            placeholder="Cari ID, Nama Warga, atau Kurir..." 
+                            placeholder="Cari ID Manifest atau Nama Kurir..." 
                             className="w-full pl-9 pr-4 py-2 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-brand-500 outline-none"
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
@@ -161,14 +159,13 @@ export default function FraudAndTransactionsPage() {
                     </div>
                     <div className="flex gap-2 w-full md:w-auto">
                         <select 
-                            className="w-full md:w-auto px-4 py-2 border border-slate-200 rounded-xl text-sm bg-white font-medium"
+                            className="w-full md:w-auto px-4 py-2 border border-slate-200 rounded-xl text-sm bg-white font-medium shadow-sm"
                             value={filterStatus}
                             onChange={(e) => setFilterStatus(e.target.value)}
                         >
-                            <option value="all">Semua Status</option>
-                            <option value="picked_up">Sedang di Kurir</option>
-                            <option value="pending_audit">Antre Timbang Gudang</option>
-                            <option value="completed">Selesai Berhasil</option>
+                            <option value="all">Semua Manifest</option>
+                            <option value="pending_audit">Antre Timbang</option>
+                            <option value="approved">Selesai Audit</option>
                             <option value="fraud">⚠️ Indikasi Fraud</option>
                         </select>
                     </div>
@@ -178,11 +175,11 @@ export default function FraudAndTransactionsPage() {
                     <table className="w-full text-left text-sm whitespace-nowrap">
                         <thead className="bg-slate-50 text-slate-600 font-semibold border-b border-slate-100">
                             <tr>
-                                <th className="px-6 py-4">ID Transaksi / Waktu</th>
-                                <th className="px-6 py-4">Warga & Kurir</th>
-                                <th className="px-6 py-4 text-center">Data Kurir (Input)</th>
-                                <th className="px-6 py-4 text-center">Data Gudang (Aktual)</th>
-                                <th className="px-6 py-4 text-right">Nilai Rupiah</th>
+                                <th className="px-6 py-4">ID Manifest / Waktu</th>
+                                <th className="px-6 py-4">Armada Kurir</th>
+                                <th className="px-6 py-4 text-center">Isi Muatan</th>
+                                <th className="px-6 py-4 text-center">Klaim Total Kurir</th>
+                                <th className="px-6 py-4 text-center">Timbangan Admin</th>
                                 <th className="px-6 py-4 text-center">Status</th>
                             </tr>
                         </thead>
@@ -190,42 +187,45 @@ export default function FraudAndTransactionsPage() {
                             {loading ? (
                                 <tr><td colSpan={6} className="px-6 py-8 text-center text-slate-400">Loading data...</td></tr>
                             ) : filteredData.length === 0 ? (
-                                <tr><td colSpan={6} className="px-6 py-8 text-center text-slate-400">Tidak ada transaksi ditemukan.</td></tr>
+                                <tr><td colSpan={6} className="px-6 py-8 text-center text-slate-400">Tidak ada manifest ditemukan.</td></tr>
                             ) : (
-                                filteredData.map((tx) => {
-                                    const claimTotal = (tx.weight_organic || 0) + (tx.weight_inorganic || 0);
-                                    const actualTotal = tx.admin_weight_organic !== null ? (tx.admin_weight_organic + (tx.admin_weight_inorganic || 0)) : null;
-                                    const isFraud = hasFraudAlert(tx);
+                                filteredData.map((dep) => {
+                                    const claimTotal = (dep.total_organic_claimed || 0) + (dep.total_inorganic_claimed || 0);
+                                    const actualTotal = dep.actual_organic !== null ? (dep.actual_organic + (dep.actual_inorganic || 0)) : null;
+                                    const isFraud = hasFraudAlert(dep);
 
                                     return (
-                                        <tr key={tx.id} className={`hover:bg-slate-50 transition-colors ${isFraud ? 'bg-red-50/30' : ''}`}>
+                                        <tr key={dep.id} className={`hover:bg-slate-50 transition-colors ${isFraud ? 'bg-red-50/30' : ''}`}>
                                             <td className="px-6 py-4">
-                                                <div className="font-mono text-xs text-slate-500 mb-1">{tx.id.split('-')[0]}***</div>
-                                                <div className="text-slate-800">{new Date(tx.created_at).toLocaleString("id-ID", { dateStyle: 'short', timeStyle: 'short' })}</div>
+                                                <div className="font-mono text-xs font-bold text-slate-700 tracking-wider mb-1">M-{dep.id.split('-')[0].toUpperCase()}</div>
+                                                <div className="text-slate-500 text-[11px]">{new Date(dep.created_at).toLocaleString("id-ID", { dateStyle: 'short', timeStyle: 'short' })}</div>
                                             </td>
                                             <td className="px-6 py-4">
-                                                <div className="font-semibold text-slate-800">W: {tx.citizen?.full_name || 'Anonim'}</div>
-                                                <div className="text-slate-500 text-xs mt-0.5">K: {tx.courier?.full_name || 'Belum dijemput'}</div>
+                                                <div className="font-bold text-slate-800 flex items-center gap-1.5">
+                                                    <Truck className="w-4 h-4 text-brand-500" />
+                                                    {dep.kurir?.full_name || 'Anonim'}
+                                                </div>
+                                                <div className="text-slate-500 text-xs mt-0.5">{dep.kurir?.phone_number}</div>
                                             </td>
                                             <td className="px-6 py-4 text-center">
-                                                {claimTotal > 0 ? (
-                                                    <div className="inline-flex bg-slate-100 px-3 py-1 rounded-lg">
-                                                        <span className="font-bold text-slate-700">{claimTotal.toFixed(1)} kg</span>
-                                                    </div>
-                                                ) : <span className="text-slate-400">-</span>}
+                                                <span className="inline-flex bg-slate-100 text-slate-600 px-2.5 py-1 rounded-md text-xs font-bold">
+                                                    {dep.transaction_count} Titik Rumah
+                                                </span>
+                                            </td>
+                                            <td className="px-6 py-4 text-center">
+                                                <div className="inline-flex bg-brand-50 text-brand-700 border border-brand-100 px-3 py-1 rounded-lg">
+                                                    <span className="font-bold">{claimTotal.toFixed(1)} kg</span>
+                                                </div>
                                             </td>
                                             <td className="px-6 py-4 text-center">
                                                 {actualTotal !== null ? (
-                                                    <div className={`inline-flex px-3 py-1 rounded-lg ${isFraud ? 'bg-red-100 text-red-700 font-bold' : 'bg-emerald-50 text-emerald-700 font-bold'}`}>
-                                                        {actualTotal.toFixed(1)} kg
+                                                    <div className={`inline-flex px-3 py-1 rounded-lg border ${isFraud ? 'bg-red-100 text-red-700 border-red-200' : 'bg-emerald-50 text-emerald-700 border-emerald-100'}`}>
+                                                        <span className="font-bold">{actualTotal.toFixed(1)} kg</span>
                                                     </div>
-                                                ) : <span className="text-slate-400 italic font-mono text-xs">Belum ditimbang</span>}
-                                            </td>
-                                            <td className="px-6 py-4 text-right">
-                                                <div className="font-bold text-slate-800">Rp {tx.amount_earned.toLocaleString('id-ID')}</div>
+                                                ) : <span className="text-slate-400 italic font-mono text-xs">Menunggu Proses</span>}
                                             </td>
                                             <td className="px-6 py-4 text-center">
-                                                <StatusBadge status={tx.status} isFraud={isFraud} />
+                                                <StatusBadge status={dep.status} isFraud={isFraud} />
                                             </td>
                                         </tr>
                                     );
