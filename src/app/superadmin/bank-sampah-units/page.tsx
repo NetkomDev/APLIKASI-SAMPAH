@@ -252,7 +252,7 @@ export default function BankSampahUnitsPage() {
                                         <PasswordField label={govUser ? "Kata Sandi (Kosongkan bila sama)" : "Kata Sandi *"} value={govPassword} onChange={setGovPassword} show={showGovPassword} toggle={() => setShowGovPassword(!showGovPassword)} />
                                     </div>
                                     <div className="flex items-center gap-3 pt-4">
-                                        <button onClick={() => setIsEditingGov(false)} disabled={isSubmitting} className="flex-1 py-3 bg-slate-800 hover:bg-slate-700 disabled:opacity-50 text-white font-semibold rounded-xl transition">Batal</button>
+                                        <button onClick={() => setIsEditingGov(false)} disabled={isSubmitting} className={`flex-1 py-3 disabled:opacity-50 font-semibold rounded-xl transition ${tk.btnSecondary}`}>Batal</button>
                                         <button onClick={handleSaveGov} disabled={isSubmitting} className="flex-1 flex items-center justify-center gap-2 py-3 bg-brand-600 hover:bg-brand-500 disabled:opacity-50 text-white font-semibold rounded-xl transition shadow-lg shadow-brand-500/20 active:scale-[0.98]">
                                             {isSubmitting ? "Menyimpan..." : "Simpan Profil DLH"}
                                         </button>
@@ -337,7 +337,7 @@ export default function BankSampahUnitsPage() {
                             ) : (
                                 branches.map((b) => (
                                     <div key={b.id} className={`${tk.cardBg} border rounded-2xl p-5 ${tk.hoverCard} transition-all relative group`}>
-                                        <button onClick={() => handleOpenBranchForm(b)} className="absolute top-4 right-4 p-2 bg-slate-800 rounded-lg text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity hover:text-brand-400 hover:bg-slate-700">
+                                        <button onClick={() => handleOpenBranchForm(b)} className={`absolute top-4 right-4 p-2 rounded-lg opacity-0 group-hover:opacity-100 transition-all ${tk.btnEdit}`}>
                                             <Edit2 className="h-4 w-4" />
                                         </button>
 

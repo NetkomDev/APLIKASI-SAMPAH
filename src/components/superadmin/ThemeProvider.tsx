@@ -65,8 +65,11 @@ export function t(theme: Theme) {
         sidebarSep: isDark ? "border-slate-800" : "border-brand-100",
 
         // Buttons
-        btnPrimary: "bg-brand-600 hover:bg-brand-500 text-white",
-        btnDanger: isDark ? "text-red-400 hover:bg-red-500/10" : "text-red-500 hover:bg-red-50",
+        btnPrimary: "bg-brand-600 hover:bg-brand-500 text-white shadow-lg shadow-brand-500/20",
+        btnSecondary: isDark ? "bg-slate-800 text-slate-300 hover:bg-slate-700" : "bg-white border border-brand-200 text-brand-700 hover:bg-brand-50 shadow-sm",
+        btnDanger: isDark ? "text-red-400 hover:bg-red-500/10" : "text-red-600 hover:bg-red-50",
+        btnEdit: isDark ? "bg-slate-800 text-amber-400 hover:bg-amber-600 hover:text-white" : "bg-amber-50 text-amber-600 hover:bg-amber-600 hover:text-white border border-amber-200 shadow-sm",
+        btnTrash: isDark ? "bg-slate-800 text-red-400 hover:bg-red-600 hover:text-white" : "bg-red-50 text-red-600 hover:bg-red-600 hover:text-white border border-red-200 shadow-sm",
 
         // Badges  
         badgeBrand: isDark ? "bg-brand-500/10 text-brand-400 border-brand-500/20" : "bg-brand-50 text-brand-600 border-brand-200",

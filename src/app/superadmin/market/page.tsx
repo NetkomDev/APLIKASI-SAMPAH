@@ -251,7 +251,7 @@ export default function MarketAndPricingPage() {
                                                     </div>
                                                 </div>
                                                 <div className="flex justify-end gap-2 mt-2 border-t border-slate-700 pt-3">
-                                                    <button onClick={() => setEditingPriceId(null)} className="flex-1 py-1.5 bg-slate-700 text-slate-300 hover:bg-slate-600 rounded-lg text-sm font-medium transition">Batal</button>
+                                                    <button onClick={() => setEditingPriceId(null)} className={`flex-1 py-1.5 rounded-lg text-sm font-medium transition ${tk.btnSecondary}`}>Batal</button>
                                                     <button onClick={() => handleUpdateCommodity(price.id)} className="flex-1 py-1.5 bg-emerald-600 text-white hover:bg-emerald-500 rounded-lg text-sm font-medium transition">Simpan</button>
                                                 </div>
                                             </div>
@@ -271,13 +271,13 @@ export default function MarketAndPricingPage() {
                                                     <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                                                         <button 
                                                             onClick={() => { setEditingPriceId(price.id); setEditCommodityData(price); }}
-                                                            className="p-2 bg-slate-700 hover:bg-brand-600 text-white rounded-lg transition-colors"
+                                                            className={`p-2 rounded-lg transition-colors ${tk.btnEdit}`}
                                                         >
                                                             <Edit className="w-4 h-4" />
                                                         </button>
                                                         <button 
                                                             onClick={() => handleDeleteCommodity(price.id)}
-                                                            className="p-2 bg-slate-700 hover:bg-red-600 text-white rounded-lg transition-colors"
+                                                            className={`p-2 rounded-lg transition-colors ${tk.btnTrash}`}
                                                         >
                                                             <Trash2 className="w-4 h-4" />
                                                         </button>
@@ -338,7 +338,7 @@ export default function MarketAndPricingPage() {
                                                     </div>
                                                 </div>
                                                 <div className="flex justify-end gap-2 mt-2 border-t border-slate-700 pt-3">
-                                                    <button onClick={() => setEditingPriceId(null)} className="flex-1 py-1.5 bg-slate-700 text-slate-300 hover:bg-slate-600 rounded-lg text-sm font-medium transition">Batal</button>
+                                                    <button onClick={() => setEditingPriceId(null)} className={`flex-1 py-1.5 rounded-lg text-sm font-medium transition ${tk.btnSecondary}`}>Batal</button>
                                                     <button onClick={() => handleUpdateCommodity(price.id)} className="flex-1 py-1.5 bg-emerald-600 text-white hover:bg-emerald-500 rounded-lg text-sm font-medium transition">Simpan</button>
                                                 </div>
                                             </div>
@@ -358,13 +358,13 @@ export default function MarketAndPricingPage() {
                                                     <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                                                         <button 
                                                             onClick={() => { setEditingPriceId(price.id); setEditCommodityData(price); }}
-                                                            className="p-2 bg-slate-700 hover:bg-amber-600 text-white rounded-lg transition-colors"
+                                                            className={`p-2 rounded-lg transition-colors ${tk.btnEdit}`}
                                                         >
                                                             <Edit className="w-4 h-4" />
                                                         </button>
                                                         <button 
                                                             onClick={() => handleDeleteCommodity(price.id)}
-                                                            className="p-2 bg-slate-700 hover:bg-red-600 text-white rounded-lg transition-colors"
+                                                            className={`p-2 rounded-lg transition-colors ${tk.btnTrash}`}
                                                         >
                                                             <Trash2 className="w-4 h-4" />
                                                         </button>

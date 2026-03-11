@@ -259,12 +259,12 @@ export default function BotConfigPage() {
                                         type="number"
                                         value={menu.sort_order}
                                         onChange={(e) => handleMenuChange(menu.id, "sort_order", parseInt(e.target.value))}
-                                        className="w-16 px-2 py-1 bg-slate-800 rounded border border-slate-700 text-xs text-white text-center"
+                                        className={`w-16 px-2 py-1 rounded border text-xs text-center ${tk.inputBg}`}
                                         title="Urutan Menu"
                                     />
                                     <button
                                         onClick={() => handleSaveMenu(menu)}
-                                        className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-white text-xs font-semibold rounded border border-slate-700 transition"
+                                        className={`px-3 py-1.5 text-xs font-semibold rounded border transition ${tk.btnSecondary}`}
                                     >
                                         Simpan
                                     </button>
@@ -295,11 +295,13 @@ export default function BotConfigPage() {
 function InputField({ label, placeholder, value, onChange, type = "text" }: {
     label: string; placeholder?: string; value: string; onChange: (v: string) => void; type?: string;
 }) {
+    const { theme } = useSuperAdminTheme();
+    const tk = t(theme);
     return (
         <div className="space-y-1.5">
             <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">{label}</label>
             <input type={type} placeholder={placeholder} value={value} onChange={(e) => onChange(e.target.value)}
-                className="w-full px-4 py-2.5 bg-slate-800/50 rounded-xl border border-slate-700 text-sm text-white focus:outline-none focus:ring-2 focus:ring-brand-500/30" />
+                className={`w-full px-4 py-2.5 rounded-xl border text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/30 ${tk.inputBg}`} />
         </div>
     );
 }
@@ -307,11 +309,13 @@ function InputField({ label, placeholder, value, onChange, type = "text" }: {
 function TextAreaField({ label, placeholder, value, onChange, rows = 4 }: {
     label: string; placeholder?: string; value: string; onChange: (v: string) => void; rows?: number;
 }) {
+    const { theme } = useSuperAdminTheme();
+    const tk = t(theme);
     return (
         <div className="space-y-1.5">
             <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">{label}</label>
             <textarea placeholder={placeholder} value={value} onChange={(e) => onChange(e.target.value)} rows={rows}
-                className="w-full px-4 py-2.5 bg-slate-800/50 rounded-xl border border-slate-700 text-sm text-white focus:outline-none focus:ring-2 focus:ring-brand-500/30 resize-none" />
+                className={`w-full px-4 py-2.5 rounded-xl border text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/30 resize-none ${tk.inputBg}`} />
         </div>
     );
 }
