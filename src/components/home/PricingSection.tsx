@@ -47,11 +47,6 @@ export function PricingSection() {
                             Kami selalu memperbarui harga pembelian sampah daur ulang menyesuaikan pasar. Jual saat harga naik dan untung maksimal!
                         </p>
                     </div>
-                    <div>
-                        <a href="/portal" className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-full bg-slate-900 text-white font-semibold hover:bg-slate-800 transition-all shadow-lg shadow-slate-900/10 whitespace-nowrap">
-                            Lihat Semua Etalase
-                        </a>
-                    </div>
                 </div>
 
                 {prices.length > 0 ? (
