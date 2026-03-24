@@ -15,8 +15,9 @@ export function NavigationMenuBar() {
                 </Link>
 
                 <nav className="hidden md:flex items-center gap-8 text-sm font-medium text-slate-600">
-                    <Link href="#features" className="hover:text-brand-600 transition-colors">Fitur</Link>
-                    <Link href="#impact" className="hover:text-brand-600 transition-colors">Dampak Keuangan</Link>
+                    <Link href="#cara-kerja" className="hover:text-brand-600 transition-colors">Cara Kerja</Link>
+                    <Link href="#harga-sampah" className="hover:text-brand-600 transition-colors">Daftar Harga</Link>
+                    <Link href="#mitra" className="hover:text-brand-600 transition-colors">Mitra Bank Sampah</Link>
                     <div className="pl-6 border-l border-slate-200">
                         <Link href="/auth" className="px-5 py-2.5 rounded-full bg-slate-900 text-white hover:bg-slate-800 shadow-lg shadow-slate-900/10 transition-all font-semibold active:scale-[0.98]">
                             Daftar Sekarang
