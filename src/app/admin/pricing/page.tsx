@@ -72,9 +72,9 @@ export default function AdminPricingPage() {
             setIsAddingCommodity(false);
             setNewCommodity({ trade_type: 'buy_from_citizen', unit: 'kg', is_active: true, category: 'organic' });
             fetchData();
-        } catch (error) {
-            console.error(error);
-            alert("Gagal menyimpan item");
+        } catch (error: any) {
+            console.error("Insert error:", error);
+            alert("Gagal menyimpan item: " + (error?.message || "Unknown error"));
         }
     };
 
