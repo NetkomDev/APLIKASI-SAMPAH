@@ -10,17 +10,17 @@ export function PricingSection() {
     useEffect(() => {
         const fetchPrices = async () => {
             const { data } = await supabase
-                .from('market_prices')
+                .from('commodity_prices')
                 .select('*')
-                .eq('trade_type', 'buy_from_public') /* Assuming this type is for the public */
+                .eq('trade_type', 'buy_from_citizen')
                 .order('price_per_kg', { ascending: false })
                 .limit(6);
             if (data && data.length > 0) {
                 setPrices(data);
             } else {
-                // If filtering by buy_from_public returns empty, fetch any general commodities
+                // If filtering by buy_from_citizen returns empty, fetch any general commodities
                 const { data: fallback } = await supabase
-                    .from('market_prices')
+                    .from('commodity_prices')
                     .select('*')
                     .order('category')
                     .limit(6);
