@@ -1,6 +1,6 @@
 "use client";
 
-import { MapPin, Building, Truck, Phone } from 'lucide-react';
+import { MapPin, Building, Truck } from 'lucide-react';
 import { supabase } from '@/infrastructure/config/supabase';
 import { useEffect, useState } from 'react';
 
@@ -9,11 +9,12 @@ export function PartnersSection() {
 
     useEffect(() => {
         const fetchPartners = async () => {
-            const { data } = await supabase
+            const { data, error } = await supabase
                 .from('bank_sampah_units')
-                .select('id, name, address, phone')
+                .select('id, name, description, is_active')
                 .eq('is_active', true)
                 .order('name');
+            if (error) console.error("Error fetching partners:", error);
             if (data) setPartners(data);
         };
         fetchPartners();
@@ -39,17 +40,11 @@ export function PartnersSection() {
                                 <div className="h-12 w-12 bg-brand-50 rounded-2xl flex items-center justify-center mb-5 border border-brand-100">
                                     <Building className="h-6 w-6 text-brand-600" />
                                 </div>
-                                <h3 className="text-xl font-bold text-slate-900 mb-2 capitalize">{partner.name}</h3>
-                                {partner.address && (
+                                <h3 className="text-xl font-bold text-slate-900 mb-2 capitalize">{partner.name?.toLowerCase()}</h3>
+                                {partner.description && (
                                     <div className="flex items-start gap-2 text-slate-600 mb-2 text-sm">
                                         <MapPin className="h-4 w-4 mt-0.5 flex-shrink-0 text-brand-500" />
-                                        <span>{partner.address}</span>
-                                    </div>
-                                )}
-                                {partner.phone && (
-                                    <div className="flex items-start gap-2 text-slate-600 mb-4 text-sm">
-                                        <Phone className="h-4 w-4 mt-0.5 flex-shrink-0 text-brand-500" />
-                                        <span>{partner.phone}</span>
+                                        <span>{partner.description}</span>
                                     </div>
                                 )}
                                 <div className="pt-4 mt-2 border-t border-slate-100 flex items-center gap-2">
@@ -75,3 +70,4 @@ export function PartnersSection() {
         </section>
     );
 }
+
