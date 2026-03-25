@@ -478,23 +478,30 @@ async function handleMenuHarga(senderNumber) {
 async function handleMenuReferral(senderNumber, userProfile) {
     const refLink = `https://beres-bone.vercel.app/auth?ref=${userProfile.id}`;
 
-    // Pesan info singkat
-    await sendWhatsAppMessage(senderNumber,
+    // 1. Pesan utama (Interactive)
+    await sendButtons(senderNumber,
         `📢 *Program Referral BERES*\n\n` +
         `Ajak warga sekitar bergabung dan dapatkan *bonus saldo* setiap berhasil mengajak! 🎁\n\n` +
-        `✅ Gratis daftar\n` +
-        `✅ Sampah dijemput dari rumah\n` +
-        `✅ Bayar langsung ke dompet digital\n\n` +
-        `Gunakan tombol di bawah untuk langsung membagikan link Anda ke teman:`
+        `🔗 *Link Referral Anda:*\n${refLink}`,
+        [
+            { id: "btn_menu", title: "📋 Menu Utama" }
+        ],
+        null, "Aplikasi BERES"
     );
 
-    // Satu tombol CTA — klik langsung bagikan, tanpa perlu copy manual
-    return sendCTAUrl(senderNumber,
-        `🔗 Link Referral Anda:\n${refLink}`,
-        "📤 Bagikan Link Referral",
-        refLink,
-        null,
-        "Ketuk untuk berbagi ke teman & tetangga"
+    // 2. Pengantar forward
+    await sendWhatsAppMessage(senderNumber,
+        `👇 *Teruskan pesan di bawah ini ke teman Anda:*`
+    );
+
+    // 3. Pesan siap-forward (Teks murni)
+    return sendWhatsAppMessage(senderNumber,
+        `♻️🌿 *Aplikasi BERES — Benahi Residu Sampah*\n\n` +
+        `Hai! Tau nggak? Sekarang sampah rumah tangga bisa jadi uang! 💰\n\n` +
+        `✅ Gratis daftar\n` +
+        `✅ Sampah dijemput dari rumah\n` +
+        `✅ Ditimbang & dibayar langsung ke dompet digital\n\n` +
+        `Yuk gabung sekarang! 👇\n${refLink}`
     );
 }
 
