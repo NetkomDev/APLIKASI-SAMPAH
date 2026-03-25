@@ -63,8 +63,13 @@ function showTyping(toPhoneNumber) {
     fetch(`https://graph.facebook.com/v20.0/${phoneId}/messages`, {
         method: "POST",
         headers: { "Authorization": `Bearer ${token}`, "Content-Type": "application/json" },
-        body: JSON.stringify({ messaging_product: "whatsapp", recipient_type: "individual", to: toPhoneNumber, type: "reaction", reaction: { message_id: "", emoji: "" } })
-    }).catch(() => { }); // silent fail
+        body: JSON.stringify({ 
+            messaging_product: "whatsapp", 
+            recipient_type: "individual", 
+            to: toPhoneNumber, 
+            sender_action: "typing_on" 
+        })
+    }).catch((e) => { console.error("Typing API Error:", e.message) }); // silent fail but log
 }
 
 // ──────────────────────────────────────────────
