@@ -478,39 +478,23 @@ async function handleMenuHarga(senderNumber) {
 async function handleMenuReferral(senderNumber, userProfile) {
     const refLink = `https://beres-bone.vercel.app/auth?ref=${userProfile.id}`;
 
-    // 1. Info program referral
+    // Pesan info singkat
     await sendWhatsAppMessage(senderNumber,
-        `📢 *Program Referral — Aplikasi BERES*\n\n` +
-        `Ajak warga sekitar Anda bergabung dan dapatkan *bonus saldo*! 🎁\n\n` +
-        `┌────────────────────\n` +
-        `│ 🎯 *Cara kerjanya:*\n` +
-        `│ 1. Bagikan link di bawah\n` +
-        `│ 2. Teman daftar lewat link Anda\n` +
-        `│ 3. Bonus saldo otomatis masuk!\n` +
-        `└────────────────────\n\n` +
-        `🔗 Link Referral Anda:\n${refLink}`
-    );
-
-    // 2. CTA Button buka link
-    await sendCTAUrl(senderNumber,
-        `Klik tombol di bawah untuk menyalin dan membagikan link referral Anda.`,
-        "🔗 Buka Link Referral", refLink,
-        null, "Bagikan ke teman & tetangga"
-    );
-
-    // 3. Pesan siap-forward (terpisah agar mudah diteruskan)
-    await sendWhatsAppMessage(senderNumber,
-        `👇 *Teruskan pesan di bawah ini ke teman Anda:*`
-    );
-
-    // 4. Pesan forwardable
-    return sendWhatsAppMessage(senderNumber,
-        `♻️🌿 *Aplikasi BERES — Benahi Residu Sampah*\n\n` +
-        `Hai! Tau nggak? Sekarang sampah rumah tangga bisa jadi uang! 💰\n\n` +
+        `📢 *Program Referral BERES*\n\n` +
+        `Ajak warga sekitar bergabung dan dapatkan *bonus saldo* setiap berhasil mengajak! 🎁\n\n` +
         `✅ Gratis daftar\n` +
         `✅ Sampah dijemput dari rumah\n` +
-        `✅ Ditimbang & dibayar langsung ke dompet digital\n\n` +
-        `Yuk gabung sekarang! 👇\n${refLink}`
+        `✅ Bayar langsung ke dompet digital\n\n` +
+        `Gunakan tombol di bawah untuk langsung membagikan link Anda ke teman:`
+    );
+
+    // Satu tombol CTA — klik langsung bagikan, tanpa perlu copy manual
+    return sendCTAUrl(senderNumber,
+        `🔗 Link Referral Anda:\n${refLink}`,
+        "📤 Bagikan Link Referral",
+        refLink,
+        null,
+        "Ketuk untuk berbagi ke teman & tetangga"
     );
 }
 
