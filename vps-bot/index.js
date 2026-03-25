@@ -409,13 +409,13 @@ async function handleMenuSaldo(senderNumber, userProfile) {
     const { data: wallet } = await supabase.from("user_wallets").select("balance").eq("user_id", userProfile.id).single();
     const saldo = wallet ? wallet.balance.toLocaleString("id-ID") : "0";
     return sendButtons(senderNumber,
-        `💰 *Informasi Saldo*\n\n👤 Nama: *${userProfile.full_name}*\n💵 Saldo: *Rp ${saldo}*\n\n_Saldo bertambah setiap kali Anda menyetorkan sampah._`,
+        `💰 *Saldo Dompet Digital*\n\n👤 Nama: *${userProfile.full_name}*\n💵 Saldo: *Rp ${saldo}*\n\n_Saldo bertambah setiap kali Anda menyetorkan sampah._`,
         [
             { id: "riwayat", title: "📜 Lihat Riwayat" },
             { id: "jemput", title: "🚛 Request Jemput" },
             { id: "btn_menu", title: "📋 Menu Utama" }
         ],
-        "💰 Saldo Dompet Digital", "Aplikasi BERES"
+        null, "Aplikasi BERES"
     );
 }
 
@@ -428,7 +428,7 @@ async function handleMenuJemput(senderNumber, userProfile) {
             { id: "saldo", title: "💰 Cek Saldo" },
             { id: "btn_menu", title: "📋 Menu Utama" }
         ],
-        "🚛 Jemput Sampah", "Aplikasi BERES"
+        null, "Aplikasi BERES"
     );
 }
 
@@ -451,7 +451,7 @@ async function handleMenuRiwayat(senderNumber, userProfile) {
             { id: "jemput", title: "🚛 Request Jemput" },
             { id: "btn_menu", title: "📋 Menu Utama" }
         ],
-        "📜 Riwayat Setoran", "Aplikasi BERES"
+        null, "Aplikasi BERES"
     );
 }
 
@@ -471,7 +471,7 @@ async function handleMenuHarga(senderNumber) {
             { id: "jemput", title: "🚛 Request Jemput" },
             { id: "btn_menu", title: "📋 Menu Utama" }
         ],
-        "💲 Daftar Harga", "Aplikasi BERES"
+        null, "Aplikasi BERES"
     );
 }
 
@@ -526,7 +526,7 @@ async function handleMenuBantuan(senderNumber) {
         [
             { id: "btn_menu", title: "📋 Menu Utama" }
         ],
-        "📞 Bantuan", "Aplikasi BERES"
+        null, "Aplikasi BERES"
     );
     return sendCTAUrl(senderNumber,
         "Anda juga bisa langsung chat CS kami:",
