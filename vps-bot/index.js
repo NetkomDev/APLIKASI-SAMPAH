@@ -676,10 +676,14 @@ async function handleIncomingMessage(senderNumber, messageText, interactionId) {
 }
 
 // ──────────────────────────────────────────────
-// WEBHOOK POLLING
+// WEBHOOK POLLING & REALTIME
 // ──────────────────────────────────────────────
 
+let isProcessing = false;
+
 async function processPendingWebhooks() {
+    if (isProcessing) return; // Mencegah double trigger
+    isProcessing = true;
     try {
         const { data: webhooks, error } = await supabase
             .from("whatsapp_webhooks")
@@ -688,11 +692,12 @@ async function processPendingWebhooks() {
             .order("id", { ascending: true })
             .limit(10);
 
-        if (error) { console.error("Poll Error:", error.message); return; }
-        if (!webhooks || webhooks.length === 0) return;
+        if (error) { console.error("Poll Error:", error.message); isProcessing = false; return; }
+        if (!webhooks || webhooks.length === 0) { isProcessing = false; return; }
 
         for (const wh of webhooks) {
-            await supabase.from("whatsapp_webhooks").update({ processed: true }).eq("id", wh.id);
+            // Tandai diproses secera asynchronous agar tidak mem-blokir balasan
+            supabase.from("whatsapp_webhooks").update({ processed: true }).eq("id", wh.id).then();
 
             const changes = wh.payload?.entry?.[0]?.changes?.[0]?.value;
             if (!changes || !changes.messages || changes.messages.length === 0) continue;
@@ -706,21 +711,29 @@ async function processPendingWebhooks() {
             showTyping(from);
 
             if (msgInfo.type === "text" && msgInfo.text?.body) {
-                // Pesan teks biasa
-                await handleIncomingMessage(from, msgInfo.text.body, null);
+                // Jangan di-await agar bisa lanjut proses antrian (fire-and-forget approach for webhooks)
+                handleIncomingMessage(from, msgInfo.text.body, null).catch(console.error);
             } else if (msgInfo.type === "interactive") {
-                // Klik tombol (button_reply) atau pilih list (list_reply)
                 const btnReply = msgInfo.interactive?.button_reply;
                 const listReply = msgInfo.interactive?.list_reply;
                 const interactionId = btnReply?.id || listReply?.id || "";
                 const interactionTitle = btnReply?.title || listReply?.title || "";
                 console.log(`[BOT] Interactive: ${interactionId} (${interactionTitle}) from ${from}`);
-                await handleIncomingMessage(from, interactionTitle, interactionId);
+                handleIncomingMessage(from, interactionTitle, interactionId).catch(console.error);
             }
         }
     } catch (e) {
         console.error("Poll Exception:", e.message);
+    } finally {
+        isProcessing = false;
+        // Check if there's more pending after we finish this batch
+        checkMorePending();
     }
+}
+
+async function checkMorePending() {
+    const { count } = await supabase.from("whatsapp_webhooks").select('*', { count: 'exact', head: true }).eq("processed", false);
+    if (count && count > 0) processPendingWebhooks();
 }
 
 // ──────────────────────────────────────────────
@@ -729,10 +742,27 @@ async function processPendingWebhooks() {
 
 async function boot() {
     await loadBotConfigs();
-    console.log("✅ Konfigurasi dimuat. Bot Beres siap dengan Interactive UI!");
+    console.log("✅ Konfigurasi dimuat. Bot Beres siap dengan Interactive UI & Realtime Engine!");
     console.log(`📱 Phone ID: ${systemSettings["wa_phone_number_id"] || "NOT SET"}`);
     console.log(`🔑 Token: ${systemSettings["wa_api_token"] ? "OK (" + systemSettings["wa_api_token"].substring(0, 15) + "...)" : "NOT SET"}`);
-    setInterval(processPendingWebhooks, 3000);
+    
+    // START REALTIME LISTENER FOR INSTANT RESPONSES ⚡
+    supabase
+        .channel('whatsapp_instant_hook')
+        .on(
+            'postgres_changes',
+            { event: 'INSERT', schema: 'public', table: 'whatsapp_webhooks' },
+            (payload) => {
+                // Langsung trigger tanpa perlu menunggu polling!
+                processPendingWebhooks();
+            }
+        )
+        .subscribe((status) => {
+            console.log(`📡 Realtime Status: ${status}`);
+        });
+
+    // Fallback Polling (berjaga-jaga jika Socket/Realtime terputus sementara)
+    setInterval(processPendingWebhooks, 5000);
 }
 
 boot();
