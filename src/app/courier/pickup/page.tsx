@@ -268,25 +268,27 @@ export default function CourierPickupPage() {
               Identifikasi Warga
             </h3>
 
-            <div className="flex gap-2">
-              <input
-                type="text"
-                value={manualCode}
-                onChange={(e) => setManualCode(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && handleScanWarga(manualCode)}
-                placeholder="Kode warga / Nama..."
-                className="flex-1 px-4 py-3 border-2 border-slate-200 rounded-xl focus:ring-4 focus:ring-emerald-500/20 focus:border-emerald-500 text-sm font-medium"
-              />
-              <button
-                onClick={() => setScanMode(true)}
-                className="px-4 py-3 bg-slate-100 text-slate-700 font-bold rounded-xl hover:bg-slate-200 transition text-sm shadow-sm flex items-center justify-center border border-slate-300"
-                title="Scan QR Kamera"
-              >
-                <Camera className="w-5 h-5 text-slate-600" />
-              </button>
+            <div className="flex flex-col sm:flex-row gap-3">
+              <div className="flex gap-2 flex-1 relative">
+                <input
+                  type="text"
+                  value={manualCode}
+                  onChange={(e) => setManualCode(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && handleScanWarga(manualCode)}
+                  placeholder="Kode warga / Nama..."
+                  className="flex-1 w-full min-w-0 px-4 py-3 border-2 border-slate-200 rounded-xl focus:ring-4 focus:ring-emerald-500/20 focus:border-emerald-500 text-sm font-medium"
+                />
+                <button
+                  onClick={() => setScanMode(true)}
+                  className="flex-shrink-0 px-4 py-3 bg-slate-100 text-slate-700 font-bold rounded-xl hover:bg-slate-200 transition text-sm shadow-sm flex items-center justify-center border border-slate-300"
+                  title="Scan QR Kamera"
+                >
+                  <Camera className="w-5 h-5 text-slate-600" />
+                </button>
+              </div>
               <button
                 onClick={() => handleScanWarga(manualCode)}
-                className="px-5 py-3 bg-emerald-600 text-white font-bold rounded-xl hover:bg-emerald-500 transition text-sm shadow-sm"
+                className="w-full sm:w-auto px-6 py-3 bg-emerald-600 text-white font-bold rounded-xl hover:bg-emerald-500 transition text-sm shadow-sm"
               >
                 Cari
               </button>
