@@ -13,7 +13,7 @@ export default function RewardsPage() {
 
     useEffect(() => {
         const fetch = async () => {
-            const { data: warga } = await supabase.from('profiles').select('id, full_name, role, achievement_points').eq('role', 'citizen').order('achievement_points', { ascending: false }).limit(10);
+            const { data: warga } = await supabase.from('profiles').select('id, full_name, role, achievement_points').eq('role', 'user').order('achievement_points', { ascending: false }).limit(10);
             const { data: couriers } = await supabase.from('profiles').select('id, full_name, role, achievement_points').eq('role', 'courier').eq('courier_status', 'active').order('achievement_points', { ascending: false }).limit(10);
             setTopWarga(warga || []);
             setTopCourier(couriers || []);

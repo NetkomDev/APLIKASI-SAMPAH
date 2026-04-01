@@ -19,7 +19,7 @@ export default function SuperAdminDashboard() {
                 bankSampah: unitCount || 0,
                 govUsers: profiles?.filter(p => p.role === "gov").length || 0,
                 adminUsers: profiles?.filter(p => p.role === "admin").length || 0,
-                totalUsers: totalCount || 0,
+                totalUsers: profiles?.filter(p => p.role === "user").length || 0,
             });
         };
         fetchStats();

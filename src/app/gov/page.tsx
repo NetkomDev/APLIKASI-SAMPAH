@@ -18,7 +18,7 @@ export default function GovPage() {
     const fetchAllStats = async () => {
         setLoading(true);
         try {
-            const { count: wargaCount } = await supabase.from('profiles').select('*', { count: 'exact', head: true }).eq('role', 'citizen');
+            const { count: wargaCount } = await supabase.from('profiles').select('*', { count: 'exact', head: true }).eq('role', 'user');
             const { data: allCouriers } = await supabase.from('profiles').select('id, vehicle_type').eq('role', 'courier').eq('courier_status', 'active');
             const { count: pendingCount } = await supabase.from('courier_applications').select('*', { count: 'exact', head: true }).eq('status', 'pending');
             const { count: bsCount } = await supabase.from('bank_sampah_units').select('*', { count: 'exact', head: true }).eq('is_active', true);

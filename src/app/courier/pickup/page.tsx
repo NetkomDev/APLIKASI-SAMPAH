@@ -8,7 +8,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { IScannerProps, Scanner } from '@yudiel/react-qr-scanner';
-import { searchWargaForPickup } from "../actions";
+import { searchWargaForPickup, linkWargaToBankSampah } from "../actions";
 
 type PickupItem = {
   id: string;
@@ -141,6 +141,13 @@ export default function CourierPickupPage() {
       });
 
       if (error) throw error;
+
+      // Auto-link warga to this courier's bank sampah if not already linked
+      await linkWargaToBankSampah(
+        scannedWarga.id,
+        profile?.bank_sampah_id || null,
+        profile?.bank_sampah_name || null
+      );
 
       setSubmitSuccess(true);
       // Reset form

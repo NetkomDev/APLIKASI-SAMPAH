@@ -54,3 +54,28 @@ export async function searchWargaForPickup(queryCode: string) {
         return { data: null, error: err.message || "Terjadi kesalahan internal" };
     }
 }
+
+// Auto-link warga to courier's bank sampah if not already linked
+export async function linkWargaToBankSampah(wargaId: string, courierBankSampahId: string | null, courierBankSampahName: string | null) {
+    if (!wargaId || !courierBankSampahId) return;
+
+    const supabase = createClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.SUPABASE_SERVICE_ROLE_KEY!
+    );
+
+    try {
+        // Only update if warga doesn't already have a bank_sampah_id
+        await supabase
+            .from("profiles")
+            .update({
+                bank_sampah_id: courierBankSampahId,
+                bank_sampah_name: courierBankSampahName,
+            })
+            .eq("id", wargaId)
+            .eq("role", "user")
+            .is("bank_sampah_id", null);
+    } catch (_) {
+        // Silent fail — non-critical operation
+    }
+}
