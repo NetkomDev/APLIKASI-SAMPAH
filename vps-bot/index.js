@@ -178,15 +178,32 @@ async function loadBotConfigs() {
 // SEND MAIN MENU (Interactive List)
 // ──────────────────────────────────────────────
 
+// Peta emoji dan deskripsi default per menu_key
+const MENU_META = {
+    saldo:   { emoji: "💰", desc: "Lihat saldo dompet digital Anda" },
+    jemput:  { emoji: "🚛", desc: "Minta petugas jemput sampah" },
+    riwayat: { emoji: "📜", desc: "Riwayat 5 setoran terakhir" },
+    harga:   { emoji: "💲", desc: "Harga sampah per-kilogram" },
+    referral:{ emoji: "📢", desc: "Ajak tetangga, dapat bonus!" },
+    bantuan: { emoji: "📞", desc: "Hubungi customer service" },
+};
+
 async function sendMainMenu(senderNumber, nama) {
-    const rows = [
-        { id: "saldo", title: "💰 Cek Saldo", description: "Lihat saldo dompet digital Anda" },
-        { id: "jemput", title: "🚛 Request Jemput", description: "Minta petugas jemput sampah" },
-        { id: "riwayat", title: "📜 Riwayat", description: "Riwayat 5 setoran terakhir" },
-        { id: "harga", title: "💲 Daftar Harga", description: "Harga sampah per-kilogram" },
-        { id: "referral", title: "📢 Referral", description: "Ajak tetangga, dapat bonus!" },
-        { id: "bantuan", title: "📞 Bantuan / CS", description: "Hubungi customer service" }
-    ];
+    // Build menu dynamically dari Supabase (sudah difilter is_active=true di loadBotConfigs)
+    const rows = botMenus.map(m => {
+        const meta = MENU_META[m.menu_key] || { emoji: "•", desc: m.menu_label };
+        const label = m.menu_label || `${meta.emoji} ${m.menu_key}`;
+        return {
+            id: m.menu_key,
+            title: label.length > 24 ? label.substring(0, 24) : label,
+            description: meta.desc
+        };
+    });
+
+    // Fallback jika Supabase kosong
+    if (rows.length === 0) {
+        return sendWhatsAppMessage(senderNumber, `Halo *${nama}*! 👋\n\nSistem bot sedang dalam konfigurasi. Silakan hubungi admin.`);
+    }
 
     return sendMenuList(
         senderNumber,
@@ -197,6 +214,7 @@ async function sendMainMenu(senderNumber, nama) {
         [{ title: "Menu Layanan", rows }]
     );
 }
+
 
 // ──────────────────────────────────────────────
 // WEB WELCOME
