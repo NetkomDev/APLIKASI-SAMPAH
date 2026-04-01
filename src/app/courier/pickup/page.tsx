@@ -7,7 +7,8 @@ import {
   MapPin, ArrowLeft, Package, Plus, Camera, Star, ChevronRight
 } from "lucide-react";
 import Link from "next/link";
-import { Scanner } from "@yudiel/react-qr-scanner";
+import { IScannerProps, Scanner } from '@yudiel/react-qr-scanner';
+import { searchWargaForPickup } from "../actions";
 
 type PickupItem = {
   id: string;
@@ -105,41 +106,14 @@ export default function CourierPickupPage() {
     const trimmed = code.trim();
     if (!trimmed) { setScanError("Masukkan kode QR atau nama warga"); return; }
 
-    // Sanitize input: remove characters that could break PostgREST query
-    const sanitized = trimmed.replace(/[,()]/g, "");
+    const { data: profile, error } = await searchWargaForPickup(code);
 
-    // Try by UUID first
-    const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(sanitized);
-
-    let data = null;
-    if (isUUID) {
-      const res = await supabase
-        .from("profiles")
-        .select("id, full_name, phone_number, address, bank_sampah_id")
-        .eq("id", sanitized)
-        .eq("role", "user")
-        .maybeSingle();
-      data = res.data;
-    }
-
-    // If not found by UUID, search by name
-    if (!data) {
-      const res = await supabase
-        .from("profiles")
-        .select("id, full_name, phone_number, address, bank_sampah_id")
-        .eq("role", "user")
-        .ilike("full_name", `%${sanitized}%`)
-        .limit(1)
-        .maybeSingle();
-      data = res.data;
-    }
-
-    if (!data) {
-      setScanError("Warga tidak ditemukan. Pastikan QR Code atau nama benar.");
+    if (error || !profile) {
+      setScanError(error || "Warga tidak ditemukan. Pastikan QR Code atau nama benar.");
       return;
     }
 
-    setScannedWarga(data);
+    setScannedWarga(profile);
     setScanMode(false);
   };
 
