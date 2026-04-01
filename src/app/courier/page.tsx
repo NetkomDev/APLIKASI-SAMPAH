@@ -40,7 +40,8 @@ export default function CourierDashboard() {
                 .eq("id", user.id)
                 .single();
 
-            if (!prof || prof.role !== "courier") {
+            const allowedRoles = ["courier", "superadmin", "admin_bank_sampah"];
+            if (!prof || !allowedRoles.includes(prof.role)) {
                 router.push("/");
                 return;
             }
@@ -104,6 +105,12 @@ export default function CourierDashboard() {
 
     return (
         <div className="min-h-screen pb-20 bg-slate-50">
+            {/* Preview Banner for Admin/SuperAdmin */}
+            {profile?.role !== "courier" && (
+                <div className="bg-amber-500 text-white text-center py-2 px-4 text-xs font-bold">
+                    ⚠️ MODE PREVIEW — Anda login sebagai {profile?.role?.toUpperCase()}. Ini adalah tampilan yang dilihat oleh Kurir.
+                </div>
+            )}
             {/* Top Header Base */}
             <div className="bg-emerald-600 rounded-b-[40px] px-6 pt-10 pb-20 shadow-lg text-white relative overflow-hidden">
                 <div className="absolute top-0 right-0 p-8 opacity-10">
