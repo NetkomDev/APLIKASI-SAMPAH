@@ -1,12 +1,13 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { supabase } from "@/infrastructure/config/supabase";
-import { Tag, Store, Plus, Edit, Trash2, X, AlertCircle, ArrowRight } from "lucide-react";
+import { Tag, Factory, Plus, Edit, Trash2, X, AlertCircle, Store, Users, Building2, RefreshCw, Phone } from "lucide-react";
 
-interface CommodityPrice {
+interface UnitPrice {
     id: string;
-    trade_type: 'buy_from_citizen' | 'sell_to_market';
+    bank_sampah_unit_id: string;
+    trade_type: 'buy_from_citizen' | 'sell_outbound';
     category: string;
     name: string;
     price_per_kg: number;
@@ -14,282 +15,403 @@ interface CommodityPrice {
     is_active: boolean;
 }
 
+interface B2BBuyer {
+    id: string;
+    company_name: string;
+    contact_person: string;
+    phone_number: string;
+    commodity_interest: string;
+    demand_volume_kg: number;
+    buying_price_per_kg: number;
+    status: string;
+}
+
+interface BankSampahUnit {
+    id: string;
+    name: string;
+}
+
+const CATEGORIES = ["organic", "inorganic", "processed", "other"];
+const CAT_COLORS: Record<string, string> = {
+    organic: "text-emerald-600",
+    inorganic: "text-blue-600",
+    processed: "text-amber-600",
+    other: "text-slate-500",
+};
+
 export default function AdminPricingPage() {
-    const [prices, setPrices] = useState<CommodityPrice[]>([]);
+    const [unitId, setUnitId] = useState<string | null>(null);
+    const [unitName, setUnitName] = useState("");
+    const [activeTab, setActiveTab] = useState<"inbound" | "outbound" | "buyers">("inbound");
+
+    const [prices, setPrices] = useState<UnitPrice[]>([]);
+    const [buyers, setBuyers] = useState<B2BBuyer[]>([]);
     const [loading, setLoading] = useState(true);
 
-    // Edit State
-    const [editingPriceId, setEditingPriceId] = useState<string | null>(null);
-    const [editCommodityData, setEditCommodityData] = useState<Partial<CommodityPrice>>({});
+    // Edit state
+    const [editingId, setEditingId] = useState<string | null>(null);
+    const [editData, setEditData] = useState<Partial<UnitPrice>>({});
 
-    // Add State
-    const [isAddingCommodity, setIsAddingCommodity] = useState(false);
-    const [newCommodity, setNewCommodity] = useState<Partial<CommodityPrice>>({ 
-        trade_type: 'buy_from_citizen', 
-        unit: 'kg', 
-        is_active: true,
-        category: 'organic'
+    // Add state
+    const [showAddModal, setShowAddModal] = useState(false);
+    const [newItem, setNewItem] = useState<Partial<UnitPrice>>({
+        trade_type: 'buy_from_citizen', unit: 'kg', is_active: true, category: 'inorganic'
     });
 
+    // Fetch unit milik admin yang login
     useEffect(() => {
-        fetchData();
+        const init = async () => {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (!user) return;
+
+            const { data: unit } = await supabase
+                .from("bank_sampah_units")
+                .select("id, name")
+                .eq("admin_user_id", user.id)
+                .single();
+
+            if (unit) {
+                setUnitId(unit.id);
+                setUnitName(unit.name);
+            }
+        };
+        init();
     }, []);
 
-    const fetchData = async () => {
+    const fetchData = useCallback(async () => {
+        if (!unitId) return;
         setLoading(true);
         try {
-            const { data, error } = await supabase
-                .from('commodity_prices')
-                .select('*')
-                .eq('trade_type', 'buy_from_citizen')  // Only show buying prices
-                .order('category')
-                .order('name');
-
-            if (data) setPrices(data);
-            if (error) console.error("Error fetching data:", error);
-        } catch (error) {
-            console.error("Error fetching market data:", error);
+            const [priceRes, buyerRes] = await Promise.all([
+                supabase.from("unit_commodity_prices")
+                    .select("*")
+                    .eq("bank_sampah_unit_id", unitId)
+                    .order("category").order("name"),
+                supabase.from("b2b_buyers")
+                    .select("*")
+                    .eq("status", "active")
+                    .order("company_name"),
+            ]);
+            if (priceRes.data) setPrices(priceRes.data);
+            if (buyerRes.data) setBuyers(buyerRes.data);
+        } catch (e) {
+            console.error(e);
         } finally {
             setLoading(false);
         }
+    }, [unitId]);
+
+    useEffect(() => { fetchData(); }, [fetchData]);
+
+    const handleSave = async () => {
+        if (!newItem.name || !newItem.price_per_kg || !unitId) {
+            alert("Harap lengkapi nama item dan harga."); return;
+        }
+        const { error } = await supabase.from("unit_commodity_prices").insert([{
+            ...newItem, bank_sampah_unit_id: unitId
+        }]);
+        if (error) { alert("Gagal menyimpan: " + error.message); return; }
+        setShowAddModal(false);
+        setNewItem({ trade_type: 'buy_from_citizen', unit: 'kg', is_active: true, category: 'inorganic' });
+        fetchData();
     };
 
-    const handleSaveCommodity = async () => {
-        try {
-            if (!newCommodity.name || !newCommodity.price_per_kg) {
-                alert("Harap lengkapi nama item dan harga.");
-                return;
-            }
-
-            const { error } = await supabase
-                .from('commodity_prices')
-                .insert([{
-                    ...newCommodity,
-                    price_per_kg: newCommodity.price_per_kg || 0
-                }]);
-
-            if (error) throw error;
-            setIsAddingCommodity(false);
-            setNewCommodity({ trade_type: 'buy_from_citizen', unit: 'kg', is_active: true, category: 'organic' });
-            fetchData();
-        } catch (error: any) {
-            console.error("Insert error:", error);
-            alert("Gagal menyimpan item: " + (error?.message || "Unknown error"));
-        }
+    const handleUpdate = async (id: string) => {
+        const { error } = await supabase.from("unit_commodity_prices").update({
+            name: editData.name, price_per_kg: editData.price_per_kg,
+            category: editData.category, updated_at: new Date().toISOString()
+        }).eq("id", id);
+        if (error) { alert("Gagal update"); return; }
+        setEditingId(null);
+        fetchData();
     };
 
-    const handleUpdateCommodity = async (id: string) => {
-        try {
-            const { error } = await supabase
-                .from('commodity_prices')
-                .update({ 
-                    name: editCommodityData.name,
-                    price_per_kg: editCommodityData.price_per_kg,
-                    category: editCommodityData.category,
-                    updated_at: new Date().toISOString() 
-                })
-                .eq('id', id);
-
-            if (error) throw error;
-            setEditingPriceId(null);
-            fetchData();
-        } catch (error) {
-            console.error(error);
-            alert("Gagal update item");
-        }
+    const handleDelete = async (id: string) => {
+        if (!confirm("Hapus item ini?")) return;
+        await supabase.from("unit_commodity_prices").delete().eq("id", id);
+        fetchData();
     };
 
-    const handleDeleteCommodity = async (id: string) => {
-        if (!confirm("Apakah Anda yakin ingin menghapus item komoditas ini?")) return;
-        try {
-            const { error } = await supabase
-                .from('commodity_prices')
-                .delete()
-                .eq('id', id);
+    const inbound = prices.filter(p => p.trade_type === "buy_from_citizen");
+    const outbound = prices.filter(p => p.trade_type === "sell_outbound");
 
-            if (error) throw error;
-            fetchData();
-        } catch (error) {
-            console.error(error);
-            alert("Gagal menghapus item");
-        }
+    const openAdd = (type: "buy_from_citizen" | "sell_outbound") => {
+        setNewItem({ trade_type: type, unit: 'kg', is_active: true, category: type === 'buy_from_citizen' ? 'inorganic' : 'processed' });
+        setShowAddModal(true);
     };
 
     return (
         <div className="space-y-6 pb-20 max-w-7xl mx-auto">
+            {/* Header */}
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
-                    <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight flex items-center gap-2">
-                        <Tag className="w-8 h-8 text-brand-600" />
-                        Harga Beli Sampah
+                    <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight flex items-center gap-2">
+                        <Tag className="w-7 h-7 text-brand-600" /> Harga Komoditas
                     </h1>
-                    <p className="text-sm text-slate-500 mt-1 max-w-2xl">
-                        Atur harga referensi pembelian barang bekas dari warga. Harga yang Anda masukkan akan langsung tampil di halaman depan untuk publik.
+                    <p className="text-sm text-slate-500 mt-1">
+                        Kelola harga jual-beli komoditas sampah secara mandiri untuk unit <strong>{unitName}</strong>.
                     </p>
                 </div>
-                <button 
-                    onClick={() => setIsAddingCommodity(true)} 
-                    className="bg-brand-600 hover:bg-brand-500 text-white px-5 py-2.5 rounded-xl text-sm font-bold flex items-center gap-2 shadow-lg shadow-brand-500/20 active:scale-[0.98] transition"
-                >
-                    <Plus className="w-4 h-4" /> Item Komoditas Baru
+                <button onClick={fetchData} className="flex items-center gap-2 px-4 py-2 rounded-xl border border-slate-200 text-slate-500 hover:border-slate-400 text-sm transition">
+                    <RefreshCw className="w-4 h-4" /> Refresh
                 </button>
+            </div>
+
+            {/* Tabs */}
+            <div className="flex border-b border-slate-200">
+                {[
+                    { key: "inbound", label: "🏠 Beli dari Warga", count: inbound.length },
+                    { key: "outbound", label: "🏭 Jual ke Luar Gudang", count: outbound.length },
+                    { key: "buyers", label: "🤝 Daftar Buyer B2B", count: buyers.length },
+                ].map(tab => (
+                    <button
+                        key={tab.key}
+                        onClick={() => setActiveTab(tab.key as any)}
+                        className={`px-5 py-3 text-sm font-semibold flex items-center gap-2 border-b-2 transition-all ${activeTab === tab.key
+                            ? "border-brand-600 text-brand-700"
+                            : "border-transparent text-slate-500 hover:text-slate-700"
+                        }`}
+                    >
+                        {tab.label}
+                        <span className={`text-xs px-2 py-0.5 rounded-full font-bold ${activeTab === tab.key ? "bg-brand-50 text-brand-700" : "bg-slate-100 text-slate-500"}`}>
+                            {tab.count}
+                        </span>
+                    </button>
+                ))}
             </div>
 
             {loading ? (
                 <div className="flex justify-center py-20">
-                    <div className="w-10 h-10 border-4 border-slate-200 border-t-brand-500 rounded-full animate-spin"></div>
+                    <div className="w-10 h-10 border-4 border-slate-200 border-t-brand-500 rounded-full animate-spin" />
                 </div>
             ) : (
-                <div className="bg-white border border-slate-200 rounded-2xl shadow-sm p-6">
-                    <div className="flex items-center justify-between mb-6 pb-4 border-b border-slate-100">
-                        <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2">
-                            <Store className="w-5 h-5 text-brand-600" /> 
-                            Daftar Etalase Pembelian (Inbound)
-                        </h3>
-                        <div className="text-sm font-semibold text-slate-500 bg-slate-100 px-3 py-1 rounded-full">
-                            Total: {prices.length} Komoditas
-                        </div>
-                    </div>
+                <>
+                    {/* TAB: INBOUND */}
+                    {activeTab === "inbound" && (
+                        <PriceSection
+                            title="Daftar Harga Beli dari Warga (Inbound)"
+                            icon={<Store className="w-5 h-5 text-brand-600" />}
+                            items={inbound}
+                            editingId={editingId}
+                            editData={editData}
+                            onEdit={(p) => { setEditingId(p.id); setEditData(p); }}
+                            onCancelEdit={() => setEditingId(null)}
+                            onUpdate={handleUpdate}
+                            onDelete={handleDelete}
+                            setEditData={setEditData}
+                            onAdd={() => openAdd("buy_from_citizen")}
+                            addLabel="+ Tambah Komoditas Inbound"
+                            priceColor="text-brand-700"
+                            emptyText="Belum ada komoditas inbound. Tambahkan barang yang Anda beli dari warga."
+                        />
+                    )}
 
-                    {prices.length === 0 ? (
-                        <div className="text-center py-16 bg-slate-50 rounded-2xl border border-dashed border-slate-300">
-                            <AlertCircle className="w-12 h-12 text-slate-300 mx-auto mb-3" />
-                            <h4 className="text-slate-800 font-bold mb-1">Daftar Harga Kosong</h4>
-                            <p className="text-slate-500 text-sm max-w-sm mx-auto mb-4">
-                                Belum ada komoditas sampah yang ditambahkan. Silakan klik tombol "Item Komoditas Baru" untuk mulai.
-                            </p>
-                            <button onClick={() => setIsAddingCommodity(true)} className="text-brand-600 font-semibold text-sm hover:underline">
-                                Tambah Sekarang
-                            </button>
-                        </div>
-                    ) : (
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
-                            {prices.map(price => (
-                                <div key={price.id} className="bg-white border border-slate-200 p-5 rounded-2xl flex flex-col justify-between group relative overflow-hidden hover:border-brand-300 hover:shadow-md transition-all">
-                                    
-                                    {editingPriceId === price.id ? (
-                                        <div className="flex flex-col gap-4 h-full justify-between">
-                                            <div>
-                                                <label className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">Nama Item</label>
-                                                <input 
-                                                    type="text" 
-                                                    value={editCommodityData.name || ''} 
-                                                    onChange={(e) => setEditCommodityData({...editCommodityData, name: e.target.value})}
-                                                    className="w-full bg-slate-50 border border-slate-200 text-slate-900 px-3 py-2 rounded-xl text-sm focus:outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20"
-                                                />
-                                            </div>
-                                            <div className="flex gap-3">
-                                                <div className="w-1/2">
-                                                    <label className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">Kategori</label>
-                                                    <select 
-                                                        value={editCommodityData.category || ''} 
-                                                        onChange={(e) => setEditCommodityData({...editCommodityData, category: e.target.value})}
-                                                        className="w-full bg-slate-50 border border-slate-200 text-slate-900 px-3 py-2 rounded-xl text-sm focus:outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20"
-                                                    >
-                                                        <option value="organic">Organic</option>
-                                                        <option value="inorganic">Inorganic</option>
-                                                        <option value="processed">Processed</option>
-                                                        <option value="other">Other</option>
-                                                    </select>
-                                                </div>
-                                                <div className="w-1/2 relative">
-                                                    <label className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">Harga (Rp)</label>
-                                                    <input 
-                                                        type="number" 
-                                                        value={editCommodityData.price_per_kg || ''} 
-                                                        onChange={(e) => setEditCommodityData({...editCommodityData, price_per_kg: Number(e.target.value)})}
-                                                        className="w-full bg-slate-50 border border-slate-200 text-slate-900 px-3 py-2 rounded-xl text-sm focus:outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20"
-                                                    />
-                                                </div>
-                                            </div>
-                                            <div className="flex justify-end gap-2 mt-2 pt-3 border-t border-slate-100">
-                                                <button onClick={() => setEditingPriceId(null)} className="flex-1 py-2 bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 rounded-lg text-sm font-medium transition">Batal</button>
-                                                <button onClick={() => handleUpdateCommodity(price.id)} className="flex-1 py-2 bg-emerald-600 text-white hover:bg-emerald-500 rounded-lg text-sm font-medium transition shadow-md">Simpan</button>
-                                            </div>
-                                        </div>
-                                    ) : (
-                                        <>
-                                            <div className="flex justify-between items-start mb-4">
-                                                <div>
-                                                    <p className="text-xs font-bold uppercase tracking-widest text-brand-600 mb-1">{price.category}</p>
-                                                    <h4 className="text-lg font-bold text-slate-900 leading-tight">{price.name}</h4>
-                                                </div>
-                                            </div>
-                                            <div className="flex justify-between items-end mt-4 pt-4 border-t border-slate-100">
-                                                <div>
-                                                    <span className="text-2xl font-black text-slate-900">Rp {price.price_per_kg.toLocaleString('id-ID')}</span>
-                                                    <span className="text-sm font-semibold text-slate-500 ml-1">/{price.unit}</span>
-                                                </div>
-                                                <div className="flex gap-2">
-                                                    <button 
-                                                        onClick={() => { setEditingPriceId(price.id); setEditCommodityData(price); }}
-                                                        className="p-2 bg-amber-50 text-amber-600 hover:bg-amber-500 hover:text-white border border-amber-200 rounded-lg transition-colors"
-                                                        title="Edit Harga"
-                                                    >
-                                                        <Edit className="w-4 h-4" />
-                                                    </button>
-                                                    <button 
-                                                        onClick={() => handleDeleteCommodity(price.id)}
-                                                        className="p-2 bg-red-50 text-red-600 hover:bg-red-600 hover:text-white border border-red-200 rounded-lg transition-colors"
-                                                        title="Hapus"
-                                                    >
-                                                        <Trash2 className="w-4 h-4" />
-                                                    </button>
-                                                </div>
-                                            </div>
-                                        </>
-                                    )}
+                    {/* TAB: OUTBOUND */}
+                    {activeTab === "outbound" && (
+                        <PriceSection
+                            title="Daftar Harga Jual ke Luar Gudang (Outbound)"
+                            icon={<Factory className="w-5 h-5 text-amber-600" />}
+                            items={outbound}
+                            editingId={editingId}
+                            editData={editData}
+                            onEdit={(p) => { setEditingId(p.id); setEditData(p); }}
+                            onCancelEdit={() => setEditingId(null)}
+                            onUpdate={handleUpdate}
+                            onDelete={handleDelete}
+                            setEditData={setEditData}
+                            onAdd={() => openAdd("sell_outbound")}
+                            addLabel="+ Tambah Komoditas Outbound"
+                            priceColor="text-amber-600"
+                            emptyText="Belum ada komoditas outbound. Tambahkan produk hasil olahan yang Anda jual ke buyer."
+                        />
+                    )}
+
+                    {/* TAB: BUYERS */}
+                    {activeTab === "buyers" && (
+                        <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
+                            <div className="flex items-center justify-between p-5 border-b border-slate-100">
+                                <h3 className="text-base font-bold text-slate-800 flex items-center gap-2">
+                                    <Building2 className="w-5 h-5 text-slate-600" /> Daftar Buyer B2B Aktif
+                                </h3>
+                                <span className="text-xs text-slate-400 bg-slate-100 px-3 py-1 rounded-full">{buyers.length} buyer aktif</span>
+                            </div>
+                            {buyers.length === 0 ? (
+                                <div className="text-center py-16">
+                                    <Users className="w-12 h-12 text-slate-200 mx-auto mb-3" />
+                                    <p className="text-slate-500 text-sm">Belum ada buyer B2B terdaftar.<br />Hubungi SuperAdmin untuk menambahkan buyer.</p>
                                 </div>
-                            ))}
+                            ) : (
+                                <div className="overflow-x-auto">
+                                    <table className="w-full text-sm text-left">
+                                        <thead className="bg-slate-50 text-slate-500 text-xs font-bold uppercase tracking-wider border-b border-slate-100">
+                                            <tr>
+                                                <th className="px-5 py-3">Perusahaan / Kontak</th>
+                                                <th className="px-5 py-3">Komoditas Target</th>
+                                                <th className="px-5 py-3 text-center">Volume (kg)</th>
+                                                <th className="px-5 py-3 text-right">Harga Berani Beli</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-slate-100">
+                                            {buyers.map(b => (
+                                                <tr key={b.id} className="hover:bg-slate-50">
+                                                    <td className="px-5 py-4">
+                                                        <div className="font-bold text-slate-900">{b.company_name}</div>
+                                                        <div className="text-slate-500 text-xs flex items-center gap-1 mt-0.5">
+                                                            <Phone className="w-3 h-3" /> {b.contact_person} · {b.phone_number}
+                                                        </div>
+                                                    </td>
+                                                    <td className="px-5 py-4">
+                                                        <span className="px-2.5 py-1 bg-brand-50 text-brand-700 rounded-lg text-xs font-semibold border border-brand-100">
+                                                            {b.commodity_interest}
+                                                        </span>
+                                                    </td>
+                                                    <td className="px-5 py-4 text-center font-mono font-bold text-slate-700">
+                                                        {b.demand_volume_kg?.toLocaleString('id-ID')} kg
+                                                    </td>
+                                                    <td className="px-5 py-4 text-right font-bold text-amber-600">
+                                                        Rp {b.buying_price_per_kg?.toLocaleString('id-ID')}/kg
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            )}
                         </div>
                     )}
-                </div>
+                </>
             )}
 
-            {/* Tambah Komoditas Modal Overlay */}
-            {isAddingCommodity && (
-                <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4 z-[100] animate-in fade-in duration-200">
-                    <div className="bg-white border border-slate-200 rounded-3xl shadow-2xl w-full max-w-md overflow-hidden flex flex-col max-h-[90vh]">
-                        <div className="flex justify-between items-center p-5 border-b border-slate-100 bg-slate-50/50">
+            {/* Modal Tambah Item */}
+            {showAddModal && (
+                <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4 z-[100]">
+                    <div className="bg-white border border-slate-200 rounded-3xl shadow-2xl w-full max-w-md overflow-hidden">
+                        <div className="flex justify-between items-center p-5 border-b border-slate-100 bg-slate-50">
                             <h3 className="font-extrabold text-slate-900 text-lg flex items-center gap-2">
-                                <Tag className="w-5 h-5 text-brand-600"/> 
-                                Item Baru
+                                {newItem.trade_type === 'buy_from_citizen'
+                                    ? <><Store className="w-5 h-5 text-brand-600" /> Item Inbound (Beli dari Warga)</>
+                                    : <><Factory className="w-5 h-5 text-amber-600" /> Item Outbound (Jual ke Buyer)</>
+                                }
                             </h3>
-                            <button onClick={() => setIsAddingCommodity(false)} className="text-slate-400 hover:text-slate-600 bg-white p-1 rounded-full border border-slate-200"><X className="w-5 h-5"/></button>
+                            <button onClick={() => setShowAddModal(false)} className="text-slate-400 hover:text-slate-700">
+                                <X className="w-5 h-5" />
+                            </button>
                         </div>
-                        <div className="p-6 overflow-y-auto flex-1 space-y-4">
+                        <div className="p-6 space-y-4">
                             <div>
-                                <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 block">Kategori Komoditas</label>
-                                <select value={newCommodity.category} onChange={e => setNewCommodity({...newCommodity, category: e.target.value})} className="w-full bg-white border border-slate-200 rounded-xl text-slate-900 px-4 py-3 text-sm focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 focus:outline-none">
+                                <label className="text-xs font-bold text-slate-500 uppercase mb-1.5 block">Kategori</label>
+                                <select value={newItem.category}
+                                    onChange={e => setNewItem({ ...newItem, category: e.target.value })}
+                                    className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500">
                                     <option value="organic">Organic</option>
                                     <option value="inorganic">Inorganic</option>
-                                    <option value="processed">Processed</option>
-                                    <option value="other">Other</option>
+                                    <option value="processed">Processed (Hasil Olahan)</option>
+                                    <option value="other">Lainnya</option>
                                 </select>
                             </div>
                             <div>
-                                <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 block">Nama Item Sampah</label>
-                                <input type="text" value={newCommodity.name || ''} onChange={e => setNewCommodity({...newCommodity, name: e.target.value})} className="w-full bg-white border border-slate-200 rounded-xl text-slate-900 px-4 py-3 text-sm focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 focus:outline-none" placeholder="Contoh: Plastik PET Bersih" />
+                                <label className="text-xs font-bold text-slate-500 uppercase mb-1.5 block">Nama Item *</label>
+                                <input type="text" value={newItem.name || ''}
+                                    onChange={e => setNewItem({ ...newItem, name: e.target.value })}
+                                    className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500"
+                                    placeholder="Contoh: Plastik PET Bersih" />
                             </div>
-                            <div className="flex gap-4">
+                            <div className="flex gap-3">
                                 <div className="flex-1 relative">
-                                    <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 block">Harga Beli Warga</label>
-                                    <div className="absolute left-4 top-10 text-slate-400 font-bold">Rp</div>
-                                    <input type="number" min="0" value={newCommodity.price_per_kg || ''} onChange={e => setNewCommodity({...newCommodity, price_per_kg: Number(e.target.value)})} className="w-full bg-slate-50 border border-slate-200 rounded-xl text-slate-900 pl-11 pr-4 py-3 text-lg font-black focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 focus:outline-none shadow-inner" placeholder="0" />
+                                    <label className="text-xs font-bold text-slate-500 uppercase mb-1.5 block">
+                                        {newItem.trade_type === 'buy_from_citizen' ? 'Harga Beli (Rp)' : 'Harga Jual (Rp)'}
+                                    </label>
+                                    <span className="absolute left-4 bottom-3 text-slate-400 font-bold text-sm">Rp</span>
+                                    <input type="number" min="0" value={newItem.price_per_kg || ''}
+                                        onChange={e => setNewItem({ ...newItem, price_per_kg: Number(e.target.value) })}
+                                        className="w-full border border-slate-200 rounded-xl pl-11 pr-4 py-2.5 text-lg font-black focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500"
+                                        placeholder="0" />
                                 </div>
-                                <div className="w-24">
-                                    <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 block">Satuan</label>
-                                    <input type="text" value={newCommodity.unit || ''} onChange={e => setNewCommodity({...newCommodity, unit: e.target.value})} className="w-full bg-slate-50 text-center border border-slate-200 rounded-xl text-slate-600 font-bold px-4 py-3 text-lg focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 focus:outline-none" placeholder="kg" disabled />
+                                <div className="w-20">
+                                    <label className="text-xs font-bold text-slate-500 uppercase mb-1.5 block">Satuan</label>
+                                    <input type="text" value={newItem.unit || 'kg'}
+                                        onChange={e => setNewItem({ ...newItem, unit: e.target.value })}
+                                        className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-center text-sm font-bold focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500"
+                                        placeholder="kg" />
                                 </div>
                             </div>
                         </div>
-                        <div className="p-5 border-t border-slate-100 flex justify-end gap-3 bg-slate-50/50">
-                            <button onClick={() => setIsAddingCommodity(false)} className="px-5 py-2.5 text-sm font-bold text-slate-600 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 transition">Batal</button>
-                            <button onClick={handleSaveCommodity} className="px-6 py-2.5 text-sm font-bold bg-brand-600 hover:bg-brand-500 text-white rounded-xl transition shadow-lg shadow-brand-500/20 flex items-center gap-2">
-                                Simpan <ArrowRight className="w-4 h-4" />
-                            </button>
+                        <div className="p-5 border-t flex justify-end gap-3">
+                            <button onClick={() => setShowAddModal(false)} className="px-5 py-2.5 text-sm font-bold text-slate-600 bg-white border border-slate-200 rounded-xl hover:bg-slate-50">Batal</button>
+                            <button onClick={handleSave} className="px-6 py-2.5 text-sm font-bold bg-brand-600 hover:bg-brand-500 text-white rounded-xl shadow-md">Simpan</button>
                         </div>
                     </div>
+                </div>
+            )}
+        </div>
+    );
+}
+
+function PriceSection({ title, icon, items, editingId, editData, onEdit, onCancelEdit, onUpdate, onDelete, setEditData, onAdd, addLabel, priceColor, emptyText }: {
+    title: string; icon: React.ReactNode; items: UnitPrice[];
+    editingId: string | null; editData: Partial<UnitPrice>;
+    onEdit: (item: UnitPrice) => void; onCancelEdit: () => void;
+    onUpdate: (id: string) => void; onDelete: (id: string) => void;
+    setEditData: (d: Partial<UnitPrice>) => void;
+    onAdd: () => void; addLabel: string; priceColor: string; emptyText: string;
+}) {
+    return (
+        <div className="bg-white border border-slate-200 rounded-2xl shadow-sm p-6">
+            <div className="flex items-center justify-between mb-6 pb-4 border-b border-slate-100">
+                <h3 className="text-base font-bold text-slate-800 flex items-center gap-2">{icon}{title}</h3>
+                <button onClick={onAdd} className="flex items-center gap-1.5 text-sm font-bold text-brand-600 hover:text-brand-700 border border-brand-200 hover:border-brand-400 px-3 py-1.5 rounded-xl transition bg-brand-50">
+                    <Plus className="w-3.5 h-3.5" /> {addLabel}
+                </button>
+            </div>
+
+            {items.length === 0 ? (
+                <div className="text-center py-12 bg-slate-50 rounded-2xl border border-dashed border-slate-200">
+                    <AlertCircle className="w-10 h-10 text-slate-200 mx-auto mb-2" />
+                    <p className="text-slate-500 text-sm">{emptyText}</p>
+                </div>
+            ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                    {items.map(item => (
+                        <div key={item.id} className="border border-slate-200 rounded-xl p-4 hover:border-brand-200 hover:shadow-sm transition-all group">
+                            {editingId === item.id ? (
+                                <div className="space-y-3">
+                                    <input type="text" value={editData.name || ''} onChange={e => setEditData({ ...editData, name: e.target.value })}
+                                        className="w-full border border-slate-200 rounded-lg px-3 py-1.5 text-sm text-slate-900 focus:outline-none focus:border-brand-500" />
+                                    <div className="flex gap-2">
+                                        <select value={editData.category || ''} onChange={e => setEditData({ ...editData, category: e.target.value })}
+                                            className="w-1/2 border border-slate-200 rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:border-brand-500">
+                                            {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+                                        </select>
+                                        <input type="number" value={editData.price_per_kg || ''} onChange={e => setEditData({ ...editData, price_per_kg: Number(e.target.value) })}
+                                            className="w-1/2 border border-slate-200 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:border-brand-500" />
+                                    </div>
+                                    <div className="flex gap-2 pt-1">
+                                        <button onClick={onCancelEdit} className="flex-1 py-1.5 text-xs border border-slate-200 rounded-lg text-slate-600 hover:bg-slate-50">Batal</button>
+                                        <button onClick={() => onUpdate(item.id)} className="flex-1 py-1.5 text-xs bg-emerald-600 text-white rounded-lg hover:bg-emerald-500">Simpan</button>
+                                    </div>
+                                </div>
+                            ) : (
+                                <>
+                                    <p className={`text-xs font-bold uppercase tracking-wider mb-1 ${CAT_COLORS[item.category] || 'text-slate-500'}`}>{item.category}</p>
+                                    <h4 className="text-sm font-bold text-slate-900 mb-3 leading-snug">{item.name}</h4>
+                                    <div className="flex items-end justify-between border-t border-slate-100 pt-3">
+                                        <div>
+                                            <span className={`text-xl font-black ${priceColor}`}>Rp {item.price_per_kg.toLocaleString('id-ID')}</span>
+                                            <span className="text-xs text-slate-500 ml-0.5">/{item.unit}</span>
+                                        </div>
+                                        <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                            <button onClick={() => onEdit(item)} className="p-1.5 bg-amber-50 text-amber-600 hover:bg-amber-500 hover:text-white border border-amber-200 rounded-lg transition">
+                                                <Edit className="w-3.5 h-3.5" />
+                                            </button>
+                                            <button onClick={() => onDelete(item.id)} className="p-1.5 bg-red-50 text-red-500 hover:bg-red-500 hover:text-white border border-red-200 rounded-lg transition">
+                                                <Trash2 className="w-3.5 h-3.5" />
+                                            </button>
+                                        </div>
+                                    </div>
+                                </>
+                            )}
+                        </div>
+                    ))}
                 </div>
             )}
         </div>

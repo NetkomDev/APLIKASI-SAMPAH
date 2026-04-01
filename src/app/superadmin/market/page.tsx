@@ -7,7 +7,7 @@ import { useSuperAdminTheme, t } from "@/components/superadmin/ThemeProvider";
 
 interface CommodityPrice {
     id: string;
-    trade_type: 'buy_from_citizen' | 'sell_to_market';
+    trade_type: 'buy_from_bank_sampah' | 'sell_to_market';
     category: string;
     name: string;
     price_per_kg: number;
@@ -42,7 +42,7 @@ export default function MarketAndPricingPage() {
     // Add Commodity States
     const [isAddingCommodity, setIsAddingCommodity] = useState(false);
     const [newCommodity, setNewCommodity] = useState<Partial<CommodityPrice>>({ 
-        trade_type: 'buy_from_citizen', 
+        trade_type: 'buy_from_bank_sampah', 
         unit: 'kg', 
         is_active: true,
         category: 'organic'
@@ -88,7 +88,7 @@ export default function MarketAndPricingPage() {
 
             if (error) throw error;
             setIsAddingCommodity(false);
-            setNewCommodity({ trade_type: 'buy_from_citizen', unit: 'kg', is_active: true, category: 'organic' });
+            setNewCommodity({ trade_type: 'buy_from_bank_sampah', unit: 'kg', is_active: true, category: 'organic' });
             fetchData();
         } catch (error) {
             console.error(error);
@@ -173,7 +173,7 @@ export default function MarketAndPricingPage() {
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
                     <h1 className={`text-2xl font-extrabold ${tk.textHeading} tracking-tight`}>Market & Pricing</h1>
-                    <p className={`text-sm ${tk.textSecondary} mt-1`}>Kelola harga beli komunitas dan jaringan buyer B2B penjualan.</p>
+                    <p className={`text-sm ${tk.textSecondary} mt-1`}>Kelola harga acuan antar Bank Sampah dan jaringan buyer B2B penjualan sistem.</p>
                 </div>
             </div>
 
@@ -203,16 +203,17 @@ export default function MarketAndPricingPage() {
                         </button>
                     </div>
 
-                    {/* Beli Dari Warga */}
+                    {/* Beli Dari Bank Sampah */}
                     <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6">
                         <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
-                            <Store className="w-5 h-5 text-emerald-400" /> Beli dari Warga (Inbound)
+                            <Store className="w-5 h-5 text-emerald-400" /> Beli dari Bank Sampah (Inbound)
                         </h3>
-                        {prices.filter(p => p.trade_type === 'buy_from_citizen').length === 0 ? (
-                            <p className="text-slate-500 text-center py-8 bg-slate-800/20 rounded-xl border border-dashed border-slate-700">Belum ada item komoditas inbound.</p>
+                        <p className="text-xs text-slate-500 mb-4">Harga acuan pembelian komoditas dari unit Bank Sampah ke gudang pusat.</p>
+                        {prices.filter(p => p.trade_type === 'buy_from_bank_sampah').length === 0 ? (
+                            <p className="text-slate-500 text-center py-8 bg-slate-800/20 rounded-xl border border-dashed border-slate-700">Belum ada item komoditas inbound dari Bank Sampah.</p>
                         ) : (
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                                {prices.filter(p => p.trade_type === 'buy_from_citizen').map(price => (
+                                {prices.filter(p => p.trade_type === 'buy_from_bank_sampah').map(price => (
                                     <div key={price.id} className="bg-slate-800 border border-slate-700/50 p-4 rounded-xl flex flex-col justify-between group relative overflow-hidden">
                                         
                                         {editingPriceId === price.id ? (
@@ -451,10 +452,10 @@ export default function MarketAndPricingPage() {
                         </div>
                         <div className="p-6 overflow-y-auto space-y-5">
                             <div>
-                                <label className="block text-xs font-bold text-slate-400 mb-1.5 uppercase">Tipe Ekosistem *</label>
+                                <label className="block text-xs font-bold text-slate-400 mb-1.5 uppercase">Tipe Transaksi *</label>
                                 <select value={newCommodity.trade_type} onChange={e => setNewCommodity({...newCommodity, trade_type: e.target.value as any})} className="w-full bg-slate-950 border border-slate-800 rounded-xl text-white px-4 py-3 text-sm focus:border-brand-500 focus:outline-none">
-                                    <option value="buy_from_citizen">Inbound (Beli dari Warga Masyarakat)</option>
-                                    <option value="sell_to_market">Outbound (Jual Produksi ke Market B2B)</option>
+                                    <option value="buy_from_bank_sampah">Inbound (Beli dari Bank Sampah)</option>
+                                    <option value="sell_to_market">Outbound (Jual ke Market / Buyer B2B)</option>
                                 </select>
                             </div>
                             <div className="grid grid-cols-2 gap-4">
