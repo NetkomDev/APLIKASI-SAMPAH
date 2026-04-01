@@ -231,6 +231,8 @@ export default function AdminCouriersPage() {
             // SUCCESS → close modal and refresh
             setShowManualModal(false);
             setManualForm({ fullName: "", nik: "", phone: "", vehicleType: "motor", vehiclePlate: "", addressKtp: "", birthPlace: "", birthDate: "" });
+            setSearchQuery("");
+            setFilter("all");
             setActionMessage({ type: "success", text: `✅ ${manualForm.fullName} berhasil didaftarkan dan menunggu approval.` });
             fetchApplications();
         } catch (err) {
