@@ -203,7 +203,7 @@ export default function AdminPricingPage() {
                             onDelete={handleDelete}
                             setEditData={setEditData}
                             onAdd={() => openAdd("buy_from_citizen")}
-                            addLabel="+ Tambah Komoditas Inbound"
+                            addLabel="Tambah Komoditas Inbound"
                             priceColor="text-brand-700"
                             emptyText="Belum ada komoditas inbound. Tambahkan barang yang Anda beli dari warga."
                         />
@@ -223,7 +223,7 @@ export default function AdminPricingPage() {
                             onDelete={handleDelete}
                             setEditData={setEditData}
                             onAdd={() => openAdd("sell_outbound")}
-                            addLabel="+ Tambah Komoditas Outbound"
+                            addLabel="Tambah Komoditas Outbound"
                             priceColor="text-amber-600"
                             emptyText="Belum ada komoditas outbound. Tambahkan produk hasil olahan yang Anda jual ke buyer."
                         />
@@ -308,7 +308,9 @@ export default function AdminPricingPage() {
                                     className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500">
                                     <option value="organic">Organic</option>
                                     <option value="inorganic">Inorganic</option>
-                                    <option value="processed">Processed (Hasil Olahan)</option>
+                                    {newItem.trade_type === 'sell_outbound' && (
+                                        <option value="processed">Processed (Hasil Olahan)</option>
+                                    )}
                                     <option value="other">Lainnya</option>
                                 </select>
                             </div>
