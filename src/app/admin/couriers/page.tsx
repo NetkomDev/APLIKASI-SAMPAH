@@ -243,12 +243,15 @@ export default function AdminCouriersPage() {
     };
 
     // ─── Manual Registration Handler ─────────────────────────
+    const [modalError, setModalError] = useState<string | null>(null);
+
     const handleManualRegister = async () => {
         if (!manualForm.fullName || !manualForm.nik || !manualForm.phone) {
-            setActionMessage({ type: "error", text: "Nama, NIK, dan No. Telepon wajib diisi." });
+            setModalError("Nama, NIK, dan No. Telepon wajib diisi.");
             return;
         }
         setManualSubmitting(true);
+        setModalError(null);
         setActionMessage(null);
 
         try {
@@ -263,41 +266,74 @@ export default function AdminCouriersPage() {
             if (phone.startsWith("0")) phone = "62" + phone.slice(1);
             if (!phone.startsWith("62")) phone = "62" + phone;
 
-            // Create the auth account for the courier
-            const email = `wa_${phone}@ecosistemdigital.id`;
-            const tempPassword = `BERES-${manualForm.nik.slice(-4)}-${Date.now().toString(36)}`;
+            // Check if profile already exists by phone
+            const { data: existingProfile } = await supabase
+                .from("profiles").select("id, courier_status").eq("phone_number", phone).maybeSingle();
 
-            const { data: signUpData, error: signUpErr } = await supabase.auth.signUp({
-                email,
-                password: tempPassword,
-                options: { data: { full_name: manualForm.fullName } },
-            });
+            let courierUserId: string;
 
-            let courierUserId = signUpData?.user?.id;
+            if (existingProfile) {
+                // User already exists — use their ID
+                courierUserId = existingProfile.id;
 
-            // If sign up failed (might already exist), try finding existing profile
-            if (signUpErr || !courierUserId) {
-                const { data: existingProfile } = await supabase
-                    .from("profiles").select("id").eq("phone_number", phone).maybeSingle();
-                if (existingProfile) {
-                    courierUserId = existingProfile.id;
+                if (existingProfile.courier_status === "pending_approval") {
+                    throw new Error("Nomor ini sudah terdaftar dan menunggu approval.");
+                }
+            } else {
+                // Create user via Supabase Admin API (does NOT switch session)
+                const email = `wa_${phone}@ecosistemdigital.id`;
+                const tempPassword = `BERES-${manualForm.nik.slice(-4)}-${Date.now().toString(36)}`;
+
+                const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+                const serviceKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImljeWlyYmV6cm1peHhrenpydWZxIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MjcxNDQ2MywiZXhwIjoyMDg4MjkwNDYzfQ.r_IaCQK6lr-121Szk98PdKk8F_dhkJJ8NjxnekBrJac";
+
+                const createRes = await fetch(`${supabaseUrl}/auth/v1/admin/users`, {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "apikey": serviceKey,
+                        "Authorization": `Bearer ${serviceKey}`,
+                    },
+                    body: JSON.stringify({
+                        email,
+                        password: tempPassword,
+                        email_confirm: true,
+                        user_metadata: { full_name: manualForm.fullName },
+                    }),
+                });
+
+                const createData = await createRes.json();
+
+                if (!createRes.ok) {
+                    // If user already exists in auth but not in profiles
+                    if (createData?.msg?.includes?.("already") || createData?.message?.includes?.("already")) {
+                        const { data: foundByEmail } = await supabase
+                            .from("profiles").select("id").eq("phone_number", phone).maybeSingle();
+                        if (foundByEmail) {
+                            courierUserId = foundByEmail.id;
+                        } else {
+                            throw new Error("Akun sudah ada tapi profil tidak ditemukan. Hubungi SuperAdmin.");
+                        }
+                    } else {
+                        throw new Error(createData?.msg || createData?.message || "Gagal membuat akun baru.");
+                    }
                 } else {
-                    throw new Error(`Gagal membuat akun: ${signUpErr?.message || "Unknown error"}`);
+                    courierUserId = createData.id;
                 }
             }
 
-            // Upsert profile
+            // Upsert profile (without changing role — will be upgraded on approval)
             await supabase.from("profiles").upsert({
-                id: courierUserId,
+                id: courierUserId!,
                 full_name: manualForm.fullName,
                 phone_number: phone,
                 address: manualForm.addressKtp,
                 role: "user",
             });
 
-            // Insert into courier_applications with source = 'offline'
+            // Insert into courier_applications
             const { error: insertErr } = await supabase.from("courier_applications").insert({
-                user_id: courierUserId,
+                user_id: courierUserId!,
                 nik: manualForm.nik,
                 full_name: manualForm.fullName,
                 birth_place: manualForm.birthPlace || "-",
@@ -316,17 +352,20 @@ export default function AdminCouriersPage() {
             if (insertErr) throw new Error(`Gagal menyimpan: ${insertErr.message}`);
 
             // Update courier_status on profile
-            await supabase.from("profiles").update({ courier_status: "pending_approval" }).eq("id", courierUserId);
+            await supabase.from("profiles").update({ courier_status: "pending_approval" }).eq("id", courierUserId!);
 
-            setActionMessage({ type: "success", text: `✅ ${manualForm.fullName} berhasil didaftarkan dan menunggu approval.` });
+            // SUCCESS → close modal and refresh
             setShowManualModal(false);
             setManualForm({ fullName: "", nik: "", phone: "", vehicleType: "motor", vehiclePlate: "", addressKtp: "", birthPlace: "", birthDate: "" });
+            setActionMessage({ type: "success", text: `✅ ${manualForm.fullName} berhasil didaftarkan dan menunggu approval.` });
             fetchApplications();
         } catch (err) {
-            setActionMessage({ type: "error", text: `❌ ${err instanceof Error ? err.message : "Gagal mendaftarkan."}` });
+            // Show error INSIDE the modal (don't close it)
+            setModalError(err instanceof Error ? err.message : "Gagal mendaftarkan.");
         }
         setManualSubmitting(false);
     };
+
 
     return (
         <div className="space-y-6">
@@ -465,6 +504,13 @@ export default function AdminCouriersPage() {
                                 <X className="w-5 h-5 text-slate-400" />
                             </button>
                         </div>
+
+                        {modalError && (
+                            <div className="p-3 bg-red-50 text-red-700 text-sm font-semibold rounded-lg border border-red-100 flex items-start gap-2">
+                                <AlertTriangle className="w-5 h-5 flex-shrink-0" />
+                                <p>{modalError}</p>
+                            </div>
+                        )}
 
                         <div className="grid grid-cols-2 gap-4">
                             <div className="col-span-2">
