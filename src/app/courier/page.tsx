@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/infrastructure/config/supabase";
 import {
     MapPin, Package, Send, Wallet, Truck, PlusCircle,
-    ChevronRight, LogOut, Navigation, Star, FileText
+    ChevronRight, LogOut, Navigation, Star, FileText, Download, X
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -16,12 +16,35 @@ export default function CourierDashboard() {
     const [wallet, setWallet] = useState<any>(null);
     const [loading, setLoading] = useState(true);
 
+    // PWA Install
+    const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+    const [showInstallBanner, setShowInstallBanner] = useState(false);
+
     // Stats
     const [todayTonnage, setTodayTonnage] = useState({ org: 0, inorg: 0 });
     const [monthlyPickups, setMonthlyPickups] = useState(0);
 
     useEffect(() => {
         init();
+
+        // Register Service Worker
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('/sw.js').catch(() => {});
+        }
+
+        // Listen for PWA install prompt
+        const dismissed = localStorage.getItem('pwa-install-dismissed');
+        const isStandalone = window.matchMedia('(display-mode: standalone)').matches || (window.navigator as any).standalone;
+        
+        if (!dismissed && !isStandalone) {
+            const handler = (e: any) => {
+                e.preventDefault();
+                setDeferredPrompt(e);
+                setShowInstallBanner(true);
+            };
+            window.addEventListener('beforeinstallprompt', handler);
+            return () => window.removeEventListener('beforeinstallprompt', handler);
+        }
     }, []);
 
     const init = async () => {
@@ -95,6 +118,21 @@ export default function CourierDashboard() {
         router.push("/courier/login");
     };
 
+    const handleInstallPWA = async () => {
+        if (!deferredPrompt) return;
+        deferredPrompt.prompt();
+        const { outcome } = await deferredPrompt.userChoice;
+        if (outcome === 'accepted') {
+            setShowInstallBanner(false);
+        }
+        setDeferredPrompt(null);
+    };
+
+    const dismissInstallBanner = () => {
+        setShowInstallBanner(false);
+        localStorage.setItem('pwa-install-dismissed', 'true');
+    };
+
     if (loading) {
         return (
             <div className="min-h-screen bg-slate-50 flex items-center justify-center">
@@ -105,6 +143,27 @@ export default function CourierDashboard() {
 
     return (
         <div className="min-h-screen pb-20 bg-slate-50">
+            {/* PWA Install Banner */}
+            {showInstallBanner && (
+                <div className="bg-gradient-to-r from-emerald-600 to-teal-600 text-white px-4 py-3 flex items-center gap-3 animate-in slide-in-from-top">
+                    <div className="bg-white/20 p-2 rounded-xl flex-shrink-0">
+                        <Download className="w-5 h-5" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                        <p className="text-sm font-bold leading-tight">Install Aplikasi BERES</p>
+                        <p className="text-[11px] text-white/80">Akses cepat tanpa buka browser</p>
+                    </div>
+                    <button
+                        onClick={handleInstallPWA}
+                        className="bg-white text-emerald-700 text-xs font-black px-4 py-2 rounded-xl flex-shrink-0 active:scale-95 transition"
+                    >
+                        Install
+                    </button>
+                    <button onClick={dismissInstallBanner} className="p-1 text-white/60 hover:text-white flex-shrink-0">
+                        <X className="w-4 h-4" />
+                    </button>
+                </div>
+            )}
             {/* Preview Banner for Admin/SuperAdmin */}
             {profile?.role !== "courier" && (
                 <div className="bg-amber-500 text-white text-center py-2 px-4 text-xs font-bold">
