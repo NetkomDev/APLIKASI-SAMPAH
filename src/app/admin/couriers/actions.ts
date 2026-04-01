@@ -110,3 +110,95 @@ export async function manualRegisterCourier(formData: any, adminId: string) {
         return { error: e.message || "Unknown error occurred during manual registration" };
     }
 }
+
+export async function approveCourierAction(appId: string, adminId: string) {
+    const supabase = getAdminSupabase();
+
+    try {
+        // 1. Get Application
+        const { data: application } = await supabase
+            .from("courier_applications")
+            .select("*")
+            .eq("id", appId)
+            .single();
+
+        if (!application) throw new Error("Aplikasi pendaftaran tidak ditemukan.");
+
+        // 2. Get Admin & Generate Code
+        const { data: adminProfile } = await supabase
+            .from("profiles")
+            .select("bank_sampah_id, bank_sampah_name")
+            .eq("id", adminId).single();
+
+        if (!adminProfile?.bank_sampah_id) throw new Error("Akses ditolak: Admin tidak valid.");
+
+        // 3. Generate Courier Code
+        const { data: codeResult } = await supabase.rpc("generate_courier_id_code");
+        const courierCode = codeResult || `KUR-${Math.floor(Math.random() * 10000).toString().padStart(4, "0")}`;
+
+        // 4. Update Application Status
+        const { error: appErr } = await supabase
+            .from("courier_applications")
+            .update({
+                status: "approved",
+                reviewed_by: adminId,
+                reviewed_at: new Date().toISOString(),
+                courier_id_code: courierCode,
+            })
+            .eq("id", appId);
+
+        if (appErr) throw appErr;
+
+        // 5. Upgrade Profile
+        const { error: profileErr } = await supabase
+            .from("profiles")
+            .update({
+                role: "courier",
+                courier_status: "active",
+                courier_id_code: courierCode,
+                vehicle_type: application.vehicle_type,
+                vehicle_plate: application.vehicle_plate,
+                preferred_zone: application.preferred_zone,
+                is_online: false,
+                bank_sampah_id: adminProfile.bank_sampah_id,
+                bank_sampah_name: adminProfile.bank_sampah_name
+            })
+            .eq("id", application.user_id);
+
+        if (profileErr) throw profileErr;
+
+        // 6. Create Wallet
+        await supabase
+            .from("user_wallets")
+            .upsert({ user_id: application.user_id, balance: 0 }, { onConflict: "user_id" });
+
+        // 7. WA Notification integration (using configured Fonnte token)
+        try {
+            const { data: config } = await supabase.from('system_settings').select('setting_value').eq('setting_name', 'fonnte_token').single();
+            if (config && config.setting_value) {
+                // Ensure correct phone formatting for WhatsApp (must start with 08 for local or 62 for international Fonnte format depending on sender? Usually Fonnte expects 08 or 62. Let's send exactly as in database).
+                let phoneWa = application.phone_number;
+                if (phoneWa.startsWith("62")) phoneWa = "0" + phoneWa.slice(2);
+
+                const message = `*SELAMAT! PENDAFTARAN KURIR DITERIMA* 🚀\r\n\r\nHalo ${application.full_name}, pendaftaran Anda sebagai Kurir/Mitra Jemput di *${adminProfile.bank_sampah_name}* telah disetujui.\r\n\r\n*ID KURIR:* ${courierCode}\r\n*ARMADA:* ${application.vehicle_type.toUpperCase()}\r\n\r\nSilakan langsung mulai bekerja dengan menekan tombol **Mulai Jemput Sampah** di Dashboard Kurir Anda.\r\n\r\n🔗 Login Dashboard: https://beres-bone.vercel.app/courier`;
+                
+                const formData = new URLSearchParams();
+                formData.append('target', phoneWa);
+                formData.append('message', message);
+                
+                await fetch('https://api.fonnte.com/send', {
+                    method: 'POST',
+                    headers: { 'Authorization': config.setting_value },
+                    body: formData
+                });
+            }
+        } catch (waErr) {
+            console.error("Failed to send WA Notification", waErr);
+            // Non-blocking error, allow approval to complete
+        }
+
+        return { success: true };
+    } catch (e: any) {
+        return { error: e.message || "Unknown error occurred during approval" };
+    }
+}

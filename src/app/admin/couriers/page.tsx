@@ -60,7 +60,7 @@ async function getSignedUrl(path: string): Promise<string | null> {
 }
 
 // ═══════════════════════════════════════════════════════════════
-import { manualRegisterCourier } from "./actions";
+import { manualRegisterCourier, approveCourierAction } from "./actions";
 
 export default function AdminCouriersPage() {
     const [applications, setApplications] = useState<CourierApplication[]>([]);
@@ -132,54 +132,13 @@ export default function AdminCouriersPage() {
         setActionMessage(null);
 
         try {
-            // Generate courier ID code via database function
-            const { data: codeResult } = await supabase.rpc("generate_courier_id_code");
-            const courierCode = codeResult || `KUR-${Math.floor(Math.random() * 10000).toString().padStart(4, "0")}`;
-
-            // Get current user (admin) ID and their bank_sampah_id
             const { data: { user } } = await supabase.auth.getUser();
             if (!user) throw new Error("Akses ditolak. Silakan login kembali.");
 
-            const { data: adminProfile } = await supabase.from("profiles").select("bank_sampah_id, bank_sampah_name").eq("id", user.id).single();
-            if (!adminProfile || !adminProfile.bank_sampah_id) throw new Error("Profil admin tidak valid atau Anda bukan admin bank sampah.");
+            const res = await approveCourierAction(app.id, user.id);
+            if (res.error) throw new Error(res.error);
 
-            // 1. Update application
-            const { error: appErr } = await supabase
-                .from("courier_applications")
-                .update({
-                    status: "approved",
-                    reviewed_by: user.id,
-                    reviewed_at: new Date().toISOString(),
-                    courier_id_code: courierCode,
-                })
-                .eq("id", app.id);
-
-            if (appErr) throw appErr;
-
-            // 2. Update profile: link to bank_sampah_id perfectly
-            const { error: profileErr } = await supabase
-                .from("profiles")
-                .update({
-                    role: "courier",
-                    courier_status: "active",
-                    courier_id_code: courierCode,
-                    vehicle_type: app.vehicle_type,
-                    vehicle_plate: app.vehicle_plate,
-                    preferred_zone: app.preferred_zone,
-                    is_online: false,
-                    bank_sampah_id: adminProfile.bank_sampah_id,
-                    bank_sampah_name: adminProfile.bank_sampah_name
-                })
-                .eq("id", app.user_id);
-
-            if (profileErr) throw profileErr;
-
-            // 3. Create wallet for courier (if not exists)
-            await supabase
-                .from("user_wallets")
-                .upsert({ user_id: app.user_id, balance: 0 }, { onConflict: "user_id" });
-
-            setActionMessage({ type: "success", text: `✅ ${app.full_name} resmi bergabung! Notif WA akan dikirim otomatis.` });
+            setActionMessage({ type: "success", text: `✅ ${app.full_name} resmi bergabung! Notif WA berhasil dikirim.` });
             fetchApplications();
         } catch (err) {
             console.error("Approve error:", err);
