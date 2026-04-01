@@ -99,8 +99,13 @@ export default function AdminPage() {
                 });
 
                 // Fetch Prices for the dashboard display
-                const { data: pricingData } = await supabase.from('commodity_prices').select('*').eq('is_active', true);
-                if (pricingData) setPrices(pricingData);
+                if (bankId) {
+                    const { data: pricingData } = await supabase.from('unit_commodity_prices').select('*').eq('bank_sampah_unit_id', bankId).eq('is_active', true);
+                    if (pricingData) setPrices(pricingData);
+                } else {
+                    const { data: pricingData } = await supabase.from('commodity_prices').select('*').eq('is_active', true);
+                    if (pricingData) setPrices(pricingData);
+                }
             }
         } catch (error) {
             console.error("Error fetching admin stats:", error);
@@ -298,8 +303,8 @@ export default function AdminPage() {
 
                     <div className="bg-slate-900 rounded-2xl shadow-sm border border-slate-800 p-6 flex flex-col h-[286px] text-white relative overflow-hidden">
                         <div className="absolute top-0 right-0 w-32 h-32 bg-brand-500/20 rounded-full blur-2xl transform translate-x-1/2 -translate-y-1/2"></div>
-                        <h2 className="text-md font-bold mb-2">Harga Beli Dinamis</h2>
-                        <p className="text-xs text-slate-400 mb-6">Harga beli warga hari ini. Harga dikelola oleh Super Admin & terupdate otomatis di Bot WhatsApp.</p>
+                        <h2 className="text-md font-bold mb-2">Harga Beli LOKAL (Cabang Anda)</h2>
+                        <p className="text-xs text-slate-400 mb-6">Harga beli sampah dari warga hari ini. Anda dapat mengelola harga ini secara mandiri di menu Harga Komoditas.</p>
 
                         <div className="space-y-3">
                             {prices.filter(p => p.trade_type === 'buy_from_citizen').length === 0 ? (
