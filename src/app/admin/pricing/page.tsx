@@ -58,21 +58,24 @@ export default function AdminPricingPage() {
         trade_type: 'buy_from_citizen', unit: 'kg', is_active: true, category: 'inorganic'
     });
 
-    // Fetch unit milik admin yang login
+    // Fetch unit milik admin yang login lewat profiles.bank_sampah_id
     useEffect(() => {
         const init = async () => {
             const { data: { user } } = await supabase.auth.getUser();
-            if (!user) return;
+            if (!user) { setLoading(false); return; }
 
-            const { data: unit } = await supabase
-                .from("bank_sampah_units")
-                .select("id, name")
-                .eq("created_by", user.id)
+            // Link admin → unit ada di profiles.bank_sampah_id
+            const { data: profile } = await supabase
+                .from("profiles")
+                .select("bank_sampah_id, bank_sampah_name")
+                .eq("id", user.id)
                 .single();
 
-            if (unit) {
-                setUnitId(unit.id);
-                setUnitName(unit.name);
+            if (profile?.bank_sampah_id) {
+                setUnitId(profile.bank_sampah_id);
+                setUnitName(profile.bank_sampah_name || "");
+            } else {
+                setLoading(false); // Unit tidak ditemukan, stop loading
             }
         };
         init();
