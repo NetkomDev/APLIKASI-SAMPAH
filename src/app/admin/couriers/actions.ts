@@ -53,7 +53,7 @@ export async function manualRegisterCourier(formData: any, adminId: string) {
         } else {
             // 4. Buat Akun Auth Baru via Admin API
             const email = `wa_${phone}@ecosistemdigital.id`;
-            const tempPassword = `BERES-${formData.nik.slice(-4)}-${Date.now().toString(36)}`;
+            const tempPassword = `BERES-${formData.nik.slice(-4)}`;
 
             const { data: authData, error: authErr } = await supabase.auth.admin.createUser({
                 email,
@@ -184,6 +184,7 @@ export async function approveCourierAction(appId: string, adminId: string) {
                 let phoneWa = application.phone_number;
                 if (phoneWa.startsWith("0")) phoneWa = "62" + phoneWa.slice(1);
 
+                const defaultPassword = `BERES-${application.nik.slice(-4)}`;
                 const messageLines = [
                     "*SELAMAT! PENDAFTARAN KURIR DITERIMA* 🚀",
                     "",
@@ -192,9 +193,15 @@ export async function approveCourierAction(appId: string, adminId: string) {
                     `*ID KURIR:* ${courierCode}`,
                     `*ARMADA:* ${application.vehicle_type?.toUpperCase() || "TIDAK DIKETAHUI"}`,
                     "",
-                    "Silakan langsung mulai bekerja dengan menekan tombol *Mulai Jemput Sampah* di Dashboard Kurir Anda.",
+                    "📱 *LOGIN DASHBOARD KURIR:*",
+                    `🔗 https://beres-bone.vercel.app/courier/login`,
                     "",
-                    "🔗 *Login Dashboard:* https://beres-bone.vercel.app/courier"
+                    `*No. HP:* ${application.phone_number}`,
+                    `*Password:* ${defaultPassword}`,
+                    "",
+                    "⚠️ _Segera ubah password Anda setelah login pertama._",
+                    "",
+                    "Silakan langsung mulai bekerja dengan menekan tombol *Mulai Jemput Sampah* di Dashboard Kurir Anda."
                 ];
                 const message = messageLines.join("\n");
                 
