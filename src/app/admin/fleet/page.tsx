@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/infrastructure/config/supabase";
-import { Users, Truck, Search, Phone, MapPin, SearchX, CheckCircle2, AlertCircle, Clock, Bike, Car, Shield, MoreVertical } from "lucide-react";
+import { Users, Truck, Search, Phone, MapPin, SearchX, CheckCircle2, AlertCircle, Clock, Bike, Car, Shield, QrCode } from "lucide-react";
 import Link from "next/link";
 import clsx from "clsx";
 
@@ -191,7 +191,17 @@ export default function AdminFleetPage() {
                                         </div>
                                     </div>
                                 </div>
-                                <span className="bg-emerald-50 text-emerald-600 border border-emerald-100 px-2.5 py-1 rounded-md text-[10px] font-bold">Resmi</span>
+                                <div className="flex flex-col gap-2 items-end">
+                                    <span className="bg-emerald-50 text-emerald-600 border border-emerald-100 px-2.5 py-1 rounded-md text-[10px] font-bold">Resmi</span>
+                                    <Link 
+                                        href={`/qr/${p.id}`} 
+                                        target="_blank" 
+                                        title="Print QR Code"
+                                        className="p-1.5 bg-slate-50 text-slate-500 hover:text-brand-600 hover:bg-brand-50 rounded-lg border border-slate-200 hover:border-brand-200 transition-colors"
+                                    >
+                                        <QrCode className="w-4 h-4" />
+                                    </Link>
+                                </div>
                             </div>
                             <div className="pt-4 border-t border-slate-100 space-y-3">
                                 <div className="flex items-start gap-2">

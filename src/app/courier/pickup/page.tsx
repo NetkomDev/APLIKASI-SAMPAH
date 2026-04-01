@@ -7,6 +7,7 @@ import {
   MapPin, ArrowLeft, Package, Plus, Camera, Star, ChevronRight
 } from "lucide-react";
 import Link from "next/link";
+import { Scanner } from "@yudiel/react-qr-scanner";
 
 type PickupItem = {
   id: string;
@@ -273,9 +274,16 @@ export default function CourierPickupPage() {
                 value={manualCode}
                 onChange={(e) => setManualCode(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && handleScanWarga(manualCode)}
-                placeholder="Scan QR Code atau ketik nama warga..."
+                placeholder="Kode warga / Nama..."
                 className="flex-1 px-4 py-3 border-2 border-slate-200 rounded-xl focus:ring-4 focus:ring-emerald-500/20 focus:border-emerald-500 text-sm font-medium"
               />
+              <button
+                onClick={() => setScanMode(true)}
+                className="px-4 py-3 bg-slate-100 text-slate-700 font-bold rounded-xl hover:bg-slate-200 transition text-sm shadow-sm flex items-center justify-center border border-slate-300"
+                title="Scan QR Kamera"
+              >
+                <Camera className="w-5 h-5 text-slate-600" />
+              </button>
               <button
                 onClick={() => handleScanWarga(manualCode)}
                 className="px-5 py-3 bg-emerald-600 text-white font-bold rounded-xl hover:bg-emerald-500 transition text-sm shadow-sm"
@@ -283,6 +291,24 @@ export default function CourierPickupPage() {
                 Cari
               </button>
             </div>
+
+            {scanMode && (
+              <div className="mt-4 p-2 bg-slate-900 rounded-2xl overflow-hidden relative">
+                <button 
+                  onClick={() => setScanMode(false)}
+                  className="absolute top-4 right-4 z-10 bg-white/20 text-white p-2 text-xs font-bold rounded-full backdrop-blur-md"
+                >
+                  <XCircle className="w-5 h-5" />
+                </button>
+                <div className="h-64 w-full rounded-xl overflow-hidden relative">
+                  <Scanner 
+                    onScan={(result) => result?.[0]?.rawValue && handleScanWarga(result[0].rawValue)} 
+                    styles={{ container: { width: "100%", height: "100%" } }}
+                  />
+                </div>
+                <p className="text-center text-xs text-white/70 mt-3 pb-2">Arahkan kamera ke QR Code milik Warga</p>
+              </div>
+            )}
 
             {scanError && (
               <div className="mt-3 p-3 bg-red-50 text-red-700 rounded-xl text-sm border border-red-100 flex items-center gap-2">

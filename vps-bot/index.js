@@ -186,6 +186,7 @@ const MENU_META = {
     harga:   { emoji: "💲", desc: "Harga sampah per-kilogram" },
     referral:{ emoji: "📢", desc: "Ajak tetangga, dapat bonus!" },
     bantuan: { emoji: "📞", desc: "Hubungi customer service" },
+    qrcode:  { emoji: "🪪", desc: "Tampilkan Kartu & QR Code Anda" },
 };
 
 async function sendMainMenu(senderNumber, nama) {
@@ -199,6 +200,15 @@ async function sendMainMenu(senderNumber, nama) {
             description: meta.desc
         };
     });
+
+    // Selipkan QR Code jika belum ada dari database
+    if (!rows.find(r => r.id === "qrcode")) {
+        rows.push({
+            id: "qrcode",
+            title: "🪪 Tampilkan QR Code",
+            description: MENU_META.qrcode.desc
+        });
+    }
 
     // Fallback jika Supabase kosong
     if (rows.length === 0) {
@@ -545,6 +555,28 @@ async function handleMenuBantuan(senderNumber) {
 }
 
 // ──────────────────────────────────────────────
+// QR CODE HANDLER
+// ──────────────────────────────────────────────
+
+async function handleMenuQrCode(senderNumber, userProfile) {
+    if (userProfile.role !== "user") {
+        return sendWhatsAppMessage(senderNumber, "Fitur ini khusus untuk warga / nasabah Bank Sampah.");
+    }
+    
+    return sendCTAUrl(
+        senderNumber,
+        `🪪 *Identitas & QR Code Warga*\n\n` +
+        `Halo *${userProfile.full_name}*,\n` +
+        `Anda bisa menggunakan QR Code ini untuk diserahkan ke kurir saat penjemputan sampah.\n\n` +
+        `Klik tombol di bawah ini untuk melihat dan mencetak Kartu ID / QR Code Anda secara mandiri:`,
+        "🔎 Lihat QR Code",
+        `https://beres-bone.vercel.app/qr/${userProfile.id}`,
+        "💳 Kartu Warga BERES",
+        "Tunjukkan layar HP atau cetak ID Card ini"
+    );
+}
+
+// ──────────────────────────────────────────────
 // COURIER REGISTRATION HANDLER
 // ──────────────────────────────────────────────
 
@@ -660,6 +692,12 @@ async function handleIncomingMessage(senderNumber, messageText, interactionId) {
             case "cs":
             case "help":
                 return await handleMenuBantuan(senderNumber);
+
+            case "qr code":
+            case "qrcode":
+            case "id card":
+            case "kartu":
+                return await handleMenuQrCode(senderNumber, userProfile);
 
             case "daftar kurir":
             case "kurir":
