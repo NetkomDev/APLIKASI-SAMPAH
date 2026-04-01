@@ -128,35 +128,58 @@ export default function AdminPage() {
             const { data: { user } } = await supabase.auth.getUser();
             if (!user) throw new Error("Unauthenticated");
 
-            // Update Courier Deposit (Manifest) with Admin Actual measurements
-            const { error: depositError } = await supabase
-                .from('courier_deposits')
-                .update({
-                    actual_organic: Number(adminOrg),
-                    actual_inorganic: Number(adminInorg),
-                    admin_quality_assessment: adminQuality,
-                    discrepancy_notes: notes,
-                    admin_id: user.id,
-                    status: 'approved',
-                    approved_at: new Date().toISOString()
-                })
-                .eq('id', selectedTx.id);
+            // Panggil Edge Function approve-deposit yang menangani:
+            // 1. Update courier_deposits → approved
+            // 2. Update semua transactions terkait → completed
+            // 3. Kredit saldo warga pemilik sampah
+            // 4. Kredit komisi kurir
+            // 5. Catat semua di wallet_ledgers
+            const { data: { session } } = await supabase.auth.getSession();
+            const response = await fetch(
+                `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/approve-deposit`,
+                {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "Authorization": `Bearer ${session?.access_token}`,
+                        "apikey": process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "",
+                    },
+                    body: JSON.stringify({
+                        deposit_id: selectedTx.id,
+                        admin_id: user.id,
+                        actual_organic: Number(adminOrg),
+                        actual_inorganic: Number(adminInorg),
+                        admin_quality_assessment: adminQuality,
+                        discrepancy_notes: notes,
+                    }),
+                }
+            );
 
-            if (depositError) throw depositError;
+            const result = await response.json();
 
-            // Optional: You would also trigger an Edge Function here to automatically
-            // transfer commission to the courier and set all related `transactions` statuses to `completed`.
-            // For now, updating the transaction UI table is done:
+            if (!response.ok) {
+                throw new Error(result.error || "Gagal memproses validasi");
+            }
+
+            const { summary } = result;
+            alert(
+                `✅ Validasi Berhasil!\n\n` +
+                `📦 ${summary.total_transactions} transaksi warga diselesaikan\n` +
+                `💰 Total payout warga: Rp ${summary.total_citizen_payout?.toLocaleString('id-ID')}\n` +
+                `🚛 Komisi kurir: Rp ${summary.courier_commission?.toLocaleString('id-ID')}\n` +
+                `⚖️ Koreksi berat: ${summary.correction_ratio}`
+            );
 
             setSelectedTx(null);
             fetchStats();
-        } catch (err) {
+        } catch (err: any) {
             console.error("Gagal memvalidasi:", err);
-            alert("Gagal memvalidasi timbangan.");
+            alert("Gagal memvalidasi timbangan: " + err.message);
         } finally {
             setIsSubmitting(false);
         }
     };
+
 
     const formatRupiah = (num: number) => {
         if (num >= 1000000) return (num / 1000000).toFixed(1) + 'M';
