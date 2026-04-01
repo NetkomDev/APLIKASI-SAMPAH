@@ -127,6 +127,7 @@ export default function CourierPickupPage() {
       const { error } = await supabase.from("transactions").insert({
         user_id: scannedWarga.id,
         courier_id: user.id,
+        kurir_id: user.id, // Mandatory for RLS Policy verification
         bank_sampah_id: profile?.bank_sampah_id || null,
         weight_organic: Number(weightOrg) || 0,
         weight_inorganic: Number(weightInorg) || 0,
