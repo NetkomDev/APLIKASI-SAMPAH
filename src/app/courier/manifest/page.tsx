@@ -37,7 +37,7 @@ export default function CourierManifestPage() {
   const init = async () => {
     setLoading(true);
     const { data: { user } } = await supabase.auth.getUser();
-    if (!user) { setLoading(false); return; }
+    if (!user) { window.location.href = "/courier/login"; return; }
     setUser(user);
 
     const { data: prof } = await supabase.from("profiles").select("*").eq("id", user.id).single();
@@ -160,7 +160,7 @@ export default function CourierManifestPage() {
       <div className="bg-white border-b border-slate-200 sticky top-0 z-30">
         <div className="max-w-2xl mx-auto px-4 py-3 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <Link href="/courier/pickup" className="p-2 -ml-2 hover:bg-slate-100 rounded-lg transition">
+            <Link href="/courier" className="p-2 -ml-2 hover:bg-slate-100 rounded-lg transition">
               <ArrowLeft className="w-5 h-5 text-slate-600" />
             </Link>
             <div>

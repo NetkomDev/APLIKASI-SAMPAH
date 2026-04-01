@@ -52,7 +52,7 @@ export default function CourierPickupPage() {
   const init = async () => {
     setLoading(true);
     const { data: { user } } = await supabase.auth.getUser();
-    if (!user) { setLoading(false); return; }
+    if (!user) { window.location.href = "/courier/login"; return; }
     setUser(user);
 
     const { data: prof } = await supabase.from("profiles").select("*").eq("id", user.id).single();
@@ -101,16 +101,37 @@ export default function CourierPickupPage() {
     setScanError("");
     setScannedWarga(null);
 
-    if (!code.trim()) { setScanError("Masukkan kode QR atau nama warga"); return; }
+    const trimmed = code.trim();
+    if (!trimmed) { setScanError("Masukkan kode QR atau nama warga"); return; }
 
-    // Try by id first, then by full_name
-    let { data, error } = await supabase
-      .from("profiles")
-      .select("id, full_name, phone, address, bank_sampah_id")
-      .or(`id.eq.${code},full_name.ilike.%${code}%`)
-      .eq("role", "user")
-      .limit(1)
-      .maybeSingle();
+    // Sanitize input: remove characters that could break PostgREST query
+    const sanitized = trimmed.replace(/[,()]/g, "");
+
+    // Try by UUID first
+    const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(sanitized);
+
+    let data = null;
+    if (isUUID) {
+      const res = await supabase
+        .from("profiles")
+        .select("id, full_name, phone_number, address, bank_sampah_id")
+        .eq("id", sanitized)
+        .eq("role", "user")
+        .maybeSingle();
+      data = res.data;
+    }
+
+    // If not found by UUID, search by name
+    if (!data) {
+      const res = await supabase
+        .from("profiles")
+        .select("id, full_name, phone_number, address, bank_sampah_id")
+        .eq("role", "user")
+        .ilike("full_name", `%${sanitized}%`)
+        .limit(1)
+        .maybeSingle();
+      data = res.data;
+    }
 
     if (!data) {
       setScanError("Warga tidak ditemukan. Pastikan QR Code atau nama benar.");
@@ -194,7 +215,7 @@ export default function CourierPickupPage() {
       <div className="bg-white border-b border-slate-200 sticky top-0 z-30">
         <div className="max-w-2xl mx-auto px-4 py-3 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <Link href="/courier/manifest" className="p-2 -ml-2 hover:bg-slate-100 rounded-lg transition">
+            <Link href="/courier" className="p-2 -ml-2 hover:bg-slate-100 rounded-lg transition">
               <ArrowLeft className="w-5 h-5 text-slate-600" />
             </Link>
             <div>
@@ -334,10 +355,10 @@ export default function CourierPickupPage() {
                 </label>
                 <div className="grid grid-cols-2 gap-2">
                   {[
-                    { val: "Sangat Bersih", color: "emerald", emoji: "🌟" },
-                    { val: "Standar (Campur Sedikit)", color: "blue", emoji: "👍" },
-                    { val: "Campur Aduk / Belum Dipilah", color: "amber", emoji: "⚠️" },
-                    { val: "Kotoran / Residu Tinggi", color: "red", emoji: "🚫" },
+                    { val: "Sangat Bersih", emoji: "🌟", activeClass: "bg-emerald-50 border-emerald-400 text-emerald-700 ring-2 ring-emerald-200" },
+                    { val: "Standar (Campur Sedikit)", emoji: "👍", activeClass: "bg-blue-50 border-blue-400 text-blue-700 ring-2 ring-blue-200" },
+                    { val: "Campur Aduk / Belum Dipilah", emoji: "⚠️", activeClass: "bg-amber-50 border-amber-400 text-amber-700 ring-2 ring-amber-200" },
+                    { val: "Kotoran / Residu Tinggi", emoji: "🚫", activeClass: "bg-red-50 border-red-400 text-red-700 ring-2 ring-red-200" },
                   ].map((q) => (
                     <button
                       key={q.val}
@@ -345,7 +366,7 @@ export default function CourierPickupPage() {
                       onClick={() => setSortingQuality(q.val)}
                       className={`p-3 rounded-xl border-2 text-left text-xs font-semibold transition-all ${
                         sortingQuality === q.val
-                          ? `bg-${q.color}-50 border-${q.color}-400 text-${q.color}-700 ring-2 ring-${q.color}-200`
+                          ? q.activeClass
                           : "bg-white border-slate-200 text-slate-600 hover:border-slate-300"
                       }`}
                     >
