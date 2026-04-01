@@ -257,15 +257,13 @@ export default function CourierManifestPage() {
             <button
               onClick={handleCreateManifest}
               disabled={submitting}
-              className="w-full py-4 bg-gradient-to-r from-emerald-600 to-teal-600 text-white font-black text-lg rounded-2xl hover:from-emerald-500 hover:to-teal-500 active:scale-[0.98] transition-all shadow-xl disabled:opacity-70"
+              className="w-full py-4 px-4 bg-gradient-to-r from-emerald-600 to-teal-600 text-white font-black text-lg rounded-2xl hover:from-emerald-500 hover:to-teal-500 active:scale-[0.98] transition-all shadow-xl flex items-center justify-center gap-3 disabled:opacity-70 text-center"
             >
-              <span className="flex items-center justify-center gap-3">
-                {submitting ? (
-                  <><div className="h-5 w-5 border-2 border-white border-t-transparent rounded-full animate-spin" /> <span>Mengirim Manifest...</span></>
-                ) : (
-                  <><Send className="w-5 h-5 flex-shrink-0" /> <span>KIRIM MANIFEST KE BANK SAMPAH</span></>
-                )}
-              </span>
+              {submitting ? (
+                <><div className="h-5 w-5 border-2 border-white border-t-transparent rounded-full animate-spin flex-shrink-0" /> <span>Mengirim Manifest...</span></>
+              ) : (
+                <><Send className="w-5 h-5 flex-shrink-0" /> <span>KIRIM MANIFEST KE BANK SAMPAH</span></>
+              )}
             </button>
           </>
         )}
