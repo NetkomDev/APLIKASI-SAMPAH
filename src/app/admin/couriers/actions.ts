@@ -173,6 +173,7 @@ export async function approveCourierAction(appId: string, adminId: string) {
             .upsert({ user_id: application.user_id, balance: 0 }, { onConflict: "user_id" });
 
         // 7. WA Notification integration (using official Meta Cloud API)
+        let waStatus = "WA Notification Attempted";
         try {
             const { data: configs } = await supabase.from('system_settings').select('key_name, value_text').in('key_name', ['wa_api_token', 'wa_phone_number_id']);
             
@@ -180,9 +181,7 @@ export async function approveCourierAction(appId: string, adminId: string) {
             const phoneId = configs?.find(c => c.key_name === 'wa_phone_number_id')?.value_text;
 
             if (token && phoneId) {
-                // Formatting phone number
                 let phoneWa = application.phone_number;
-                // Meta API expects country code without '+' or '0'. So '628...' is correct.
                 if (phoneWa.startsWith("0")) phoneWa = "62" + phoneWa.slice(1);
 
                 const messageLines = [
@@ -191,7 +190,7 @@ export async function approveCourierAction(appId: string, adminId: string) {
                     `Halo ${application.full_name}, pendaftaran Anda sebagai Kurir/Mitra Jemput di *${adminProfile.bank_sampah_name}* telah disetujui.`,
                     "",
                     `*ID KURIR:* ${courierCode}`,
-                    `*ARMADA:* ${application.vehicle_type.toUpperCase()}`,
+                    `*ARMADA:* ${application.vehicle_type?.toUpperCase() || "TIDAK DIKETAHUI"}`,
                     "",
                     "Silakan langsung mulai bekerja dengan menekan tombol *Mulai Jemput Sampah* di Dashboard Kurir Anda.",
                     "",
@@ -217,18 +216,21 @@ export async function approveCourierAction(appId: string, adminId: string) {
                 const waData = await waRes.json();
                 if (waData.error) {
                     console.error("[WA Notif Error]", JSON.stringify(waData.error));
+                    waStatus = `Failed from Meta: ${waData.error.message || JSON.stringify(waData.error)}`;
                 } else {
                     console.log("[WA Notif OK]", JSON.stringify(waData));
+                    waStatus = "Success";
                 }
             } else {
                 console.error("[WA Notif] Missing token or phoneId in system_settings");
+                waStatus = "Failed: Missing token or phoneId in Database";
             }
-        } catch (waErr) {
+        } catch (waErr: any) {
             console.error("Failed to send WA Notification", waErr);
-            // Non-blocking error, allow approval to complete
+            waStatus = `Exception: ${waErr.message}`;
         }
 
-        return { success: true };
+        return { success: true, waStatus };
     } catch (e: any) {
         return { error: e.message || "Unknown error occurred during approval" };
     }

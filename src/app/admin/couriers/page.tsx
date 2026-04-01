@@ -138,7 +138,11 @@ export default function AdminCouriersPage() {
             const res = await approveCourierAction(app.id, user.id);
             if (res.error) throw new Error(res.error);
 
-            setActionMessage({ type: "success", text: `✅ ${app.full_name} resmi bergabung! Notif WA berhasil dikirim.` });
+            if (res.waStatus === "Success") {
+                setActionMessage({ type: "success", text: `✅ ${app.full_name} resmi bergabung! Notif WA berhasil dikirim.` });
+            } else {
+                setActionMessage({ type: "success", text: `⚠️ ${app.full_name} resmi bergabung! (WA Gagal: ${res.waStatus})` });
+            }
             fetchApplications();
         } catch (err) {
             console.error("Approve error:", err);
