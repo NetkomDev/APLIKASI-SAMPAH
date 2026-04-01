@@ -172,24 +172,34 @@ export async function approveCourierAction(appId: string, adminId: string) {
             .from("user_wallets")
             .upsert({ user_id: application.user_id, balance: 0 }, { onConflict: "user_id" });
 
-        // 7. WA Notification integration (using configured Fonnte token)
+        // 7. WA Notification integration (using official Meta Cloud API)
         try {
-            const { data: config } = await supabase.from('system_settings').select('setting_value').eq('setting_name', 'fonnte_token').single();
-            if (config && config.setting_value) {
-                // Ensure correct phone formatting for WhatsApp (must start with 08 for local or 62 for international Fonnte format depending on sender? Usually Fonnte expects 08 or 62. Let's send exactly as in database).
-                let phoneWa = application.phone_number;
-                if (phoneWa.startsWith("62")) phoneWa = "0" + phoneWa.slice(2);
+            const { data: configs } = await supabase.from('system_settings').select('key_name, value_text').in('key_name', ['wa_api_token', 'wa_phone_number_id']);
+            
+            const token = configs?.find(c => c.key_name === 'wa_api_token')?.value_text;
+            const phoneId = configs?.find(c => c.key_name === 'wa_phone_number_id')?.value_text;
 
-                const message = `*SELAMAT! PENDAFTARAN KURIR DITERIMA* 🚀\r\n\r\nHalo ${application.full_name}, pendaftaran Anda sebagai Kurir/Mitra Jemput di *${adminProfile.bank_sampah_name}* telah disetujui.\r\n\r\n*ID KURIR:* ${courierCode}\r\n*ARMADA:* ${application.vehicle_type.toUpperCase()}\r\n\r\nSilakan langsung mulai bekerja dengan menekan tombol **Mulai Jemput Sampah** di Dashboard Kurir Anda.\r\n\r\n🔗 Login Dashboard: https://beres-bone.vercel.app/courier`;
+            if (token && phoneId) {
+                // Formatting phone number
+                let phoneWa = application.phone_number;
+                // Meta API expects country code without '+' or '0'. So '628...' is correct.
+                if (phoneWa.startsWith("0")) phoneWa = "62" + phoneWa.slice(1);
+
+                const message = `*SELAMAT! PENDAFTARAN KURIR DITERIMA* 🚀\r\n\r\nHalo ${application.full_name}, pendaftaran Anda sebagai Kurir/Mitra Jemput di *${adminProfile.bank_sampah_name}* telah disetujui.\r\n\r\n*ID KURIR:* ${courierCode}\r\n*ARMADA:* ${application.vehicle_type.toUpperCase()}\r\n\r\nSilakan langsung mulai bekerja dengan menekan tombol *Mulai Jemput Sampah* di Dashboard Kurir Anda.\r\n\r\n🔗 *Login Dashboard:* https://beres-bone.vercel.app/courier`;
                 
-                const formData = new URLSearchParams();
-                formData.append('target', phoneWa);
-                formData.append('message', message);
-                
-                await fetch('https://api.fonnte.com/send', {
+                await fetch(`https://graph.facebook.com/v20.0/${phoneId}/messages`, {
                     method: 'POST',
-                    headers: { 'Authorization': config.setting_value },
-                    body: formData
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        messaging_product: "whatsapp",
+                        recipient_type: "individual",
+                        to: phoneWa,
+                        type: "text",
+                        text: { preview_url: true, body: message }
+                    })
                 });
             }
         } catch (waErr) {
