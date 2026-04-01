@@ -28,7 +28,7 @@ export default function CourierDashboard() {
         try {
             const { data: { user } } = await supabase.auth.getUser();
             if (!user) {
-                router.push("/auth/login");
+                router.push("/auth");
                 return;
             }
             setUser(user);
@@ -92,7 +92,7 @@ export default function CourierDashboard() {
 
     const handleLogout = async () => {
         await supabase.auth.signOut();
-        router.push("/auth/login");
+        router.push("/auth");
     };
 
     if (loading) {
