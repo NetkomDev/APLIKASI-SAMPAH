@@ -97,6 +97,8 @@ export async function manualRegisterCourier(formData: any, adminId: string) {
             preferred_zone: adminProfile.bank_sampah_name || "",
             target_bank_sampah_id: adminProfile.bank_sampah_id,
             ktp_photo_url: "",
+            selfie_ktp_url: "",
+            sim_photo_url: "",
             status: "pending",
             source: "offline",
         });
