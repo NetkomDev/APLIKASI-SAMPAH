@@ -185,9 +185,21 @@ export async function approveCourierAction(appId: string, adminId: string) {
                 // Meta API expects country code without '+' or '0'. So '628...' is correct.
                 if (phoneWa.startsWith("0")) phoneWa = "62" + phoneWa.slice(1);
 
-                const message = `*SELAMAT! PENDAFTARAN KURIR DITERIMA* 🚀\r\n\r\nHalo ${application.full_name}, pendaftaran Anda sebagai Kurir/Mitra Jemput di *${adminProfile.bank_sampah_name}* telah disetujui.\r\n\r\n*ID KURIR:* ${courierCode}\r\n*ARMADA:* ${application.vehicle_type.toUpperCase()}\r\n\r\nSilakan langsung mulai bekerja dengan menekan tombol *Mulai Jemput Sampah* di Dashboard Kurir Anda.\r\n\r\n🔗 *Login Dashboard:* https://beres-bone.vercel.app/courier`;
+                const messageLines = [
+                    "*SELAMAT! PENDAFTARAN KURIR DITERIMA* 🚀",
+                    "",
+                    `Halo ${application.full_name}, pendaftaran Anda sebagai Kurir/Mitra Jemput di *${adminProfile.bank_sampah_name}* telah disetujui.`,
+                    "",
+                    `*ID KURIR:* ${courierCode}`,
+                    `*ARMADA:* ${application.vehicle_type.toUpperCase()}`,
+                    "",
+                    "Silakan langsung mulai bekerja dengan menekan tombol *Mulai Jemput Sampah* di Dashboard Kurir Anda.",
+                    "",
+                    "🔗 *Login Dashboard:* https://beres-bone.vercel.app/courier"
+                ];
+                const message = messageLines.join("\n");
                 
-                await fetch(`https://graph.facebook.com/v20.0/${phoneId}/messages`, {
+                const waRes = await fetch(`https://graph.facebook.com/v20.0/${phoneId}/messages`, {
                     method: 'POST',
                     headers: {
                         'Authorization': `Bearer ${token}`,
@@ -198,9 +210,18 @@ export async function approveCourierAction(appId: string, adminId: string) {
                         recipient_type: "individual",
                         to: phoneWa,
                         type: "text",
-                        text: { preview_url: true, body: message }
+                        text: { preview_url: false, body: message }
                     })
                 });
+
+                const waData = await waRes.json();
+                if (waData.error) {
+                    console.error("[WA Notif Error]", JSON.stringify(waData.error));
+                } else {
+                    console.log("[WA Notif OK]", JSON.stringify(waData));
+                }
+            } else {
+                console.error("[WA Notif] Missing token or phoneId in system_settings");
             }
         } catch (waErr) {
             console.error("Failed to send WA Notification", waErr);
