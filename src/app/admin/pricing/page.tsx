@@ -67,7 +67,7 @@ export default function AdminPricingPage() {
             const { data: unit } = await supabase
                 .from("bank_sampah_units")
                 .select("id, name")
-                .eq("admin_user_id", user.id)
+                .eq("created_by", user.id)
                 .single();
 
             if (unit) {
