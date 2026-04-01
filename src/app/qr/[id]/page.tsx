@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { supabase } from "@/infrastructure/config/supabase";
+import { getWargaProfile } from "../actions";
 import { QRCodeSVG } from "qrcode.react";
 import { Printer, MapPin, Leaf, Phone } from "lucide-react";
 import { useParams } from "next/navigation";
@@ -26,13 +26,9 @@ export default function WargaQRPage() {
 
   const fetchData = async (wargaId: string) => {
     try {
-      const { data, error } = await supabase
-        .from("profiles")
-        .select("id, full_name, phone_number, address, bank_sampah_name, role")
-        .eq("id", wargaId)
-        .single();
+      const { data, error } = await getWargaProfile(wargaId);
 
-      if (error) throw error;
+      if (error || !data) throw new Error(error || "Gagal memuat profil");
       if (data.role !== "user") throw new Error("Akses hanya untuk QR Code Warga.");
 
       setWarga(data);
