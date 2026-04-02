@@ -1,364 +1,446 @@
-# Blueprint Arsitektur Aplikasi Ekosistem Kelola Sampah Digital
+# Blueprint Arsitektur — Beres (Benahi Residu Sampah)
+# Ekosistem Kelola Sampah Digital Terdistribusi
 
-Dokumen ini adalah pedoman dan blueprint resmi untuk membangun "Aplikasi Sampah" dengan arsitektur ekosistem digital terdistribusi (Data-Driven Policy).
+> **Dokumen ini adalah Single Source of Truth** yang merepresentasikan state aktual sistem per April 2026.
+> Setiap perubahan arsitektur, tabel, atau fitur **wajib** di-update di dokumen ini.
 
-## 1. Informasi Sistem & Akses Kredensial
+---
+
+## 1. Informasi Sistem & Kredensial
 
 ### 1.1 Repository & Deployment
-- **GitHub Repository**: [https://github.com/NetkomDev/APLIKASI-SAMPAH.git](https://github.com/NetkomDev/APLIKASI-SAMPAH.git)
-- **Vercel / Hosting**: [vercel.com/netkom-developers-projects](https://vercel.com/netkom-developers-projects)
+| Item | Detail |
+|------|--------|
+| **Repo** | [github.com/NetkomDev/APLIKASI-SAMPAH](https://github.com/NetkomDev/APLIKASI-SAMPAH.git) |
+| **Hosting** | Vercel (auto-deploy on `main` push) |
+| **Live URL** | `https://beres-bone.vercel.app` |
+| **Framework** | Next.js 14 + Tailwind CSS + TypeScript |
 
-### 1.2 Konfigurasi Supabase
-- **Anon Key**:
-  `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImljeWlyYmV6cm1peHhrenpydWZxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI3MTQ0NjMsImV4cCI6MjA4ODI5MDQ2M30.QMpOYhrB0CczJvUJEOmW1PmQx2d9vnXU89ESg_0eK6U`
-- **Service Role Key**:
-  `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImljeWlyYmV6cm1peHhrenpydWZxIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MjcxNDQ2MywiZXhwIjoyMDg4MjkwNDYzfQ.r_IaCQK6lr-121Szk98PdKk8F_dhkJJ8NjxnekBrJac`
-- **Global Token (Akses Token)**:
-  `sbp_faa5e670b942b15f76c0a8b087b8087944f88407`
+### 1.2 Supabase Project
+| Item | Detail |
+|------|--------|
+| **Project ID** | `icyirbezrmixxkzzrufq` |
+| **Region** | Southeast Asia (Singapore) |
+| **Anon Key** | `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImljeWlyYmV6cm1peHhrenpydWZxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI3MTQ0NjMsImV4cCI6MjA4ODI5MDQ2M30.QMpOYhrB0CczJvUJEOmW1PmQx2d9vnXU89ESg_0eK6U` |
+| **Service Role Key** | `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImljeWlyYmV6cm1peHhrenpydWZxIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MjcxNDQ2MywiZXhwIjoyMDg4MjkwNDYzfQ.r_IaCQK6lr-121Szk98PdKk8F_dhkJJ8NjxnekBrJac` |
+| **Global Token** | `sbp_faa5e670b942b15f76c0a8b087b8087944f88407` |
 
----
-
-## 2. Arsitektur Teknis (Tech Stack)
-
-Sistem dirancang dengan model **1 Kabupaten = 1 Database (1 Supabase Project)**.
-Satu kabupaten ini dikendalikan oleh satu **SuperAdmin** yang menaungi 1 entitas Pemerintah (Dinas DLH) dan **banyak unit Bank Sampah** (misalnya: Bank Sampah Zona 1, Bank Sampah Zona 2, dst).
-
-| Layer                | Teknologi Pendukung            | Peran & Fungsi Utama                                                                 |
-|----------------------|--------------------------------|--------------------------------------------------------------------------------------|
-| **Bot Interface**    | WhatsApp API                   | Alat ujung tombak lapangan untuk registrasi, transaksi, dan notifikasi warga/kurir.  |
-| **Web Dashboard**    | Next.js + Tailwind CSS         | Dashboard peran ganda terpisah untuk SuperAdmin, Pemerintah, dan Admin Bank Sampah.  |
-| **Backend Engine**   | Supabase Edge Functions        | Memproses logika bot, pembaruan akun admin/gov yang aman, & integrasi pihak ketiga.  |
-| **Identity System**  | Supabase Auth                  | Manajemen akses hierarkis (SuperAdmin -> Pemerintah & Admin Bank Sampah -> Kurir & Warga). |
-| **Database**         | PostgreSQL + PostGIS (Supabase)| Penyimpanan data tabular terpusat 1 Kabupaten, serta data spasial (koordinat area).  |
-| **Storage**          | Supabase Storage               | Penyimpanan foto bukti timbangan & dokumen pendukung kurir untuk validasi audit.     |
+### 1.3 SuperAdmin Credentials
+| Item | Detail |
+|------|--------|
+| **Email** | `superadmin@ecosistemdigital.id` |
+| **Password** | `SuperAdmin@2026!` |
+| **Login** | Via `/portal` → auto-redirect ke `/superadmin` |
 
 ---
 
-## 3. Alur Hirarki & Dasbor Antarmuka (Front-End)
+## 2. Arsitektur Teknis
 
-Dalam satu instalasi basis data (1 Kabupaten), kendali dibagi menjadi **tiga pilar dashboard utama** yang saling mendukung: `SuperAdmin`, `Pemerintah (Gov)`, dan `Admin Bank Sampah`.
+### 2.1 Model Deployment
+**1 Kabupaten = 1 Database (1 Supabase Project)**
+Satu kabupaten dikendalikan oleh **SuperAdmin** yang menaungi 1 entitas Pemerintah (Dinas DLH) dan **banyak unit Bank Sampah** (Bank Sampah Palakka, Bank Sampah T. Riattang, dll).
 
-### 3.1. Dashboard Super Admin (Pusat Kendali Kabupaten)
-SuperAdmin adalah kreator dan pemegang hak akses tertinggi dalam 1 kabupaten. SuperAdmin bertugas **mempersiapkan ekosistem** agar dapat digunakan oleh Pemda dan Bank Sampah.
+### 2.2 Tech Stack
 
-1. **Pusat Rekrutmen & Manajemen Entitas Cabang**
-   - Membuat / Mendaftarkan 1 akun khusus untuk **Pemerintah/Dinas DLH**.
-   - Membuat / Mendaftarkan banyak akun untuk **Bank Sampah cabang/unit** (misal: Bank Sampah Unit Utara, Unit Selatan, dll).
-2. **Global Analytics (Makro Kabupaten)**
-   - Memantau total keseluruhan volume sampah mentah yang ditarik per-hari se-kabupaten.
-   - Memantau akumulasi total produk turunan (Pupuk, Kaca Cacah) dari seluruh titik Bank Sampah.
-3. **Konfigurasi Sistem Utama (Master Control)**
-   - Konfigurasi API Bot WhatsApp (Fonnte/Meta), Menu interaktif, dan auto-reply.
-   - Manajemen branding visual (Logo Daerah, banner peringatan aplikasi).
-4. **Manajemen Harga & Market B2B (Pricing Control)**
-   - Mengatur secara terpusat **Harga Beli Sampah** warga (Organik/Anorganik) untuk seluruh ekosistem melalui tabel `commodity_prices`.
-   - Menentukan **Harga Jual Produk** hasil olahan gudang (Pupuk, Maggot, Cacahan Plastik) ke market.
-   - Mencatat profil buyer (*B2B Demand*), target volume, target harga beli dari tabel `b2b_buyers` sebagai landasan target pengepulan/produksi di gudang Bank Sampah.
+| Layer | Teknologi | Fungsi |
+|-------|-----------|--------|
+| **Frontend** | Next.js 14 + Tailwind CSS + TypeScript | Dashboard multi-role (SuperAdmin, Gov, Admin BS, Kurir) |
+| **Backend** | Supabase (PostgreSQL + PostGIS) | Database, Auth, RLS, Edge Functions |
+| **Bot Interface** | WhatsApp Cloud API (Meta) | Registrasi warga, notifikasi, interaksi |
+| **Identity** | Supabase Auth | Manajemen akses hierarkis 5 role |
+| **Storage** | Supabase Storage (`courier-documents`) | Foto KTP, SIM, Selfie kurir |
+| **Deployment** | Vercel (auto-deploy) | CI/CD dari branch `main` |
 
-### 3.2. Dashboard Pemerintah / Dinas (View & Analytics DLH)
-Dashboard ini didedikasikan bagai para pembuat kebijakan (Dinas Lingkungan Hidup / Bupati) untuk memantau performa *Zero Waste* dalam kabupatennya. Gov **tidak melakukan operasional**, melainkan membaca data analitik teragregasi dari seluruh Bank Sampah.
-
-1. **Grafik Trafik & Kinerja Antar-Kecamatan**
-   - Memantau tren tonase harian sampah masuk (Organik vs Anorganik) per kecamatan/kelurahan.
-   - Melihat perbandingan performa aktifitas antar "Bank Sampah 1" vs "Bank Sampah 2".
-2. **Indikator Efektivitas Lingkungan**
-   - Melihat tingkat *Waste Diversion Rate* (Proyeksi sampah yang berhasil dialihkan dari TPA utama).
-   - Est. Penghematan anggaran retribusi TPA dan bensin truk angkut dinas.
-3. **Pemantauan Populasi & Dampak Sosial**
-   - Melihat total pengguna (Warga) yang aktif menggunakan aplikasi di seluruh kabupaten.
-   - Melihat total perputaran uang subsidi/komisi secara *real-time* ke masyarakat lewat Bank Sampah.
-
-### 3.3. Dashboard Admin Bank Sampah (Layanan Operasional Titik/Zona)
-Kabupaten memiliki beberapa titik Bank Sampah. Setiap admin yang login akan melihat data spesifik untuk unit Bank Sampahnya sendiri. **Bank Sampah adalah titik kumpul bagi Kurir dan pusat perekaman produksi fabrikasi.**
-
-1. **Pusat Registrasi & Manajemen Kurir Fleet**
-   - Para Kurir mendaftar/terafiliasi ke salah satu unit Bank Sampah terdekat.
-   - Admin Bank Sampah dapat memverifikasi berkas kurir, memvalidasi kuota, dan memantau armada kurirnya sendiri.
-2. **Pos Pintu Masuk (Penerimaan Setoran Muatan Kurir)**
-   - Saat menjemput, Kurir men-scan QR, menimbang, dan memberi nilai kualitas setiap kantong/wadah warga. Setelah muatan tercampur di bagasi kurir, Kurir membuat **Faktur Setoran (Manifest/Deposit)** menuju Bank Sampah.
-   - Admin Bank Sampah tidak lagi mengaudit timbangan warga satu-persatu. Admin hanya menimbang ulang total muatan bulk/keseluruhan (Organik/Anorganik) dari armada kurir tersebut yang tiba di gudang.
-   - Jika *Total Timbangan Gudang* vs *Total Klaim Warga yang dikumpulkan Kurir* memiliki selisih merugikan ekstrem (meleset jauh), sistem mencatat *Discrepancy* (Selisih) sebagai Rapor Merah kurir (evaluasi internal Bank Sampah).
-3. **Pusat Transaksi & Pembayaran Warga/Kurir**
-   - Transaksi Warga (Status: **Picked Up**) otomatis diakui nilainya sesaat setelah kurir mem-validasi di pintu rumah warga, menghidari protes warga terhadap timbangan akhir gudang.
-   - Hak Komisi Kurir (Upah Tarik) baru dijatuhkan (cair/approved) setelah Admin Bank Sampah menyetujui *Faktur Setoran (Deposit)* milik Kurir tersebut di Pintu Masuk Gudang.
-4. **Produksi & Gudang (Inventory Tracker)**
-   - Saat sampah mentah diolah (misal dicacah/dikompos), Admin Bank Sampah bertugas mencatat input "Barang Jadi / Output Gudang" milik unit mereka.
-   - Data produksi unit inilah yang nantinya ditarik secara global untuk ditonton oleh Gov dan SuperAdmin.
-
-> **PENTING — Aturan Registrasi Akun:**
-> - Akun `gov` (Pemerintah/Dinas) dan `admin` (Bank Sampah Unit 1, 2, dst) **HANYA** bisa dibuat per akun oleh **SuperAdmin**. Tidak ada form pendaftaran publik (Self-registration) untuk mereka.
-> - Sebaliknya, pendaftaran untuk `courier` (Kurir armada) harus divalidasi oleh `admin` Bank Sampah bersangkutan.
-> - Pendaftaran Warga Umum Bebas via Bot WA atau Website.
-
----
-
-### 3.4 Mekanisme Akses Dashboard Internal (Hidden Portal)
-Semua dashboard internal (Operator, Pemerintah, Super Admin) **tidak boleh** memiliki link atau tombol yang terlihat di homepage publik warga.
-
-1. **Akses via URL Rahasia**
-   - Dashboard internal diakses melalui rute `/portal` yang tidak ditampilkan di navigasi homepage.
-   - Rute `/portal` menampilkan halaman login khusus dengan identifikasi peran otomatis.
-   - Setelah login berhasil, sistem mengarahkan pengguna ke dashboard sesuai perannya:
-     - `superadmin` → `/superadmin`
-     - `admin` (Operator Bank Sampah) → `/admin`
-     - `gov` (Dinas/Bupati) → `/gov`
-2. **Homepage Warga Bersih**
-   - Homepage (`/`) dan halaman registrasi (`/auth`) **hanya** menampilkan konten untuk warga.
-   - Tidak ada tombol, link, atau referensi visual apapun ke dashboard internal.
-   - Tombol CTA di homepage hanya berisi: "Mulai Jadi Pahlawan Lingkungan" (ke `/auth`) dan "Dashboard Pemerintah" (opsional, bisa dihilangkan).
-3. **Proteksi Berlapis**
-   - Semua rute dashboard dilindungi oleh `AuthGuard` yang memverifikasi session + role.
-   - Akses ke `/superadmin` hanya bisa dilakukan oleh user dengan `role = 'superadmin'` di tabel `profiles`.
-   - Percobaan akses tanpa otorisasi akan di-redirect ke halaman login portal (`/portal`).
-
----
-
-### 3.5 Mekanisme Bot WhatsApp (Pendaftaran & Interaksi)
-
-Bot WhatsApp adalah interface utama penghubung warga dengan sistem. Bot menggunakan arsitektur **WhatsApp Cloud API (Resmi Meta)** yang dihubungkan melalui *Webhook* ke Supabase Edge Functions.
-
-*Catatan Sistem:*
-- **Webhook URL:** `https://icyirbezrmixxkzzrufq.supabase.co/functions/v1/webhook-whatsapp`
-- **Verify Token:** `beres_api_123`
-#### 3.5.1 Jalur Pendaftaran Warga (Dual Registration Path)
-
-Warga dapat mendaftar melalui **2 jalur** yang terintegrasi:
-
-| No | Jalur | Cara Kerja | Notifikasi |
-|----|-------|-----------|------------|
-| 1 | **Web** (`/auth`) | User mengisi form di website → data tersimpan di Supabase → Bot mengirim pesan selamat datang otomatis via WA (proaktif) | Bot mengirim welcome + daftar menu ke nomor WA yang didaftarkan |
-| 2 | **WhatsApp** (via Referral/DAFTAR) | User mengirim link referral atau ketik `DAFTAR` ke Bot → Bot memandu pendaftaran step-by-step via percakapan → data tersimpan di Supabase | Bot mengirim welcome + daftar menu setelah konfirmasi selesai |
-
-#### 3.5.2 Alur Pendaftaran via WhatsApp (Conversation Flow)
-
-```text
-User mengirim link referral / ketik DAFTAR
-          │
-          ▼
-┌─────────────────────────┐
-│  Bot: "Langkah 1/2:     │
-│  Siapa nama lengkap     │
-│  Anda?"                 │
-└────────┬────────────────┘
-         │ User: "Budi Santoso"
-         ▼
-┌─────────────────────────┐
-│  Bot: "Langkah 2/2:     │
-│  Masukkan alamat        │
-│  lengkap Anda."         │
-└────────┬────────────────┘
-         │ User: "Jl. Merdeka No. 10..."
-         ▼
-┌─────────────────────────┐
-│  Bot: "Konfirmasi Data: │
-│  Nama: Budi Santoso     │
-│  Alamat: Jl. Merdeka... │
-│  Ketik YA/BATAL"        │
-└────────┬────────────────┘
-         │ User: "YA"
-         ▼
-┌─────────────────────────┐
-│  ✅ Akun dibuat di      │
-│  Supabase Auth + Profile│
-│  + User Wallet          │
-│  Bot: Welcome + Menu    │
-└─────────────────────────┘
+### 2.3 Hirarki Peran (Roles)
+```
+SuperAdmin (1 per kabupaten)
+  ├── Gov / Dinas (1 per kabupaten) ← Read-Only monitoring
+  ├── Admin Bank Sampah (N unit) ← Operasional per unit
+  │     ├── Courier / Kurir (M per unit) ← Jemput sampah
+  │     └── Warga / User (unlimited) ← Setor sampah
+  └── Konfigurasi global (harga, kuota, branding)
 ```
 
-- User dapat mengetik **BATAL** kapan saja untuk membatalkan pendaftaran.
-- Jika melalui referral, `referred_by` di tabel `profiles` akan terisi ID referrer.
-- Kolom `registration_source` mencatat asal pendaftaran: `web`, `whatsapp`, atau `admin`.
+---
 
-#### 3.5.3 Alur Proaktif Welcome (untuk Pendaftar Web)
+## 3. Peta Halaman Frontend (Route Map)
 
-Setelah user mendaftar via web dan menyertakan nomor WhatsApp:
-1. Bot melakukan polling setiap 30 detik mencari user baru dengan `registration_source = 'web'`.
-2. Bot mengirimkan pesan selamat datang resmi + daftar menu layanan ke nomor WA user.
-3. Setelah terkirim, `registration_source` di-update menjadi `web_welcomed` agar tidak terkirim ulang.
+### 3.1 Public Routes
 
-> **User dinyatakan resmi terdaftar** saat sudah menerima pesan selamat datang dari Bot WA, baik yang mendaftar via Web maupun via WhatsApp.
+| Route | Fungsi | File |
+|-------|--------|------|
+| `/` | Homepage warga (CTA registrasi) | `src/app/page.tsx` |
+| `/auth` | Registrasi warga (form web) | `src/app/auth/` |
+| `/portal` | Login internal (admin/gov/superadmin) | `src/app/portal/` |
+| `/qr` | QR Code viewer warga | `src/app/qr/` |
 
-#### 3.5.4 Alur Interaksi User Terdaftar
+### 3.2 Dashboard SuperAdmin (`/superadmin`)
 
-```text
-User mengirim pesan ke Bot
-          │
-          ▼
-    ┌─────────────┐
-    │ Cek profil  │──── Tidak terdaftar ──→ Tampilkan cara daftar
-    │ di Supabase │
-    └─────┬───────┘
-          │ Terdaftar
-          ▼
-    ┌─────────────┐
-    │ Match dgn   │──── Cocok ──→ Eksekusi logika menu (saldo/jemput/dll)
-    │ menu_key?   │
-    └─────┬───────┘
-          │ Tidak cocok
-          ▼
-    Tampilkan daftar menu
+| Route | Fungsi | Hak Akses |
+|-------|--------|-----------|
+| `/superadmin` | **Command Center** — Statistik makro: total unit, inbound global, produksi global, revenue penjualan, piutang. Tabel 10 penjualan terbaru semua unit. | `superadmin` |
+| `/superadmin/bank-sampah-units` | **Manajemen Unit Bank Sampah** — CRUD unit BS, buat akun admin/gov (via Edge Function `create-district-accounts`). Toggle `can_sell_direct` per unit. | `superadmin` |
+| `/superadmin/market` | **Harga & Market B2B** — Kelola `commodity_prices` (harga beli warga & harga jual pasar). Kelola `b2b_buyers` (data buyer industri). | `superadmin` |
+| `/superadmin/courier-quotas` | **Kuota Armada Kurir** — Set kuota per jenis kendaraan per unit BS (`courier_quotas`). | `superadmin` |
+| `/superadmin/bot-config` | **Konfigurasi Bot WA** — Menu interaktif (`wa_menu_configs`), template pesan, kredensial webhook. | `superadmin` |
+| `/superadmin/settings` | **Pengaturan Sistem** — Branding (nama kabupaten, logo pemda, nama app). Operasional (radius layanan, CS phone). | `superadmin` |
+
+### 3.3 Dashboard Pemerintah / Dinas (`/gov`)
+
+| Route | Fungsi | Data Source |
+|-------|--------|-------------|
+| `/gov` | **Overview** — KPI cards (Waste Diversion, Penghematan TPA, Reduksi CH4, Tonnage). Populasi ekosistem. Armada kurir. Perputaran ekonomi (saldo warga, revenue penjualan, pencairan pending). **Produksi & Penjualan Produk** (total produksi olahan, transaksi jual, efisiensi konversi). | `transactions`, `profiles`, `inventory_outputs`, `product_sales`, `user_wallets` |
+| `/gov/heatmap` | **Geospasial** — Peta sebaran (placeholder modul). | — |
+| `/gov/impact` | **Ekonomi** — Analisis dampak ekonomi (placeholder modul). | — |
+| `/gov/rewards` | **Reward** — Manajemen penghargaan warga (placeholder modul). | — |
+| `/gov/environmental` | **Lingkungan** — Indikator lingkungan (placeholder modul). | — |
+
+**Header Dinamis:**
+- Nama kabupaten: dari `system_settings.pemda_name`
+- Logo: dari `system_settings.pemda_logo_url`
+- Diatur oleh SuperAdmin melalui halaman Settings
+
+### 3.4 Dashboard Admin Bank Sampah (`/admin`)
+
+| Route | Fungsi | Isolasi Data |
+|-------|--------|-------------|
+| `/admin` | **Command Center** — Statistik lokal unit BS: warga terdaftar di unit ini, kurir aktif, total transaksi, trend tonase. | `bank_sampah_id` |
+| `/admin/couriers` | **Manajemen Kurir** — Review lamaran (`courier_applications`), approve/reject, daftarkan kurir offline. | `target_bank_sampah_id` |
+| `/admin/fleet` | **Armada Aktif** — List kurir aktif, status online, performa. | `bank_sampah_id` |
+| `/admin/transactions` | **Fraud & Transaksi** — Audit transaksi warga, discrepancy check. | `bank_sampah_id` |
+| `/admin/pricing` | **Harga Komoditas** — Harga beli sampah lokal unit ini (`unit_commodity_prices`). Masing-masing BS punya harga sendiri. | `bank_sampah_unit_id` |
+| `/admin/inventory` | **Produksi & Gudang** — Catat output olahan (`inventory_outputs`). Kelola kategori olahan lokal (`unit_product_categories`) — bisa tambah/hapus kategori sendiri tanpa bercampur unit lain. | `bank_sampah_id` |
+| `/admin/sales` | **Penjualan Produk** — Catat penjualan ke buyer (`product_sales`). Kategori produk dari `unit_product_categories` lokal. Buyer dari `b2b_buyers` global. Auto-fill harga. | `bank_sampah_id` |
+| `/admin/finance` | **Pencairan Dana** — Proses withdraw warga/kurir (`withdraw_requests`). | `bank_sampah_id` |
+
+### 3.5 Portal Kurir (`/courier`)
+
+| Route | Fungsi |
+|-------|--------|
+| `/courier` | **Dashboard Kurir** — Status online toggle, ringkasan hari ini, saldo wallet. |
+| `/courier/register` | **Pendaftaran Kurir** — Form multi-step (data diri, kendaraan, dokumen). |
+| `/courier/login` | **Login Kurir** — Autentikasi. |
+| `/courier/pickup` | **Form Jemput Sampah** — Scan QR warga, input timbangan, foto bukti, geo-location. |
+| `/courier/manifest` | **Manifest Setoran** — Buat faktur setoran bulk ke Bank Sampah (`courier_deposits`). |
+
+---
+
+## 4. Database Schema (22 Tabel Aktif)
+
+### 4.1 Tabel Inti
+
+#### `profiles` (6 rows)
+Ekstensi dari `auth.users`. Menyimpan data profil + role.
+| Kolom | Tipe | Keterangan |
+|-------|------|------------|
+| `id` | uuid (PK, FK → auth.users) | |
+| `full_name` | text | |
+| `phone_number` | text (UNIQUE) | |
+| `role` | text | `user` / `courier` / `admin` / `gov` / `superadmin` |
+| `address` | text | |
+| `location` | geography | Koordinat PostGIS |
+| `achievement_points` | int (default 0) | Poin reward |
+| `bank_sampah_id` | uuid (FK → bank_sampah_units) | Unit BS affiliasi |
+| `bank_sampah_name` | text | Cache nama unit |
+| `referred_by` | uuid (FK → profiles) | Referral |
+| `registration_source` | text | `web` / `whatsapp` / `admin` |
+| `is_registration_complete` | bool | |
+| `courier_status` | text | `null` / `pending_approval` / `active` / `suspended` / `terminated` |
+| `courier_id_code` | text (UNIQUE) | Format `KUR-XXXX` |
+| `vehicle_type`, `vehicle_plate`, `preferred_zone` | text | Data kendaraan kurir |
+| `is_online` | bool (default false) | Toggle kurir aktif |
+
+#### `bank_sampah_units` (2 rows)
+Unit operasional Bank Sampah dalam kabupaten.
+| Kolom | Tipe | Keterangan |
+|-------|------|------------|
+| `id` | uuid (PK) | |
+| `name` | text | Nama unit (misal: "Bank Sampah Palakka") |
+| `description` | text | |
+| `gov_id` | uuid (FK → profiles) | |
+| `created_by` | uuid (FK → profiles) | SuperAdmin |
+| `is_active` | bool | |
+| `can_sell_direct` | bool (default false) | **Toggle penjualan langsung** — jika true, menu Penjualan Produk muncul di dashboard admin BS |
+
+#### `transactions` (1 row)
+Transaksi jemput sampah warga.
+| Kolom | Tipe | Keterangan |
+|-------|------|------------|
+| `id` | uuid (PK) | |
+| `user_id`, `kurir_id`, `courier_id` | uuid (FK) | Warga & kurir terkait |
+| `pickup_id` | uuid (FK → pickup_requests) | |
+| `weight_organic`, `weight_inorganic` | numeric | Klaim timbangan kurir |
+| `admin_weight_organic`, `admin_weight_inorganic` | numeric | Timbangan ulang admin |
+| `courier_sorting_quality`, `admin_sorting_quality` | text | Kualitas sortasi |
+| `discrepancy_notes` | text | Catatan selisih |
+| `photo_proof_url`, `pickup_photo_url` | text | Bukti foto |
+| `geo_lat`, `geo_lng` | float8 | Lokasi jemput |
+| `picked_up_at` | timestamptz | |
+| `status` | text | `requested`/`dijemput`/`picked_up`/`menimbang`/`antre`/`pending`/`completed`/`cancelled`/`rejected` |
+| `amount_earned` | numeric | Nilai rupiah untuk warga |
+| `bank_sampah_id` | uuid (FK) | Unit BS |
+| `courier_deposit_id` | uuid (FK) | Grup setoran |
+
+### 4.2 Tabel Keuangan
+
+| Tabel | Rows | Fungsi |
+|-------|------|--------|
+| `user_wallets` | 6 | Saldo per user (warga/kurir). PK = `user_id`. |
+| `wallet_ledgers` | 0 | Riwayat mutasi (credit/debit) per user. FK → transactions. |
+| `withdraw_requests` | 0 | Pengajuan tarik tunai. Status: `pending`/`approved`/`rejected`. |
+
+### 4.3 Tabel Kurir
+
+| Tabel | Rows | Fungsi |
+|-------|------|--------|
+| `courier_applications` | 1 | Lamaran kurir (online/offline/wa_bot). `target_bank_sampah_id` menentukan admin reviewer. `expires_at` (7 hari). |
+| `courier_deposits` | 1 | Manifest setoran bulk kurir → BS. Status: `pending_audit`/`approved`/`rejected`. |
+| `courier_logs` | 0 | Log performa kurir (durasi, rating 1-5, lokasi). |
+| `courier_quotas` | 8 | Kuota armada per jenis kendaraan per BS. Dikelola SuperAdmin. |
+
+### 4.4 Tabel Produksi & Penjualan (Outbound)
+
+| Tabel | Rows | Fungsi |
+|-------|------|--------|
+| `inventory_outputs` | 3 | **Catatan produksi olahan** per BS. Kategori, berat, grade, batch number. Kategori dari `unit_product_categories`. |
+| `product_sales` | 0 | **Catatan penjualan produk** ke buyer. FK → `b2b_buyers`, `bank_sampah_units`. Payment status tracking. |
+| `unit_product_categories` | 16 | **Kategori olahan LOKAL per BS** — setiap unit punya kategori sendiri, tidak bercampur. UNIQUE(bank_sampah_id, name). Admin BS bisa CRUD. |
+
+### 4.5 Tabel Pricing & Market
+
+| Tabel | Rows | Fungsi |
+|-------|------|--------|
+| `commodity_prices` | 10 | **Harga GLOBAL** — dikelola SuperAdmin. `trade_type`: `buy_from_bank_sampah` (harga SuperAdmin beli dari BS) atau `sell_to_market` (harga jual ke pasar). Seed awal untuk `unit_product_categories`. |
+| `unit_commodity_prices` | 5 | **Harga LOKAL per BS** — harga beli sampah warga yang ditentukan masing-masing BS. `trade_type`: `buy_from_citizen` / `sell_outbound`. |
+| `b2b_buyers` | 3 | **Data buyer B2B** — perusahaan pembeli produk olahan. Status: `active`/`inactive`/`fulfilled`. |
+
+### 4.6 Tabel Konfigurasi & Sistem
+
+| Tabel | Rows | Fungsi |
+|-------|------|--------|
+| `system_settings` | 22 | **Pengaturan sistem** — key-value pairs. Categories: `branding` (pemda_name, pemda_logo_url, app_name), `operational` (radius, CS phone), `whatsapp` (token, phone_id). |
+| `wa_menu_configs` | 6 | **Menu bot WA** — menu_key, label, response_template. Dikelola SuperAdmin. |
+| `policy_configs` | 0 | Master data kebijakan (reward parameters, thresholds). |
+| `audit_logs` | 1 | Log perubahan konfigurasi oleh SuperAdmin. |
+| `pickup_requests` | 0 | Request jemput dari warga. Status: `pending`/`assigned`/`completed`/`cancelled`. |
+| `hub_inventory` | 0 | Legacy: tracki inventory gudang (in/out per kategori). |
+| `whatsapp_webhooks` | 132 | Raw webhook payloads dari WhatsApp Cloud API. |
+
+---
+
+## 5. Supabase Edge Functions (4 Aktif)
+
+| Function | Slug | JWT | Fungsi |
+|----------|------|-----|--------|
+| **Webhook WA** | `webhook-whatsapp` | ❌ | Endpoint webhook WhatsApp Cloud API. Memproses pesan masuk, registrasi via WA, auto-reply. |
+| **Create Accounts** | `create-district-accounts` | ❌ | Membuat akun `admin` atau `gov` (with Supabase Auth + profile). Dipanggil dari halaman SuperAdmin. |
+| **Manage Accounts** | `manage-district-accounts` | ❌ | Update/reset password akun admin/gov. |
+| **Approve Deposit** | `approve-deposit` | ❌ | Proses approval manifest setoran kurir. Update wallet, status transaksi. |
+
+---
+
+## 6. Custom Database Functions
+
+| Function | Fungsi |
+|----------|--------|
+| `handle_new_user()` | Trigger: auto-create profile + wallet saat user baru di auth.users. |
+| `create_wallet_for_new_user()` | Auto-create wallet entry. |
+| `handle_valid_transaction_reward_and_wallet()` | Auto-credit wallet warga saat transaksi completed. |
+| `increment_wallet_balance()` | Atomic increment saldo wallet. |
+| `approve_withdrawal()` | Proses approval withdraw request. |
+| `generate_courier_id_code()` | Generate kode kurir unik format `KUR-XXXX`. |
+| `get_courier_quotas_by_vehicle()` | RPC: ambil sisa kuota per jenis kendaraan (dipakai di form registrasi kurir). |
+| `check_courier_distance_fraud()` | Cek jarak GPS kurir vs alamat warga (fraud detection). |
+| `get_user_role()` | Helper: ambil role user (dipakai di RLS policies). |
+| `refresh_analytics()` | Refresh materialized view analytics. |
+
+---
+
+## 7. Alur Data Utama
+
+### 7.1 Alur Inbound (Sampah Masuk)
+```
+Warga request jemput (via WA/Web)
+  → pickup_requests (status: pending)
+  → Kurir terima order → status: assigned
+  → Kurir jemput + timbang di lokasi warga
+  → transactions (status: picked_up)
+  → Saldo warga otomatis ditambah (wallet)
+  → Kurir kumpulkan beberapa transaksi
+  → courier_deposits (manifest setoran bulk)
+  → Admin BS verifikasi timbangan gudang
+  → courier_deposits (status: approved)
+  → Komisi kurir dicairkan ke wallet kurir
 ```
 
-#### 3.5.5 Daftar Global Messages Bot
+### 7.2 Alur Outbound (Produksi & Penjualan)
+```
+Admin BS olah sampah mentah
+  → inventory_outputs (kategori dari unit_product_categories lokal)
+  → Admin BS jual ke buyer (jika can_sell_direct = true)
+  → product_sales (FK → b2b_buyers, bank_sampah_id)
+  → Data termonitor di SuperAdmin & Gov dashboard
+```
 
-| Key | Fungsi | Kapan Dikirim |
-|-----|--------|---------------|
-| `welcome_message` | Pesan saat user terdaftar ketik MENU/HALO | Setiap user terdaftar mengirim pesan sapaan |
-| `menu_header` | Header daftar menu | Saat user mengirim pesan yang tidak dikenali |
-| `unregistered_message` | Info pendaftaran untuk user belum terdaftar | Saat nomor belum terdaftar mengirim pesan |
-| `registration_welcome` | Pesan proaktif setelah daftar via web | Dikirim otomatis oleh bot setelah registrasi web |
-| `wa_registration_complete` | Pesan selamat setelah daftar via WA | Setelah user selesai mendaftar via percakapan WA |
+### 7.3 Alur Pricing (3 Layer Harga)
+```
+Layer 1: GLOBAL (SuperAdmin)
+  commodity_prices
+  ├── buy_from_bank_sampah: Harga SuperAdmin beli dari BS
+  └── sell_to_market: Harga referensi jual ke pasar → seed unit_product_categories
 
-#### 3.5.6 Infrastruktur Bot
+Layer 2: LOKAL per BS (Admin BS)
+  unit_commodity_prices
+  └── buy_from_citizen: Harga BS beli dari warga (tampil di warga app)
+  
+  unit_product_categories  
+  └── Kategori olahan + default_price_per_kg (lokal, independent per unit)
 
+Layer 3: TRANSACTIONAL
+  product_sales.price_per_kg: Harga aktual saat transaksi jual
+```
+
+### 7.4 Sinkronisasi Data Cross-Dashboard
+
+| Data | Admin BS | SuperAdmin | Gov |
+|------|----------|------------|-----|
+| Transaksi warga | ✅ Unit sendiri | ✅ Semua unit | ✅ Semua unit |
+| Produksi olahan | ✅ Unit sendiri | ✅ Semua unit (agregat) | ✅ Semua unit (agregat) |
+| Penjualan produk | ✅ Unit sendiri | ✅ Semua unit + tabel terbaru | ✅ Revenue & piutang |
+| Kurir & armada | ✅ Unit sendiri | ✅ Semua unit | ✅ Statistik agregat |
+| Warga terdaftar | ✅ Unit sendiri | ✅ Total kabupaten | ✅ Total kabupaten |
+| Branding (nama/logo) | ❌ | ✅ Edit | ✅ Read (header) |
+
+---
+
+## 8. Keamanan & RLS
+
+### 8.1 Row Level Security
+Semua tabel penting menggunakan RLS. Prinsip:
+- **Warga/Kurir**: Hanya lihat data sendiri
+- **Admin BS**: Hanya data unit BS sendiri (filter `bank_sampah_id`)
+- **SuperAdmin**: Akses penuh semua data
+- **Gov**: Read-only semua data yang relevan untuk monitoring
+
+### 8.2 RLS Policies Kritis
+
+| Tabel | Policy | Filter |
+|-------|--------|--------|
+| `system_settings` | Branding bisa dibaca semua user | `category = 'branding'` |
+| `system_settings` | Full access SuperAdmin | `role = 'superadmin'` |
+| `product_sales` | Admin kelola unit sendiri | `bank_sampah_id = profiles.bank_sampah_id` |
+| `product_sales` | SuperAdmin/Gov bisa baca semua | `role IN ('superadmin', 'gov')` |
+| `unit_product_categories` | Admin kelola unit sendiri | `bank_sampah_id = profiles.bank_sampah_id` |
+| `unit_product_categories` | SuperAdmin/Gov bisa baca | `role IN ('superadmin', 'gov')` |
+| `inventory_outputs` | Admin insert di unit sendiri | Insert check |
+| `inventory_outputs` | SuperAdmin/Gov/Admin baca | Multi-role read |
+| `transactions` | Isolasi per user/kurir/admin/gov | Multi-policy |
+
+### 8.3 Proteksi Akses Dashboard
+- Semua rute dashboard dilindungi `AuthGuard` (komponen React)
+- `AuthGuard` memverifikasi session + role sebelum render
+- Redirect ke `/portal` jika unauthorized
+- Portal login otomatis redirect sesuai role
+
+---
+
+## 9. Bot WhatsApp
+
+### 9.1 Infrastruktur
 | Komponen | Detail |
 |----------|--------|
-| **Infrastruktur**  | WhatsApp Cloud API (Resmi) |
-| **Integrasi**      | Supabase Edge Functions Webhook |
-| **Otentikasi API** | System User Permanent Access Token (Tidak Kadaluarsa) |
-| **Process Manager**| PM2 (`ecosistem-bot`) |
-| **Path di VPS**    | `/home/ubuntu/ecosistem-bot/vps-bot/` |
-| **Dashboard Kontrol** | Super Admin → Konfigurasi Bot WA |
-| **QR Code** | Ditampilkan virtual di Dashboard (Base64 via Supabase) |
+| API | WhatsApp Cloud API (Meta) |
+| Webhook | `https://icyirbezrmixxkzzrufq.supabase.co/functions/v1/webhook-whatsapp` |
+| Verify Token | `beres_api_123` |
+| Process Manager | PM2 (`ecosistem-bot`) di VPS |
+| VPS Path | `/home/ubuntu/ecosistem-bot/vps-bot/` |
+
+### 9.2 Dual Registration Path
+| Jalur | Flow | Output |
+|-------|------|--------|
+| **Web** (`/auth`) | User isi form → Supabase → Bot kirim welcome WA | `registration_source = 'web'` |
+| **WhatsApp** | User kirim DAFTAR/referral → Bot pandu step-by-step → Supabase | `registration_source = 'whatsapp'` |
+
+### 9.3 Menu Bot (dari `wa_menu_configs`)
+| Key | Fungsi |
+|-----|--------|
+| `welcome_message` | Pesan saat user terdaftar ketik MENU/HALO |
+| `menu_header` | Header daftar menu |
+| `unregistered_message` | Info pendaftaran untuk user belum terdaftar |
+| `registration_welcome` | Pesan proaktif setelah daftar via web |
+| `wa_registration_complete` | Selamat setelah daftar via WA |
 
 ---
 
-### 3.6 Mengelola Operasional Kurir (Fleet Management)
+## 10. Fleet Management (Kurir)
 
-Sebagai ujung tombak interaksi lapangan, operasional Kurir mengombinasikan **WhatsApp** (untuk notifikasi instan) dan **Progressive Web App (PWA)** (untuk input data kompleks saat menjemput sampah).
+### 10.1 Onboarding Flow
+```
+Calon kurir mendaftar (WA/PWA/offline)
+  → courier_applications (status: pending)
+  → Admin BS review (hanya lamaran ke unitnya)
+  → Approve: generate KUR-XXXX, update profile.role = 'courier'
+  → Reject: wajib sertakan alasan
+  → Expire: otomatis setelah 7 hari tanpa review
+```
 
-#### 3.6.1 Pendaftaran & Onboarding
-1. **Pendaftaran Online (via WA/PWA):**
-   - Calon kurir mendaftar melalui Bot WhatsApp yang mengarahkan ke form PWA multi-step (`/courier/register`).
-   - Calon kurir wajib memilih **Bank Sampah tujuan** (`target_bank_sampah_id`) di formulir pendaftaran. Ini menentukan admin mana yang berhak melihat dan mengevaluasi lamarannya.
-   - Kuota armada per Bank Sampah dan per jenis kendaraan ditentukan oleh Super Admin via halaman Kuota Armada (`/superadmin/courier-quotas`).
-   - Form mencakup: Autentikasi Akun, Data Diri (NIK, TTL, Alamat), Jenis Kendaraan & Plat, dan Upload Dokumen (KTP, SIM, Selfie+KTP).
-   - Sumber pendaftaran dicatat (`source: 'online'`).
-2. **Pendaftaran Offline (Walk-In di Bank Sampah):**
-   - Admin Bank Sampah dapat mendaftarkan kurir yang datang langsung ke Bank Sampah melalui tombol **"Daftarkan Kurir (Offline)"** di halaman `/admin/couriers`.
-   - Form sederhana tanpa perlu upload dokumen (karena admin memverifikasi langsung secara fisik).
-   - Sumber pendaftaran dicatat (`source: 'offline'`).
-3. **Approval (Persetujuan):**
-   - Admin **hanya melihat** lamaran yang ditujukan ke cabang Bank Sampah-nya (isolasi data via `target_bank_sampah_id`).
-   - Admin meninjau kelengkapan dokumen, lalu klik **"Setujui Kurir"** atau **"Tolak"** (dengan wajib sertakan alasan penolakan).
-   - Saat disetujui: sistem otomatis generate kode kurir unik (`KUR-XXXX` via database function), update `profiles.role = 'courier'`, set `courier_status = 'active'`, dan membuat wallet kurir.
-4. **Tenggang Waktu (Expiry):**
-   - Setiap lamaran memiliki batas waktu (`expires_at`, default 7 hari setelah `created_at`).
-   - Jika admin tidak meninjau dalam waktu tersebut, lamaran ditandai **KADALUARSA** secara visual di dashboard.
-   - Kurir yang kadaluarsa dapat digantikan oleh pendaftar lain.
-5. **Aktivasi:**
-   - Begitu disetujui di sistem, bot WhatsApp akan otomatis mengirimkan pesan sambutan kerja beserta arahan untuk melapor ke Bank Sampah tempatnya mendaftar untuk pembekalan.
-   - Data kurir yang diterima dan yang mendaftar juga tampil di **Dashboard Pemerintah/Dinas** serta **Dashboard Super Admin** sebagai data valid untuk pengambilan kebijakan.
-6. **Visibilitas Data Kurir:**
-   - **Dashboard Admin Bank Sampah** (`/admin/fleet`): Melihat semua kurir aktif di cabangnya + lamaran baru.
-   - **Dashboard Pemerintah** (`/gov`): Melihat statistik agregasi kurir seluruh kabupaten (total aktif, pendaftar baru, komposisi armada per jenis kendaraan).
-   - **Dashboard Super Admin** (`/superadmin`): Melihat dan mengelola kuota armada, data kurir seluruh cabang.
+### 10.2 Pickup Flow
+```
+Kurir buka PWA → Toggle online
+  → Terima order (Push WA / rebutan)
+  → Tiba di lokasi warga
+  → Scan QR warga / input manual
+  → Geo-location check (fraud detection: >50m = red flag)
+  → Timbang + pisahkan (organik/anorganik)
+  → Upload foto bukti
+  → Submit → transactions (status: picked_up)
+  → Saldo warga langsung ditambah
+  → Lanjut ke warga berikutnya
+  → Akhir shift: buat manifest → courier_deposits
+  → Admin BS audit timbangan gudang vs klaim
+```
 
-#### 3.6.2 Algoritma Notifikasi Tangkapan Order (Dispatch System)
-Sistem memiliki kontrol cerdas ("Smart Dispatch") ketika warga melakukan request jemputan (via WA/Web):
-1. **Mode Algoritma Prioritas:** Konfigurasi dapat diubah oleh *Super Admin* berdasarkan preferensi bisnis daerah:
-   - **Berdasarkan Jarak Terdekat (Nearest - Default):** Mencari koordinat kurir terdekat (via PostGIS) yang sedang "Online" di aplikasi.
-   - **Berdasarkan Rating Tertinggi:** Mengincar kurir dengan bintang 5 dan zero komplain terlebih dahulu.
-   - **Pemerataan Rezeki (Load Balancing):** Memprioritaskan kurir yang hari itu belum mendapat *orderan*.
-   - **Kelas / Akun Pro:** Memprioritaskan kurir "Senior" jika order berjumlah sangat besar.
-2. **Push Notifikasi:** Warga memesan → Sistem menghitung kecocokan algoritma → Sistem "membunyikan" (Push WA) ke HP kurir target menggunakan *Interactive Message WA* (Tombol "✅ Terima" / "❌ Tolak").
-3. **Sistem Lempar (Fall-back):** Jika kurir utama lambat merespon (misal > 2 menit), sistem melempar Push WA ke semua kurir terdekat (sistem rebutan).
-
-#### 3.6.3 Mekanisme Jemput Sampah (Courier Sub-Portal / PWA)
-Untuk mencegah *fraud* dan mempermudah pencatatan yang akurat, eksekusi timbangan sampah **tidak menggunakan Chat WA biasa** secara penuh di titik jemput, melainkan diarahkan mengakses **PWA Kurir** (`/courier`). Alurnya:
-1. **Validasi Warga:** Kurir tiba di rumah warga, lalu men-*scan* QR Code unik warga via HP Kurir (atau warga memunculkan QR Code dari dashboard).
-2. **Geo-Location Check:** Sistem langsung mencatat koordinat kurir saat membuka form timbangan (Jika meleset > 50 meter dari alamat warga, sistem memberi *Red Flag / Fraud Alert*).
-3. **Pencatatan Presisi:** Kurir menimbang lalu memisahkan data input (Misal: 3 kg Plastik, 2 kg Kertas) pada aplikasi HP.
-4. **Validasi Bukti (Upload):** Kurir wajib memotret bukti angka timbangan dan kondisi sampah warga (`transaction`). Data masuk ke sistem dengan status `Picked Up` (diangkut).
-5. **Autentikasi Pembayaran & Setor Gudang:** 
-   - Saldo warga akan ditambahkan berdasarkan laporan timbangan Kurir di titik jemput (sehingga warga percaya dan tidak komplain ke Gudang).
-   - Namun, Kurir harus membuat **Faktur Setoran Bulk (Manifest)** di akhir sesi rutenya untuk menyetor total muatan ke Admin Bank Sampah. Komisi pencairan kurir dicairkan setelah divalidasi oleh Admin via Pos Pintu Masuk (Discrepancy Check).
-
-#### 3.6.4 Manajemen Performa & Keuangan Kurir
-Di dalam Sub-Portal/PWA Khusus Kurir (`/courier`), kurir mempunyai akses fitur administrasi mandiri:
-1. **Dompet Kurir (Wallet):** Pemantauan log *real-time* penambahan saldo komisi (baik berdasarkan % total harga angkut, total bobot kilogram, maupun per trip penugasan).
-2. **Pencairan Saldo (Withdrawal):** Kurir mengajukan tarik tunai di sub-portal (lewat transfer e-Wallet atau tarik Tunai Admin Pusat). Sistem mencatat rekam riwayat saldo harian.
-3. **Sistem Reputasi & Teguran Peringatan (SP):**
-   - **Rating:** Warga wajib memberikan rating (1-5 Bintang) ke kurir setelah transaksi jemput selesai untuk menjaga pelayanan prima.
-   - **Teguran Pusat:** Jika rating jatuh di bawah batas aman, ada komplain warga (misal sampah tidak terangkut bersih), atau dicurigai *fraud point*, **Warning / Surat Peringatan (SP) digital** akan muncul (popup) di *dashboard* aplikasinya dan dikirim ke *WhatsApp* pribadinya sebagai record validasi untuk admin.
-4. **Riwayat Pengangkutan:** Melacak total kilogram harian yang berhasil ditarik serta target yang tergarap per kuartal.
+### 10.3 Kuota Armada
+- Dikelola SuperAdmin di `/superadmin/courier-quotas`
+- Per jenis kendaraan (motor, mobil_pickup, gerobak, sepeda) per unit BS
+- Validasi real-time di form registrasi kurir via RPC `get_courier_quotas_by_vehicle`
 
 ---
 
-## 4. Keamanan & Database Schema
+## 11. Storage Buckets
 
-### 4.1 Schema Enhancement (Tabel Esensial)
-Di dalam Supabase, struktur PostgreSQL harus memasukkan beberapa entitas berikut:
-- **`profiles`**: Profil user dengan ekstensi `role` (`user` / `courier` / `admin` / `gov` / `superadmin`), dan `achievement_points`.
-  - **Kolom Kurir** (ditambahkan saat onboarding):
-    - `courier_status` (enum: `null` / `pending_approval` / `active` / `suspended` / `terminated`)
-    - `courier_id_code` (text, UNIQUE) — ID unik kurir format `KUR-XXXX`
-    - `vehicle_type` (text) — Jenis kendaraan kurir
-    - `vehicle_plate` (text) — Plat nomor kendaraan
-    - `preferred_zone` (text) — Zona operasional
-    - `is_online` (boolean, default false) — Toggle kurir sedang aktif/tidak
-- **`courier_applications`**: Tabel lamaran kurir (Pre-Registration & Admin Approval). Menyimpan data lengkap calon kurir untuk ditinjau admin sebelum disetujui. Kolom:
-  - `id` (uuid, PK), `user_id` (FK → profiles.id)
-  - Data KTP: `nik`, `full_name`, `birth_place`, `birth_date`, `address_ktp`, `phone_number`
-  - Kendaraan: `vehicle_type` (motor/mobil_pickup/gerobak/sepeda), `vehicle_plate`
-  - Dokumen: `ktp_photo_url`, `sim_photo_url`, `selfie_ktp_url` (Supabase Storage)
-  - Status: `status` (pending/approved/rejected), `reject_reason`, `reviewed_by`, `reviewed_at`
-  - `courier_id_code` (generated on approval), `preferred_zone`
-  - RLS: User lihat milik sendiri, Admin lihat & update semua
-- **`courier_deposits` (Manifest Setoran Kurir)**: Tabel agregat yang membungkus banyak `transactions` milik warga dalam satu rombongan pengangkutan (bulk).
-  - Kolom: `id` (PK), `kurir_id` (FK), `bank_sampah_id` (FK)
-  - Klaim Total Kurir: `total_organic_claimed`, `total_inorganic_claimed`
-  - Realitas Audit Admin: `actual_organic`, `actual_inorganic`, `admin_quality_assessment`, `discrepancy_notes`
-  - Status: `status` (pending_audit, approved, rejected)
-- **`transactions` (Update)**: Di dalam tabel transaksi warga, terdapat `courier_deposit_id` (FK) untuk melacak ke dalam kelompok setoran mana kantong warga tersebut dilebur.
-- **`courier_logs`**: Tabel log performa (durasi jemput, lokasi, *rating* dari warga).
-- **`policy_configs`**: Master data pengaturan pemerintah (parameter reward, threshold, target Zero Waste).
-- **`waste_analytics`**: Tabel *materialized view* / *summary* agregasi agar grafik analitik *Government Dashboard* ter-load sangat cepat.
-- **`system_settings`**: Tabel konfigurasi dinamis yang dikelola Super Admin. Berisi key-value pair untuk:
-  - Pengaturan tampilan dashboard (logo, tema, widget visibility)
-  - Konfigurasi Webhook & Credentials WhatsApp Cloud API (Token Permanen via System User, WABA ID, Phone ID)
-  - Parameter operasional global (radius layanan, harga dasar, aturan referral)
-  - Setiap perubahan tercatat di `audit_logs` untuk transparansi.
-- **`audit_logs`**: Log perubahan konfigurasi sistem oleh Super Admin (field: `user_id`, `action`, `table_name`, `old_value`, `new_value`, `timestamp`).
-- **`wa_menu_configs`**: Konfigurasi menu dan template pesan Bot WhatsApp yang dapat diubah real-time tanpa deployment ulang.
-- **`dashboard_widgets`**: Daftar widget/modul per dashboard beserta status aktif/nonaktif, urutan tampil, dan konfigurasi visual.
-- **`bank_sampah_units`** (sebelumnya `districts`): Tabel pendaftaran unit operasional Bank Sampah (titik kumpul) yang ada di dalam Kabupaten.
-  - `id` (uuid, PK)
-  - `name` (text) — Nama unit Bank Sampah (Contoh: "Bank Sampah 1 Zona Utara")
-  - `admin_id` (uuid, FK → profiles.id) — Operator/Admin pengelola lokasi ini.
-  - `created_by` (uuid, FK → profiles.id) — Super Admin yang mendaftarkan
-  - `is_active` (boolean) — Status aktif/nonaktif
-- **`profiles.bank_sampah_id`**: Kolom tambahan pada tabel profiles (FK → bank_sampah_units.id) yang menghubungkan akun `admin` maupun `courier` ke wilayah operasional/titik kumpul spesifik mereka. *(Akun `gov` dan `superadmin` memiliki akses terbuka ke semua unit)*.
+| Bucket | Tipe | Fungsi | Max |
+|--------|------|--------|-----|
+| `courier-documents` | Private | Foto KTP, SIM, Selfie+KTP kurir | 5MB per file |
 
-### 4.2 Storage Buckets
-- **`courier-documents`**: Bucket privat untuk menyimpan foto KTP, SIM, dan Selfie+KTP calon kurir. Format: `{user_id}/{doc_type}_{timestamp}.{ext}`. Akses: user pemilik + admin/superadmin. Max 5MB per file (JPG/PNG/WebP).
-
-### 4.2 Kredensial Super Admin
-- **Email**: `superadmin@ecosistemdigital.id`
-- **Password**: `SuperAdmin@2026!`
-- **Akses**: Hanya via `/portal` → otomatis redirect ke `/superadmin`
-
-### 4.3 Security & Data Privacy
-- **Row Level Security (RLS)**: Data dibatasi by peruntukan login. (Misal: Pemerintah hanya visual data *aggregate*, Warga dan Kurir hanya data transaksi mereka).
-- **Audit Trail**: Tracking history perubahan *Dynamic Pricing* atau persetujuan dana untuk keamanan internal.
-- **Encrypted Storage**: Privasi foto tumpukan sampah terenkripsi sesuai persetujuan.
-
-### 4.3 Logika Perhitungan Incentive / Reward (Contoh)
-Insentif diformulakan di dalam sistem menggunakan Supabase Edge Functions:
-$$Incentive\_Score = \sum (Weight_{organic} \times 1.5) + \sum (Weight_{inorganic} \times 1.0)$$
-
-### 4.4 Courier Quota System (Sistem Kuota Kurir)
-Sistem untuk membatasi dan mengelola jumlah kurir aktif berdasarkan jenis kendaraan dan area operasional. Bertujuan untuk menyeimbangkan *supply & demand* serta kelayakan cashflow Bank Sampah.
-- **Tabel `courier_quotas`**: Menyimpan batas maksimal (`quota`) untuk kombinasi `zone_name` dan `vehicle_type`.
-- **Dikelola Oleh**: Super Admin melalui halaman `/superadmin/courier-quotas` (Dashboard Super Admin).
-- **Validasi Frontend**: Di halaman Pendaftaran Kurir (`/courier/register`), sistem akan mengecek sisa kuota (Total Kuota - Jumlah Kurir Pending/Aktif) secara *real-time* via Supabase RPC (`get_courier_quotas_by_vehicle`). Jika penuh, zona tersebut tidak bisa dipilih.
-- **Monitoring Biasa**: Admin Bank Sampah dapat melihat ringkasan alokasi dan kuota kurir aktif secara keseluruhan di dashboard utama (`/admin`).
+Format: `{user_id}/{doc_type}_{timestamp}.{ext}`
 
 ---
 
-## 5. Roadmap Fase Pembangunan
+## 12. Roadmap
 
-1. **Fase 1 (Golden Template)**: Pembangunan inti (*core*) aplikasi Web (Admin Dashboard & Government Dashboard) serta integrasi Supabase (Skema, Fungsi, Endpoint).
-2. **Fase 2 (Regional Instance)**: Implementasi proyek klon (*District Setup* per kabupaten), mulai memasukkan logic intervensi Bot WhatsApp.
-3. **Fase 3 (Dashboard Activation)**: Go-Live *Admin Operations*, menyusul aktivasi portal pengambil kebijakan untuk Pemda.
-4. **Fase 4 (National Aggregator)**: Pembangunan Landing Page terpusat untuk visualisasi *Live Counter* agregasi tonase berhasil daur ulang tingkat provinsi/nasional.
+### Fase 1 ✅ (Selesai)
+- Core Web Dashboard (Admin, Gov, SuperAdmin)
+- Supabase schema + RLS + Edge Functions
+- Bot WhatsApp integration
+- Kurir registration + fleet management
+- Pricing 3-layer system
+
+### Fase 2 🔄 (In Progress)
+- Penjualan produk (product_sales) + monitoring
+- Kategori olahan lokal per BS
+- Branding dinamis (nama/logo kabupaten)
+- Efisiensi konversi monitoring
+
+### Fase 3 (Planned)
+- Smart Dispatch Algorithm (nearest/rating/load-balance)
+- Laporan ekspor PDF/Excel dari Gov dashboard
+- Geospasial heatmap (integrasi PostGIS)
+- Reward system untuk warga aktif
+- Modul lingkungan (Waste Diversion Rate, Emisi CH4)
+
+### Fase 4 (Future)
+- Regional Instance (klon per kabupaten)
+- National Aggregator (live counter nasional)
+- Mobile PWA optimization
+- Push notification (WA interactive buttons)
