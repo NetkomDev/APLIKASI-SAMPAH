@@ -445,7 +445,7 @@ async function handleMenuSaldo(senderNumber, userProfile) {
         `💰 *Saldo Dompet Digital*\n\n👤 Nama: *${userProfile.full_name}*\n💵 Saldo: *Rp ${saldo}*\n\n_Saldo bertambah setiap kali Anda menyetorkan sampah._`,
         [
             { id: "riwayat", title: "📜 Lihat Riwayat" },
-            { id: "jemput", title: "🚛 Request Jemput" },
+            { id: "tarik_tunai", title: "💸 Tarik Tunai" },
             { id: "btn_menu", title: "📋 Menu Utama" }
         ],
         null, "Aplikasi BERES"
@@ -478,16 +478,36 @@ async function handleMenuRiwayat(senderNumber, userProfile) {
     } else {
         bodyText = `📜 *Riwayat Setoran*\n\nBelum ada riwayat setoran.\nMulai setor sampah untuk mendapatkan penghasilan! ♻️`;
     }
-    return sendButtons(senderNumber, bodyText,
-        [
-            { id: "saldo", title: "💰 Cek Saldo" },
-            { id: "jemput", title: "🚛 Request Jemput" },
-            { id: "btn_menu", title: "📋 Menu Utama" }
-        ],
-        null, "Aplikasi BERES"
-    );
+    
+    return sendButtons(senderNumber, bodyText, [
+        { id: "saldo", title: "💰 Cek Saldo" },
+        { id: "btn_menu", title: "📋 Menu Utama" }
+    ], null, "Aplikasi BERES");
 }
 
+async function handleMenuTarikTunai(senderNumber, userProfile) {
+    const { data: wallet } = await supabase.from("user_wallets").select("balance").eq("user_id", userProfile.id).single();
+    if (!wallet || wallet.balance <= 0) {
+        return sendWhatsAppMessage(senderNumber, "❌ *Saldo Anda Kosong*.\nSilakan setor sampah terlebih dahulu untuk mencairkan saldo.");
+    }
+    
+    // Check pending request
+    const { data: existing } = await supabase.from("withdraw_requests").select("id").eq("user_id", userProfile.id).eq("status", "pending").single();
+    if (existing) {
+        return sendWhatsAppMessage(senderNumber, "⏳ Anda masih memiliki pengajuan pencairan yang sedang *Diproses*.\nSilakan temui admin Bank Sampah Anda untuk mengambil uang tunai.");
+    }
+
+    // Insert to withdraw_requests 
+    await supabase.from("withdraw_requests").insert([{
+        user_id: userProfile.id,
+        amount: 0, // Admin decides the actual actual amount given
+        bank_name: "TUNAI",
+        account_no: "-",
+        status: "pending"
+    }]);
+
+    return sendWhatsAppMessage(senderNumber, `💸 *Pengajuan Pencairan Saldo Berhasil*\n\n✅ Request tarik tunai Anda telah dikirim ke Admin Bank Sampah.\n\n📍 *Langkah Selanjutnya:*\nSilakan datang ke Bank Sampah Anda dan temui Admin. Tunjukkan QR Code Anda atau sebutkan nomor WA ini. Admin akan mencairkan uang tunai dan memotong saldo Anda sesuai jumlah yang ditarik.\n\nKetik *MENU* untuk kembali.`);
+}
 async function handleMenuHarga(senderNumber) {
     return sendButtons(senderNumber,
         `💲 *Daftar Harga Sampah*\n\n` +
@@ -684,6 +704,12 @@ async function handleIncomingMessage(senderNumber, messageText, interactionId) {
             case "riwayat":
             case "lihat riwayat":
                 return await handleMenuRiwayat(senderNumber, userProfile);
+
+            case "tarik_tunai":
+            case "tarik tunai":
+            case "tarik saldo":
+            case "pencairan":
+                return await handleMenuTarikTunai(senderNumber, userProfile);
 
             case "harga":
             case "daftar harga":

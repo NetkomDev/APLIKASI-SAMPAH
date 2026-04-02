@@ -69,14 +69,25 @@ export default function PricingFinancePage() {
         }
     };
 
-    const handleApprove = async (id: string, amount: number, currentBalance: number) => {
-        if (currentBalance < amount) {
-            setToast({ message: "Saldo user tidak mencukupi untuk dicairkan", type: "error" });
+    const handleApprove = async (id: string, reqAmount: number, currentBalance: number) => {
+        const inputAmount = window.prompt(
+            `Ketik nominal yang akan dicairkan/disetujui.\nPastikan Anda sudah memberikan tunai atau transfer!\nSaldo Sistem Aktual: Rp ${currentBalance.toLocaleString('id-ID')}`, 
+            (reqAmount === 0 ? currentBalance : reqAmount).toString()
+        );
+        if (!inputAmount) return; // Cancelled
+        
+        const amountToDeduct = parseInt(inputAmount.replace(/\D/g, ''), 10);
+        if (isNaN(amountToDeduct) || amountToDeduct <= 0) {
+            setToast({ message: "Nominal tidak valid", type: "error" });
             setTimeout(() => setToast(null), 3000);
             return;
         }
 
-        if (!confirm("Konfirmasi: Apakah Anda sudah mentransfer uang ke pengguna? Saldo sistem akan dipotong.")) return;
+        if (currentBalance < amountToDeduct) {
+            setToast({ message: "Saldo user tidak mencukupi untuk jumlah pencairan ini.", type: "error" });
+            setTimeout(() => setToast(null), 3000);
+            return;
+        }
         
         setProcessingId(id);
         try {
@@ -85,7 +96,8 @@ export default function PricingFinancePage() {
             // Execute RPC
             const { error } = await supabase.rpc('approve_withdrawal', {
                 p_request_id: id,
-                p_admin_id: user!.id
+                p_admin_id: user!.id,
+                p_approved_amount: amountToDeduct
             });
 
             if (error) throw error;

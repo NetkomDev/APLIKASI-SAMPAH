@@ -133,6 +133,45 @@ export default function CourierDashboard() {
         localStorage.setItem('pwa-install-dismissed', 'true');
     };
 
+    const handleWithdraw = async () => {
+        if (!wallet || wallet.balance <= 0) {
+            alert("Saldo Anda kosong atau tidak mencukupi.");
+            return;
+        }
+
+        // Check for pending request
+        const { data: pending } = await supabase
+            .from("withdraw_requests")
+            .select("id")
+            .eq("user_id", user.id)
+            .eq("status", "pending")
+            .single();
+        
+        if (pending) {
+            alert("Anda masih memiliki pengajuan pencairan yang sedang diproses. Silakan temui admin Bank Sampah.");
+            return;
+        }
+
+        if (!confirm("Ajukan penarikan tunai sekarang? Anda harus menemui Admin Bank Sampah untuk mengambil uang.")) {
+            return;
+        }
+
+        try {
+            const { error } = await supabase.from("withdraw_requests").insert([{
+                user_id: user.id,
+                amount: 0,
+                bank_name: "TUNAI",
+                account_no: "-",
+                status: "pending"
+            }]);
+
+            if (error) throw error;
+            alert("Pengajuan berhasil! Silakan temui Admin Bank Sampah untuk memproses mutasi dan menerima uang tunai.");
+        } catch (error: any) {
+            alert(`Gagal mengajukan: ${error.message}`);
+        }
+    };
+
     if (loading) {
         return (
             <div className="min-h-screen bg-slate-50 flex items-center justify-center">
@@ -203,7 +242,7 @@ export default function CourierDashboard() {
                                     </p>
                                 </div>
                             </div>
-                            <button className="text-xs font-bold text-emerald-600 bg-emerald-50 px-3 py-1.5 rounded-lg hover:bg-emerald-100 transition">
+                            <button onClick={handleWithdraw} className="text-xs font-bold text-emerald-600 bg-emerald-50 px-3 py-1.5 rounded-lg hover:bg-emerald-100 transition active:scale-95">
                                 Cairkan
                             </button>
                         </div>
