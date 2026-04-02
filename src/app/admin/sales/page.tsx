@@ -87,16 +87,17 @@ export default function AdminSalesPage() {
         if (!profile?.bank_sampah_id) { setLoading(false); return; }
         setBankId(profile.bank_sampah_id);
 
-        // Fetch product categories from single source of truth
+        // Fetch LOCAL product categories for this unit
         const { data: catData } = await supabase
-            .from("commodity_prices")
-            .select("id, name, price_per_kg")
-            .eq("trade_type", "sell_to_market")
+            .from("unit_product_categories")
+            .select("id, name, default_price_per_kg")
+            .eq("bank_sampah_id", profile.bank_sampah_id)
             .eq("is_active", true)
             .order("name");
         if (catData && catData.length > 0) {
-            setProductCategories(catData);
-            setFormData(prev => ({ ...prev, product_name: catData[0].name, price_per_kg: catData[0].price_per_kg.toString() }));
+            const mapped = catData.map(c => ({ id: c.id, name: c.name, price_per_kg: Number(c.default_price_per_kg) }));
+            setProductCategories(mapped);
+            setFormData(prev => ({ ...prev, product_name: mapped[0].name, price_per_kg: mapped[0].price_per_kg.toString() }));
         }
 
         const { data: buyerData } = await supabase

@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { supabase } from "@/infrastructure/config/supabase";
-import { PlusCircle, PackageCheck, FileSpreadsheet, Scale, Clock, AlertCircle } from "lucide-react";
+import { PlusCircle, PackageCheck, FileSpreadsheet, Scale, Clock, AlertCircle, Settings2, X, Trash2, Plus } from "lucide-react";
 
 interface InventoryRecord {
     id: string;
@@ -23,12 +23,18 @@ export default function InventoryPage() {
     const [isSubmitting, setIsSubmitting] = useState(false);
 
     // Form States
-    const [outboundCategories, setOutboundCategories] = useState<{id: string, name: string}[]>([]);
+    const [outboundCategories, setOutboundCategories] = useState<{id: string, name: string, default_price_per_kg: number}[]>([]);
     const [category, setCategory] = useState("");
     const [weight, setWeight] = useState("");
     const [qualityGrade, setQualityGrade] = useState("Grade A (Premium)");
     const [batchNumber, setBatchNumber] = useState("");
     const [notes, setNotes] = useState("");
+    const [bankId, setBankId] = useState<string | null>(null);
+
+    // Category Management
+    const [showCatManager, setShowCatManager] = useState(false);
+    const [newCatName, setNewCatName] = useState("");
+    const [newCatPrice, setNewCatPrice] = useState("");
 
     // Feedback
     const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
@@ -43,13 +49,6 @@ export default function InventoryPage() {
             const { data: { user } } = await supabase.auth.getUser();
             if (!user) return;
 
-            // Fetch pricing categories
-            const { data: cats } = await supabase.from('commodity_prices').select('id, name').eq('trade_type', 'sell_to_market').order('name');
-            if (cats && cats.length > 0) {
-                setOutboundCategories(cats);
-                setCategory(cats[0].name);
-            }
-
             // Fetch profiles to get bank_sampah_id and role
             const { data: profile } = await supabase
                 .from("profiles")
@@ -59,6 +58,21 @@ export default function InventoryPage() {
 
             // Block access only if regular admin without a branch
             if (!profile?.bank_sampah_id && profile?.role !== 'superadmin') return;
+            setBankId(profile.bank_sampah_id);
+
+            // Fetch LOCAL product categories for this unit
+            if (profile.bank_sampah_id) {
+                const { data: cats } = await supabase
+                    .from('unit_product_categories')
+                    .select('id, name, default_price_per_kg')
+                    .eq('bank_sampah_id', profile.bank_sampah_id)
+                    .eq('is_active', true)
+                    .order('name');
+                if (cats && cats.length > 0) {
+                    setOutboundCategories(cats);
+                    setCategory(cats[0].name);
+                }
+            }
 
             // Notice: The `inventory_outputs` table must exist in Supabase!
             // Wait to run the SQL migration manually in Supabase SQL Editor.
@@ -169,6 +183,77 @@ export default function InventoryPage() {
                 </div>
             )}
 
+            {/* Category Manager Panel */}
+            {showCatManager && (
+                <div className="bg-white border border-brand-200 rounded-2xl p-5 shadow-sm space-y-4 animate-in fade-in slide-in-from-top-2 duration-200">
+                    <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                            <div className="p-2 bg-brand-50 rounded-lg"><Settings2 className="h-4 w-4 text-brand-600" /></div>
+                            <h3 className="text-sm font-bold text-slate-800">Kelola Kategori Olahan Lokal</h3>
+                        </div>
+                        <button onClick={() => setShowCatManager(false)} className="p-1.5 hover:bg-slate-100 rounded-lg transition"><X className="h-4 w-4 text-slate-500" /></button>
+                    </div>
+                    <p className="text-xs text-slate-500">Kategori ini bersifat lokal — hanya berlaku untuk unit Bank Sampah ini. Tidak bercampur dengan unit lain.</p>
+
+                    {/* Existing categories */}
+                    <div className="space-y-2">
+                        {outboundCategories.map(cat => (
+                            <div key={cat.id} className="flex items-center justify-between bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5">
+                                <div>
+                                    <span className="text-sm font-semibold text-slate-700">{cat.name}</span>
+                                    <span className="text-xs text-slate-400 ml-2">Rp {Number(cat.default_price_per_kg).toLocaleString('id-ID')}/Kg</span>
+                                </div>
+                                <button
+                                    onClick={async () => {
+                                        if (!confirm(`Nonaktifkan kategori "${cat.name}"?`)) return;
+                                        await supabase.from('unit_product_categories').update({ is_active: false }).eq('id', cat.id);
+                                        setOutboundCategories(prev => prev.filter(c => c.id !== cat.id));
+                                        setMessage({ type: 'success', text: `Kategori "${cat.name}" dinonaktifkan.` });
+                                    }}
+                                    className="p-1.5 hover:bg-red-100 rounded-lg transition text-slate-400 hover:text-red-500"
+                                >
+                                    <Trash2 className="h-3.5 w-3.5" />
+                                </button>
+                            </div>
+                        ))}
+                    </div>
+
+                    {/* Add new category */}
+                    <div className="flex items-end gap-3">
+                        <div className="flex-1">
+                            <label className="block text-[10px] font-semibold text-slate-500 mb-1 uppercase tracking-wide">Nama Kategori Baru</label>
+                            <input type="text" value={newCatName} onChange={e => setNewCatName(e.target.value)} placeholder="Misal: Minyak Jelantah" className="w-full px-3 py-2.5 bg-white border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-brand-500" />
+                        </div>
+                        <div className="w-36">
+                            <label className="block text-[10px] font-semibold text-slate-500 mb-1 uppercase tracking-wide">Harga/Kg</label>
+                            <input type="number" min="0" value={newCatPrice} onChange={e => setNewCatPrice(e.target.value)} placeholder="0" className="w-full px-3 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-bold focus:ring-2 focus:ring-brand-500" />
+                        </div>
+                        <button
+                            onClick={async () => {
+                                if (!newCatName.trim() || !bankId) return;
+                                const { data, error } = await supabase.from('unit_product_categories').insert({
+                                    bank_sampah_id: bankId,
+                                    name: newCatName.trim(),
+                                    default_price_per_kg: Number(newCatPrice) || 0,
+                                }).select('id, name, default_price_per_kg').single();
+                                if (error) {
+                                    setMessage({ type: 'error', text: error.code === '23505' ? `Kategori "${newCatName}" sudah ada.` : error.message });
+                                    return;
+                                }
+                                if (data) {
+                                    setOutboundCategories(prev => [...prev, data].sort((a, b) => a.name.localeCompare(b.name)));
+                                    setNewCatName(""); setNewCatPrice("");
+                                    setMessage({ type: 'success', text: `Kategori "${data.name}" berhasil ditambahkan!` });
+                                }
+                            }}
+                            className="px-4 py-2.5 bg-brand-600 hover:bg-brand-500 text-white font-bold rounded-xl text-sm transition whitespace-nowrap flex items-center gap-1.5"
+                        >
+                            <Plus className="h-4 w-4" /> Tambah
+                        </button>
+                    </div>
+                </div>
+            )}
+
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 {/* Form Input Panel */}
                 <div className="lg:col-span-1 border border-slate-200 bg-white shadow-sm p-6 rounded-2xl h-fit sticky top-6">
@@ -181,14 +266,19 @@ export default function InventoryPage() {
 
                     <form onSubmit={handleSumbit} className="space-y-4">
                         <div>
-                            <label className="block text-xs font-semibold text-slate-600 mb-1.5 uppercase tracking-wide">Kategori Olahan</label>
+                            <div className="flex items-center justify-between mb-1.5">
+                                <label className="block text-xs font-semibold text-slate-600 uppercase tracking-wide">Kategori Olahan</label>
+                                <button type="button" onClick={() => setShowCatManager(!showCatManager)} className="text-[10px] font-bold text-brand-500 hover:text-brand-600 flex items-center gap-1 transition">
+                                    <Settings2 className="h-3 w-3" /> Kelola
+                                </button>
+                            </div>
                             <select
                                 value={category}
                                 onChange={(e) => setCategory(e.target.value)}
                                 className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-700 font-medium focus:ring-2 focus:ring-brand-500 focus:border-brand-500"
                             >
                                 {outboundCategories.length === 0 ? (
-                                    <option value="">Memuat kategori...</option>
+                                    <option value="">Belum ada kategori</option>
                                 ) : (
                                     outboundCategories.map(cat => (
                                         <option key={cat.id} value={cat.name}>{cat.name}</option>
