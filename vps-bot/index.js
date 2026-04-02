@@ -153,6 +153,11 @@ async function sendCTAUrl(toPhoneNumber, bodyText, buttonLabel, url, headerText,
 // HELPERS
 // ──────────────────────────────────────────────
 
+// Ambil domain aplikasi dari system_settings (dinamis, bisa diubah SuperAdmin)
+function getAppDomain() {
+    return (systemSettings["app_domain"] || "https://beres-bone.vercel.app").replace(/\/+$/, "");
+}
+
 function formatResponse(template, variables) {
     let result = template || "";
     result = result.replace(/\\n/g, "\n");
@@ -264,8 +269,8 @@ async function startRegistration(senderNumber, referrerId) {
     }
 
     const webUrl = referrerId
-        ? `https://beres-bone.vercel.app/auth?ref=${referrerId}`
-        : "https://beres-bone.vercel.app/auth";
+        ? `${getAppDomain()}/auth?ref=${referrerId}`
+        : `${getAppDomain()}/auth`;
 
     // Kirim pilihan metode pendaftaran
     await sendWhatsAppMessage(senderNumber,
@@ -504,7 +509,7 @@ async function handleMenuHarga(senderNumber) {
 }
 
 async function handleMenuReferral(senderNumber, userProfile) {
-    const refLink = `https://beres-bone.vercel.app/auth?ref=${userProfile.id}`;
+    const refLink = `${getAppDomain()}/auth?ref=${userProfile.id}`;
 
     // 1. Pesan utama (Interactive)
     await sendButtons(senderNumber,
@@ -570,7 +575,7 @@ async function handleMenuQrCode(senderNumber, userProfile) {
         `Anda bisa menggunakan QR Code ini untuk diserahkan ke kurir saat penjemputan sampah.\n\n` +
         `Klik tombol di bawah ini untuk melihat dan mencetak Kartu ID / QR Code Anda secara mandiri:`,
         "🔎 Lihat QR Code",
-        `https://beres-bone.vercel.app/qr/${userProfile.id}`,
+        `${getAppDomain()}/qr/${userProfile.id}`,
         "💳 Kartu Warga BERES",
         "Tunjukkan layar HP atau cetak ID Card ini"
     );
@@ -583,7 +588,7 @@ async function handleMenuQrCode(senderNumber, userProfile) {
 async function handleDaftarKurir(senderNumber, userProfile) {
     // Check if already a courier
     if (userProfile.role === "courier") {
-        return sendWhatsAppMessage(senderNumber, `Anda sudah terdaftar sebagai kurir aktif, ${userProfile.full_name}! 🚛\n\nAkses Dashboard Kurir di sini:\nhttps://beres-bone.vercel.app/courier`);
+        return sendWhatsAppMessage(senderNumber, `Anda sudah terdaftar sebagai kurir aktif, ${userProfile.full_name}! 🚛\n\nAkses Dashboard Kurir di sini:\n${getAppDomain()}/courier`);
     }
 
     // Check if already applied
@@ -606,7 +611,7 @@ async function handleDaftarKurir(senderNumber, userProfile) {
             senderNumber,
             `Lamaran kurir Anda sebelumnya ditolak.\n📋 Alasan: _${existing.reject_reason || "Tidak memenuhi syarat"}_\n\nAnda dapat mendaftar ulang dengan data yang sudah diperbaiki:`,
             "📝 Daftar Ulang Kurir",
-            "https://beres-bone.vercel.app/courier/register",
+            `${getAppDomain()}/courier/register`,
             "🚛 Pendaftaran Kurir BERES",
             "Pastikan foto KTP dan dokumen sudah jelas"
         );
@@ -617,7 +622,7 @@ async function handleDaftarKurir(senderNumber, userProfile) {
         senderNumber,
         `Ingin jadi *Pahlawan Lingkungan*? 🦸‍♂️\n\nDaftar sebagai kurir BERES dan dapatkan penghasilan dengan menjemput sampah warga!\n\n✅ Kerja fleksibel\n✅ Notif order langsung ke WA\n✅ Komisi setiap jemputan\n\nKlik tombol di bawah untuk mengisi formulir pendaftaran:`,
         "📝 Daftar Jadi Kurir",
-        "https://beres-bone.vercel.app/courier/register",
+        `${getAppDomain()}/courier/register`,
         "🚛 Rekrutmen Kurir BERES",
         "Siapkan foto KTP, SIM (opsional), dan Selfie+KTP"
     );
@@ -715,7 +720,7 @@ async function handleIncomingMessage(senderNumber, messageText, interactionId) {
                 // Coba cocokkan dari database menu lama
                 const matchedMenu = botMenus.find(m => command === m.menu_key);
                 if (matchedMenu) {
-                    let tv = { nama: userProfile.full_name, nomor_cs: systemSettings["cs_phone_number"] || "-", link_web: "https://beres-bone.vercel.app", link_referral: `https://beres-bone.vercel.app/auth?ref=${userProfile.id}` };
+                    let tv = { nama: userProfile.full_name, nomor_cs: systemSettings["cs_phone_number"] || "-", link_web: getAppDomain(), link_referral: `${getAppDomain()}/auth?ref=${userProfile.id}` };
                     return sendWhatsAppMessage(senderNumber, formatResponse(matchedMenu.response_template, tv));
                 }
                 // Default: tampilkan menu utama

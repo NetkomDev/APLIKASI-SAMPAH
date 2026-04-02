@@ -175,10 +175,11 @@ export async function approveCourierAction(appId: string, adminId: string) {
         // 7. WA Notification integration (using official Meta Cloud API)
         let waStatus = "WA Notification Attempted";
         try {
-            const { data: configs } = await supabase.from('system_settings').select('key_name, value_text').in('key_name', ['wa_api_token', 'wa_phone_number_id']);
+            const { data: configs } = await supabase.from('system_settings').select('key_name, value_text').in('key_name', ['wa_api_token', 'wa_phone_number_id', 'app_domain']);
             
             const token = configs?.find(c => c.key_name === 'wa_api_token')?.value_text;
             const phoneId = configs?.find(c => c.key_name === 'wa_phone_number_id')?.value_text;
+            const appDomain = (configs?.find(c => c.key_name === 'app_domain')?.value_text || 'https://beres-bone.vercel.app').replace(/\/+$/, '');
 
             if (token && phoneId) {
                 let phoneWa = application.phone_number;
@@ -194,7 +195,7 @@ export async function approveCourierAction(appId: string, adminId: string) {
                     `*ARMADA:* ${application.vehicle_type?.toUpperCase() || "TIDAK DIKETAHUI"}`,
                     "",
                     "📱 *LOGIN DASHBOARD KURIR:*",
-                    `🔗 https://beres-bone.vercel.app/courier/login`,
+                    `🔗 ${appDomain}/courier/login`,
                     "",
                     `*No. HP:* ${application.phone_number}`,
                     `*Password:* ${defaultPassword}`,

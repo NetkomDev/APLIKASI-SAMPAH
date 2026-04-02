@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/infrastructure/config/supabase";
 import {
     Bot, MessageSquare, Save, Smartphone, CheckCircle2, AlertCircle,
-    RefreshCw, Key, Phone, Settings, Hash, ToggleLeft, ToggleRight, Info
+    RefreshCw, Key, Phone, Settings, Hash, ToggleLeft, ToggleRight, Info, Globe
 } from "lucide-react";
 import { useSuperAdminTheme, t } from "@/components/superadmin/ThemeProvider";
 
@@ -22,6 +22,7 @@ const BOT_SETTING_KEYS = [
     "wa_phone_number_id",
     "wa_business_account_id",
     "cs_phone_number",
+    "app_domain",
     "welcome_message",
     "menu_header",
     "unregistered_message",
@@ -107,10 +108,12 @@ export default function BotConfigPage() {
         setIsSavingSettings(true);
         setMessage(null);
         try {
+            const CATEGORY_MAP: Record<string, string> = { app_domain: "branding" };
             for (const key of BOT_SETTING_KEYS) {
                 if (settings[key] !== undefined) {
+                    const category = CATEGORY_MAP[key] || "bot";
                     await supabase.from("system_settings")
-                        .upsert({ key_name: key, value_text: settings[key], category: "bot" }, { onConflict: "key_name" });
+                        .upsert({ key_name: key, value_text: settings[key], category }, { onConflict: "key_name" });
                 }
             }
             setMessage({ type: "success", text: "✅ Semua pengaturan bot berhasil disimpan." });
@@ -264,6 +267,39 @@ export default function BotConfigPage() {
                             onChange={(v) => handleSettingChange("cs_phone_number", v)}
                         />
                         <p className="text-xs text-slate-500">Nomor ini akan ditampilkan otomatis di menu Bantuan / CS bot.</p>
+                    </div>
+
+                    {/* Domain / Website */}
+                    <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-4">
+                        <div className="flex items-center gap-3 mb-2">
+                            <div className="p-2.5 rounded-xl bg-cyan-500/10 border border-cyan-500/20">
+                                <Globe className="h-5 w-5 text-cyan-400" />
+                            </div>
+                            <div>
+                                <h2 className="text-base font-bold text-white">Domain / Website</h2>
+                                <p className="text-xs text-slate-500">URL utama aplikasi web</p>
+                            </div>
+                        </div>
+                        <InputField
+                            label="URL Domain Aplikasi"
+                            placeholder="https://beres.vercel.app"
+                            value={settings["app_domain"] || ""}
+                            onChange={(v) => handleSettingChange("app_domain", v)}
+                            icon={<Globe className="h-4 w-4" />}
+                        />
+                        <div className="p-3 rounded-xl bg-cyan-500/5 border border-cyan-500/10 flex gap-2">
+                            <Info className="h-4 w-4 text-cyan-400 flex-shrink-0 mt-0.5" />
+                            <div className="text-xs text-slate-400 space-y-1">
+                                <p>Domain ini digunakan bot WA untuk membuat link dinamis:</p>
+                                <ul className="list-disc list-inside text-slate-500 space-y-0.5">
+                                    <li>Link QR Code Warga</li>
+                                    <li>Link Pendaftaran & Referral</li>
+                                    <li>Link Dashboard Kurir</li>
+                                    <li>Link Formulir Registrasi Kurir</li>
+                                </ul>
+                                <p className="text-amber-400 mt-1">⚠️ Pastikan format URL lengkap dengan <code className="bg-slate-800 px-1 rounded">https://</code> tanpa garis miring di akhir.</p>
+                            </div>
+                        </div>
                     </div>
 
                     {/* Global Messages */}
