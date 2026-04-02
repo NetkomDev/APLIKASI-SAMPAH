@@ -514,6 +514,7 @@ async function handleMenuHarga(senderNumber, userProfile) {
         const { data } = await supabase.from('unit_commodity_prices')
             .select('name, price_per_kg, unit')
             .eq('bank_sampah_unit_id', userProfile.bank_sampah_id)
+            .eq('trade_type', 'inbound')
             .eq('is_active', true)
             .order('name');
         if (data && data.length > 0) pricesData = data;
@@ -523,6 +524,7 @@ async function handleMenuHarga(senderNumber, userProfile) {
     if (pricesData.length === 0) {
         const { data } = await supabase.from('commodity_prices')
             .select('name, price_per_kg, unit')
+            .eq('trade_type', 'inbound')
             .eq('is_active', true)
             .order('name');
         if (data) pricesData = data;
