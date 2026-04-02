@@ -700,7 +700,7 @@ async function handleIncomingMessage(senderNumber, messageText, interactionId) {
     }
 
     try {
-        const { data: userProfile } = await supabase.from("profiles").select("id, full_name, role, is_registration_complete, registration_source").eq("phone_number", senderNumber).single();
+        const { data: userProfile } = await supabase.from("profiles").select("id, full_name, role, bank_sampah_id, is_registration_complete, registration_source").eq("phone_number", senderNumber).single();
 
         // Reactive welcome untuk user web
         if (userProfile && userProfile.registration_source === "web") return await sendWebWelcomeIfNeeded(senderNumber, userProfile);
