@@ -508,18 +508,41 @@ async function handleMenuTarikTunai(senderNumber, userProfile) {
 
     return sendWhatsAppMessage(senderNumber, `💸 *Pengajuan Pencairan Saldo Berhasil*\n\n✅ Request tarik tunai Anda telah dikirim ke Admin Bank Sampah.\n\n📍 *Langkah Selanjutnya:*\nSilakan datang ke Bank Sampah Anda dan temui Admin. Tunjukkan QR Code Anda atau sebutkan nomor WA ini. Admin akan mencairkan uang tunai dan memotong saldo Anda sesuai jumlah yang ditarik.\n\nKetik *MENU* untuk kembali.`);
 }
-async function handleMenuHarga(senderNumber) {
+async function handleMenuHarga(senderNumber, userProfile) {
+    let pricesData = [];
+    if (userProfile && userProfile.bank_sampah_id) {
+        const { data } = await supabase.from('unit_commodity_prices')
+            .select('name, price_per_kg, unit')
+            .eq('bank_sampah_unit_id', userProfile.bank_sampah_id)
+            .eq('is_active', true)
+            .order('name');
+        if (data && data.length > 0) pricesData = data;
+    }
+    
+    // Fallback if no specific price for this bank sampah
+    if (pricesData.length === 0) {
+        const { data } = await supabase.from('commodity_prices')
+            .select('name, price_per_kg, unit')
+            .eq('is_active', true)
+            .order('name');
+        if (data) pricesData = data;
+    }
+
+    let priceList = `┌─────────────────────────\n`;
+    let icons = ["🥤", "📦", "🔩", "📰", "🍶", "🛢️", "♻️"];
+    if (pricesData && pricesData.length > 0) {
+        pricesData.forEach((p, idx) => {
+             const icon = icons[idx % icons.length];
+             const nameStr = p.name.padEnd(14, ' ');
+             priceList += `│ ${icon} ${nameStr} Rp ${p.price_per_kg.toLocaleString('id-ID')}/${p.unit || 'kg'}\n`;
+        });
+    } else {
+        priceList += `│ Data harga belum tersedia.\n`;
+    }
+    priceList += `└─────────────────────────`;
+
     return sendButtons(senderNumber,
-        `💲 *Daftar Harga Sampah*\n\n` +
-        `┌─────────────────────────\n` +
-        `│ 🥤 Plastik PET    Rp 2.000/kg\n` +
-        `│ 📦 Kardus         Rp 1.500/kg\n` +
-        `│ 🔩 Besi/Logam     Rp 4.000/kg\n` +
-        `│ 📰 Kertas/HVS     Rp 1.000/kg\n` +
-        `│ 🍶 Botol Kaca     Rp   500/kg\n` +
-        `│ 🛢️ Minyak Jelantah Rp 3.000/L\n` +
-        `└─────────────────────────\n\n` +
-        `_Harga dapat berubah sewaktu-waktu_`,
+        `💲 *Daftar Harga Sampah*\n\n${priceList}\n\n_Harga dapat berubah sewaktu-waktu_`,
         [
             { id: "jemput", title: "🚛 Request Jemput" },
             { id: "btn_menu", title: "📋 Menu Utama" }
@@ -713,7 +736,7 @@ async function handleIncomingMessage(senderNumber, messageText, interactionId) {
 
             case "harga":
             case "daftar harga":
-                return await handleMenuHarga(senderNumber);
+                return await handleMenuHarga(senderNumber, userProfile);
 
             case "referral":
             case "ajak teman":
@@ -778,9 +801,11 @@ async function processPendingWebhooks() {
         if (error) { console.error("Poll Error:", error.message); isProcessing = false; return; }
         if (!webhooks || webhooks.length === 0) { isProcessing = false; return; }
 
+        // Tandai diproses secara synchronous sebelum eksekusi logic untuk mencegah race condition (double trigger)
+        const ids = webhooks.map(w => w.id);
+        await supabase.from("whatsapp_webhooks").update({ processed: true }).in("id", ids);
+
         for (const wh of webhooks) {
-            // Tandai diproses secera asynchronous agar tidak mem-blokir balasan
-            supabase.from("whatsapp_webhooks").update({ processed: true }).eq("id", wh.id).then();
 
             const changes = wh.payload?.entry?.[0]?.changes?.[0]?.value;
             if (!changes || !changes.messages || changes.messages.length === 0) continue;
