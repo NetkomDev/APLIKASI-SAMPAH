@@ -16,6 +16,7 @@ interface BankSampahUnit {
     name: string;
     description: string | null;
     is_active: boolean;
+    can_sell_direct: boolean;
     created_at: string;
     admin_profiles?: { id: string; full_name: string; phone_number: string; role: string }[];
 }
@@ -346,9 +347,27 @@ export default function BankSampahUnitsPage() {
                                                 <h3 className={`text-base font-bold ${tk.textPrimary} capitalize`}>{b.name}</h3>
                                                 {b.description && <p className="text-xs text-slate-500 mt-0.5">{b.description}</p>}
                                             </div>
-                                            <span className={`px-2 py-1 text-[10px] font-bold uppercase rounded-md ${b.is_active ? 'bg-emerald-500/10 text-emerald-400' : 'bg-slate-800 text-slate-500'}`}>
-                                                {b.is_active ? 'Status: Aktif' : 'Status: Tutup'}
-                                            </span>
+                                            <div className="flex flex-col items-end gap-1.5">
+                                                <span className={`px-2 py-1 text-[10px] font-bold uppercase rounded-md ${b.is_active ? 'bg-emerald-500/10 text-emerald-400' : 'bg-slate-800 text-slate-500'}`}>
+                                                    {b.is_active ? 'Status: Aktif' : 'Status: Tutup'}
+                                                </span>
+                                                <button
+                                                    onClick={async (e) => {
+                                                        e.stopPropagation();
+                                                        const newVal = !b.can_sell_direct;
+                                                        await supabase.from('bank_sampah_units').update({ can_sell_direct: newVal }).eq('id', b.id);
+                                                        setBranches(prev => prev.map(br => br.id === b.id ? { ...br, can_sell_direct: newVal } : br));
+                                                    }}
+                                                    className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[10px] font-bold border transition-all cursor-pointer ${
+                                                        b.can_sell_direct
+                                                            ? 'bg-brand-500/10 text-brand-400 border-brand-500/30 hover:bg-brand-500/20'
+                                                            : 'bg-slate-800 text-slate-500 border-slate-700 hover:bg-slate-700'
+                                                    }`}
+                                                >
+                                                    <span className={`w-2 h-2 rounded-full ${b.can_sell_direct ? 'bg-brand-400 animate-pulse' : 'bg-slate-600'}`} />
+                                                    {b.can_sell_direct ? 'Jual Langsung: ON' : 'Jual Langsung: OFF'}
+                                                </button>
+                                            </div>
                                         </div>
 
                                         <div className={`${tk.cardInner} p-3 rounded-xl border transition-colors`}>

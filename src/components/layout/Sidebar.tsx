@@ -1,8 +1,9 @@
 "use client";
 
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LayoutDashboard, Users, Map, Settings, PieChart, Activity, LogOut, PackageSearch, TreePine, PackageCheck, Tag } from 'lucide-react';
+import { LayoutDashboard, Users, Map, Settings, PieChart, Activity, LogOut, PackageSearch, TreePine, PackageCheck, Tag, ShoppingBag } from 'lucide-react';
 import clsx from 'clsx';
 import { supabase } from '@/infrastructure/config/supabase';
 
@@ -12,6 +13,20 @@ interface SidebarProps {
 
 export function Sidebar({ role }: SidebarProps) {
     const pathname = usePathname();
+    const [canSell, setCanSell] = useState(false);
+
+    useEffect(() => {
+        if (role !== 'admin') return;
+        const checkSellAccess = async () => {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (!user) return;
+            const { data: profile } = await supabase.from("profiles").select("bank_sampah_id").eq("id", user.id).single();
+            if (!profile?.bank_sampah_id) return;
+            const { data: unit } = await supabase.from("bank_sampah_units").select("can_sell_direct").eq("id", profile.bank_sampah_id).single();
+            if (unit?.can_sell_direct) setCanSell(true);
+        };
+        checkSellAccess();
+    }, [role]);
 
     const adminLinks = [
         { name: 'Command Center', href: '/admin', icon: Activity },
@@ -19,6 +34,7 @@ export function Sidebar({ role }: SidebarProps) {
         { name: 'Warga & Kurir', href: '/admin/fleet', icon: Users },
         { name: 'Fraud & Transaksi', href: '/admin/transactions', icon: PackageSearch },
         { name: 'Produksi & Gudang', href: '/admin/inventory', icon: PackageCheck },
+        ...(canSell ? [{ name: 'Penjualan Produk', href: '/admin/sales', icon: ShoppingBag }] : []),
         { name: 'Pencairan Dana', href: '/admin/finance', icon: Settings },
     ];
 
