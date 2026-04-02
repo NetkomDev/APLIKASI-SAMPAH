@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { supabase } from '@/infrastructure/config/supabase';
-import { Target, Building2, Droplets, Truck, Users, Clock, Bike, Car, TrendingUp, TrendingDown, BarChart3, Wallet, Scale, Package, ArrowUpRight } from 'lucide-react';
+import { Target, Building2, Droplets, Truck, Users, Clock, Bike, Car, TrendingUp, TrendingDown, BarChart3, Wallet, Scale, Package, ArrowUpRight, ShoppingBag, CheckCircle2, Recycle } from 'lucide-react';
 
 export default function GovPage() {
     const [loading, setLoading] = useState(true);
@@ -11,6 +11,8 @@ export default function GovPage() {
         motor: 0, mobil_pickup: 0, gerobak: 0, sepeda: 0,
         tonnageToday: 0, tonnageOrganic: 0, tonnageInorganic: 0,
         totalPayout: 0, pendingWithdrawals: 0, totalTransactions: 0,
+        globalProductionKg: 0,
+        salesRevenue: 0, salesPaid: 0, salesUnpaid: 0, salesCount: 0,
     });
 
     useEffect(() => { fetchAllStats(); }, []);
@@ -34,6 +36,15 @@ export default function GovPage() {
             const { count: txCount } = await supabase.from('transactions').select('*', { count: 'exact', head: true });
             const { count: wdCount } = await supabase.from('withdraw_requests').select('*', { count: 'exact', head: true }).eq('status', 'pending');
 
+            // Production output
+            const { data: prodData } = await supabase.from('inventory_outputs').select('weight_kg');
+            const globalProd = prodData?.reduce((a, p) => a + (Number(p.weight_kg) || 0), 0) || 0;
+
+            // Sales monitoring
+            const { data: salesData } = await supabase.from('product_sales').select('total_price, payment_status');
+            const sRev = salesData?.reduce((a, s) => a + (Number(s.total_price) || 0), 0) || 0;
+            const sPaid = salesData?.filter(s => s.payment_status === 'paid').reduce((a, s) => a + (Number(s.total_price) || 0), 0) || 0;
+
             const couriers = allCouriers || [];
             setStats({
                 totalWarga: wargaCount || 0, totalCourier: couriers.length, pendingCourier: pendingCount || 0, totalBankSampah: bsCount || 0,
@@ -43,6 +54,8 @@ export default function GovPage() {
                 sepeda: couriers.filter(c => c.vehicle_type === 'sepeda').length,
                 tonnageToday: tonnageOrganic + tonnageInorganic, tonnageOrganic, tonnageInorganic,
                 totalPayout, pendingWithdrawals: wdCount || 0, totalTransactions: txCount || 0,
+                globalProductionKg: globalProd,
+                salesRevenue: sRev, salesPaid: sPaid, salesUnpaid: sRev - sPaid, salesCount: salesData?.length || 0,
             });
         } catch (err) { console.error(err); } finally { setLoading(false); }
     };
@@ -146,6 +159,14 @@ export default function GovPage() {
                             <p className="text-[10px] text-emerald-700 font-extrabold uppercase tracking-wider mb-1.5">Total Saldo Cair ke Warga</p>
                             <p className="text-2xl font-black text-emerald-700 font-mono">Rp {stats.totalPayout.toLocaleString('id-ID')}</p>
                         </div>
+                        <div className="bg-gradient-to-r from-brand-50 to-indigo-50 border border-brand-200/60 rounded-xl p-5">
+                            <p className="text-[10px] text-brand-700 font-extrabold uppercase tracking-wider mb-1.5 flex items-center gap-1"><ShoppingBag className="w-3 h-3" /> Revenue Penjualan Produk</p>
+                            <p className="text-2xl font-black text-brand-700 font-mono">Rp {stats.salesRevenue.toLocaleString('id-ID')}</p>
+                            <div className="flex gap-3 mt-2">
+                                <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-600"><CheckCircle2 className="w-3 h-3" /> Lunas: Rp {stats.salesPaid.toLocaleString('id-ID')}</span>
+                                <span className="inline-flex items-center gap-1 text-[10px] font-bold text-amber-600"><Clock className="w-3 h-3" /> Piutang: Rp {stats.salesUnpaid.toLocaleString('id-ID')}</span>
+                            </div>
+                        </div>
                         <div className="bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200/60 rounded-xl p-5">
                             <p className="text-[10px] text-amber-700 font-extrabold uppercase tracking-wider mb-1.5">Pengajuan Pencairan Pending</p>
                             <p className="text-2xl font-black text-amber-700 font-mono">{stats.pendingWithdrawals}</p>
@@ -174,16 +195,39 @@ export default function GovPage() {
 
                 <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 h-[340px] flex flex-col hover:shadow-md transition-shadow">
                     <div className="flex justify-between items-center mb-4">
-                        <h3 className="text-sm font-extrabold text-slate-800">Produksi Output Gudang</h3>
+                        <h3 className="text-sm font-extrabold text-slate-800">Produksi & Penjualan Produk</h3>
                         <span className="text-[10px] bg-gradient-to-r from-violet-500 to-purple-600 text-white font-bold px-3 py-1.5 rounded-xl shadow-sm">Real-time</span>
                     </div>
-                    <div className="flex-1 border-2 border-dashed border-slate-200 rounded-2xl bg-gradient-to-br from-slate-50 to-violet-50/30 flex items-center justify-center transition-colors hover:border-violet-300">
-                        <div className="text-center p-6">
-                            <div className="h-14 w-14 bg-white rounded-2xl shadow-md border border-slate-100 flex items-center justify-center mx-auto mb-4">
-                                <Package className="h-7 w-7 text-violet-500" />
+                    <div className="space-y-3 flex-1">
+                        <div className="bg-gradient-to-r from-emerald-50 to-teal-50/50 border border-emerald-200/40 rounded-xl p-4 flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                                <div className="p-2 bg-emerald-100 rounded-lg"><Recycle className="w-4 h-4 text-emerald-600" /></div>
+                                <div>
+                                    <p className="text-[10px] font-bold text-slate-600 uppercase">Total Produksi Olahan</p>
+                                    <p className="text-xs text-slate-400">Semua output Bank Sampah</p>
+                                </div>
                             </div>
-                            <p className="text-sm font-bold text-slate-600">Modul Produksi (Pengembangan)</p>
-                            <p className="text-[10px] text-slate-400 mt-1 max-w-[220px]">Agregasi output dari seluruh Bank Sampah.</p>
+                            <p className="text-2xl font-black text-emerald-700">{stats.globalProductionKg.toFixed(1)} <span className="text-sm font-bold">Kg</span></p>
+                        </div>
+                        <div className="bg-gradient-to-r from-brand-50 to-indigo-50/50 border border-brand-200/40 rounded-xl p-4 flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                                <div className="p-2 bg-brand-100 rounded-lg"><ShoppingBag className="w-4 h-4 text-brand-600" /></div>
+                                <div>
+                                    <p className="text-[10px] font-bold text-slate-600 uppercase">Total Transaksi Jual</p>
+                                    <p className="text-xs text-slate-400">{stats.salesCount} transaksi ke buyer</p>
+                                </div>
+                            </div>
+                            <p className="text-2xl font-black text-brand-700">Rp {(stats.salesRevenue / 1000000).toFixed(2)} <span className="text-sm font-bold">Jt</span></p>
+                        </div>
+                        <div className="bg-gradient-to-r from-violet-50 to-purple-50/50 border border-violet-200/40 rounded-xl p-4 flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                                <div className="p-2 bg-violet-100 rounded-lg"><TrendingUp className="w-4 h-4 text-violet-600" /></div>
+                                <div>
+                                    <p className="text-[10px] font-bold text-slate-600 uppercase">Efisiensi Konversi</p>
+                                    <p className="text-xs text-slate-400">Rasio produksi / inbound</p>
+                                </div>
+                            </div>
+                            <p className="text-2xl font-black text-violet-700">{stats.tonnageToday > 0 ? ((stats.globalProductionKg / stats.tonnageToday) * 100).toFixed(0) : 0}<span className="text-sm font-bold">%</span></p>
                         </div>
                     </div>
                 </div>

@@ -39,16 +39,16 @@ const PAYMENT_STATUS_MAP: Record<string, { label: string; color: string; icon: a
     unpaid: { label: "Belum Bayar", color: "bg-red-50 text-red-700 border-red-200", icon: XCircle },
 };
 
-const PRODUCT_CATEGORIES = [
-    "Maggot BSF Kering", "Maggot BSF Segar", "Pupuk Kompos", "BBM Pirolisis",
-    "Logam Besi", "Logam Aluminium/Kaleng", "Plastik Cacahan (PET)",
-    "Plastik Cacahan (PP/PE)", "Kertas/Kardus Press", "Beling / Botol Kaca",
-    "Minyak Jelantah", "E-Waste / Elektronik", "Kain/Tekstil Bekas", "Lainnya"
-];
+interface ProductCategory {
+    id: string;
+    name: string;
+    price_per_kg: number;
+}
 
 export default function AdminSalesPage() {
     const [sales, setSales] = useState<ProductSale[]>([]);
     const [buyers, setBuyers] = useState<B2BBuyer[]>([]);
+    const [productCategories, setProductCategories] = useState<ProductCategory[]>([]);
     const [loading, setLoading] = useState(true);
     const [bankId, setBankId] = useState<string | null>(null);
     const [showModal, setShowModal] = useState(false);
@@ -57,7 +57,7 @@ export default function AdminSalesPage() {
 
     // Form
     const [formData, setFormData] = useState({
-        product_name: PRODUCT_CATEGORIES[0],
+        product_name: "",
         quality_grade: "Grade A (Premium)",
         weight_kg: "",
         price_per_kg: "",
@@ -86,6 +86,18 @@ export default function AdminSalesPage() {
 
         if (!profile?.bank_sampah_id) { setLoading(false); return; }
         setBankId(profile.bank_sampah_id);
+
+        // Fetch product categories from single source of truth
+        const { data: catData } = await supabase
+            .from("commodity_prices")
+            .select("id, name, price_per_kg")
+            .eq("trade_type", "sell_to_market")
+            .eq("is_active", true)
+            .order("name");
+        if (catData && catData.length > 0) {
+            setProductCategories(catData);
+            setFormData(prev => ({ ...prev, product_name: catData[0].name, price_per_kg: catData[0].price_per_kg.toString() }));
+        }
 
         const { data: buyerData } = await supabase
             .from("b2b_buyers")
@@ -149,10 +161,11 @@ export default function AdminSalesPage() {
             if (error) throw error;
 
             setShowModal(false);
+            const first = productCategories[0];
             setFormData({
-                product_name: PRODUCT_CATEGORIES[0],
+                product_name: first?.name || "",
                 quality_grade: "Grade A (Premium)",
-                weight_kg: "", price_per_kg: "",
+                weight_kg: "", price_per_kg: first?.price_per_kg?.toString() || "",
                 buyer_name: "", buyer_company: "", b2b_buyer_id: "",
                 payment_status: "unpaid", payment_method: "", notes: ""
             });
@@ -165,6 +178,10 @@ export default function AdminSalesPage() {
     };
 
     const handleSelectBuyer = (buyerId: string) => {
+        if (!buyerId) {
+            setFormData(prev => ({ ...prev, b2b_buyer_id: "", buyer_name: "", buyer_company: "" }));
+            return;
+        }
         const buyer = buyers.find(b => b.id === buyerId);
         if (buyer) {
             setFormData(prev => ({
@@ -174,6 +191,15 @@ export default function AdminSalesPage() {
                 buyer_company: buyer.company_name,
             }));
         }
+    };
+
+    const handleSelectProduct = (productName: string) => {
+        const cat = productCategories.find(c => c.name === productName);
+        setFormData(prev => ({
+            ...prev,
+            product_name: productName,
+            price_per_kg: cat?.price_per_kg?.toString() || prev.price_per_kg,
+        }));
     };
 
     const handleUpdatePayment = async (saleId: string, newStatus: string) => {
@@ -336,8 +362,12 @@ export default function AdminSalesPage() {
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div>
                                     <label className="block text-xs font-semibold text-slate-600 mb-1.5 uppercase tracking-wide">Produk</label>
-                                    <select value={formData.product_name} onChange={e => setFormData(p => ({ ...p, product_name: e.target.value }))} className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium focus:ring-2 focus:ring-brand-500 focus:border-brand-500">
-                                        {PRODUCT_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+                                    <select value={formData.product_name} onChange={e => handleSelectProduct(e.target.value)} className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium focus:ring-2 focus:ring-brand-500 focus:border-brand-500">
+                                        {productCategories.length === 0 ? (
+                                            <option value="">Memuat kategori...</option>
+                                        ) : (
+                                            productCategories.map(c => <option key={c.id} value={c.name}>{c.name}</option>)
+                                        )}
                                     </select>
                                 </div>
                                 <div>
