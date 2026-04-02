@@ -93,12 +93,15 @@ export default function SettingsPage() {
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {/* Branding Panel */}
-                <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-6">
-                    <div className="flex items-center gap-3 border-b border-slate-800 pb-4">
+                <div className={`${tk.cardBg} border rounded-2xl p-6 space-y-6 transition-colors duration-300`}>
+                    <div className={`flex items-center gap-3 border-b pb-4 ${theme === 'dark' ? 'border-slate-700/50' : 'border-slate-200'}`}>
                         <div className="p-2.5 rounded-xl bg-orange-500/10 border border-orange-500/20">
                             <LayoutTemplate className="h-5 w-5 text-orange-400" />
                         </div>
-                        <h2 className="text-lg font-bold text-white">Branding Tampilan</h2>
+                        <div>
+                            <h2 className={`text-lg font-bold ${tk.textPrimary}`}>Branding & Identitas Daerah</h2>
+                            <p className={`text-xs ${tk.textMuted} mt-0.5`}>Atur tampilan dasbor Dinas/Pemerintah</p>
+                        </div>
                     </div>
 
                     <div className="space-y-4">
@@ -108,20 +111,40 @@ export default function SettingsPage() {
                             onChange={(v: string) => handleChange("app_name", v)}
                         />
                         <InputField
-                            label="Nama Pemerintah Daerah"
+                            label="Nama Kabupaten / Kota"
                             value={settings.pemda_name}
                             onChange={(v: string) => handleChange("pemda_name", v)}
-                            placeholder="Contoh: Kabupaten Bogor"
+                            placeholder="Contoh: Kabupaten Bone"
                         />
+                        <div className={`p-3 rounded-xl border ${theme === 'dark' ? 'bg-slate-800/30 border-slate-700/50' : 'bg-slate-50 border-slate-200'}`}>
+                            <p className={`text-[10px] font-bold uppercase tracking-wider ${tk.textMuted} mb-1`}>Preview Header Dinas</p>
+                            <p className={`text-sm font-bold ${tk.textPrimary}`}>
+                                Dinas Lingkungan Hidup {settings.pemda_name || <span className={tk.textMuted}>(belum diatur)</span>}
+                            </p>
+                        </div>
                         <InputField
-                            label="URL Logo Pemda"
+                            label="URL Logo Kabupaten / Kota"
                             value={settings.pemda_logo_url}
                             onChange={(v: string) => handleChange("pemda_logo_url", v)}
-                            placeholder="https://..."
+                            placeholder="https://example.com/logo.png"
                         />
+                        {settings.pemda_logo_url && (
+                            <div className={`flex items-center gap-4 p-4 rounded-xl border ${theme === 'dark' ? 'bg-slate-800/30 border-slate-700/50' : 'bg-slate-50 border-slate-200'}`}>
+                                <img
+                                    src={settings.pemda_logo_url}
+                                    alt="Preview Logo"
+                                    className="w-14 h-14 rounded-xl object-contain bg-white p-1 shadow-sm border"
+                                    onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                                />
+                                <div>
+                                    <p className={`text-xs font-bold ${tk.textPrimary}`}>Preview Logo</p>
+                                    <p className={`text-[10px] ${tk.textMuted}`}>Logo ini akan tampil di header dasbor Dinas/Pemerintah</p>
+                                </div>
+                            </div>
+                        )}
                     </div>
-                    <div className="text-xs text-slate-500 bg-slate-800/30 p-3 rounded-lg">
-                        Nama dan logo ini akan menggantikan elemen default di header dan sidebar jika diatur.
+                    <div className={`text-xs ${tk.textMuted} p-3 rounded-lg ${theme === 'dark' ? 'bg-slate-800/30' : 'bg-slate-50'}`}>
+                        💡 Nama dan logo kabupaten ini tampil di header Dashboard Dinas/Pemerintah sebagai: <strong>"Dinas Lingkungan Hidup {settings.pemda_name || '...'}"</strong>
                     </div>
                 </div>
 

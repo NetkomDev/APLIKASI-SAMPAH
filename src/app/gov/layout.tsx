@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useEffect } from 'react';
 import { AuthGuard } from '@/components/auth/AuthGuard';
 import { useRouter, usePathname } from 'next/navigation';
 import { LayoutDashboard, Map, PieChart, Users, TreePine, LogOut } from 'lucide-react';
@@ -17,6 +18,25 @@ const navItems = [
 export default function GovLayout({ children }: { children: React.ReactNode }) {
     const router = useRouter();
     const pathname = usePathname();
+    const [districtName, setDistrictName] = useState('');
+    const [logoUrl, setLogoUrl] = useState('');
+
+    useEffect(() => {
+        const fetchBranding = async () => {
+            const { data } = await supabase
+                .from('system_settings')
+                .select('key_name, value_text')
+                .eq('category', 'branding')
+                .in('key_name', ['pemda_name', 'pemda_logo_url']);
+            if (data) {
+                data.forEach(d => {
+                    if (d.key_name === 'pemda_name') setDistrictName(d.value_text || '');
+                    if (d.key_name === 'pemda_logo_url') setLogoUrl(d.value_text || '');
+                });
+            }
+        };
+        fetchBranding();
+    }, []);
 
     const handleLogout = async () => {
         await supabase.auth.signOut();
@@ -31,12 +51,18 @@ export default function GovLayout({ children }: { children: React.ReactNode }) {
                     <div className="max-w-[1440px] mx-auto px-6 py-3 flex items-center justify-between">
                         {/* Logo + Title */}
                         <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-2xl flex items-center justify-center shadow-lg shadow-emerald-500/25">
-                                <LayoutDashboard className="w-5 h-5 text-white" />
-                            </div>
+                            {logoUrl ? (
+                                <img src={logoUrl} alt="Logo" className="w-10 h-10 rounded-2xl object-contain shadow-lg" />
+                            ) : (
+                                <div className="w-10 h-10 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-2xl flex items-center justify-center shadow-lg shadow-emerald-500/25">
+                                    <LayoutDashboard className="w-5 h-5 text-white" />
+                                </div>
+                            )}
                             <div>
                                 <h1 className="text-sm font-extrabold tracking-tight text-slate-800 leading-tight">Strategic Government Dashboard</h1>
-                                <p className="text-[10px] text-slate-400 font-semibold uppercase tracking-[0.15em]">Dinas Lingkungan Hidup Kabupaten</p>
+                                <p className="text-[10px] text-slate-400 font-semibold uppercase tracking-[0.15em]">
+                                    Dinas Lingkungan Hidup {districtName || 'Kabupaten'}
+                                </p>
                             </div>
                         </div>
 
@@ -103,3 +129,4 @@ export default function GovLayout({ children }: { children: React.ReactNode }) {
         </AuthGuard>
     );
 }
+

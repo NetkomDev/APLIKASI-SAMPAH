@@ -13,6 +13,7 @@ export default function GovPage() {
         totalPayout: 0, pendingWithdrawals: 0, totalTransactions: 0,
         globalProductionKg: 0,
         salesRevenue: 0, salesPaid: 0, salesUnpaid: 0, salesCount: 0,
+        tonnageAllTime: 0,
     });
 
     useEffect(() => { fetchAllStats(); }, []);
@@ -29,6 +30,10 @@ export default function GovPage() {
             const { data: todayTxs } = await supabase.from('transactions').select('weight_organic, weight_inorganic').gte('created_at', startOfDay.toISOString());
             const tonnageOrganic = todayTxs?.reduce((a, t) => a + (t.weight_organic || 0), 0) || 0;
             const tonnageInorganic = todayTxs?.reduce((a, t) => a + (t.weight_inorganic || 0), 0) || 0;
+
+            // All-time inbound tonnage (for efficiency ratio)
+            const { data: allTxs } = await supabase.from('transactions').select('weight_organic, weight_inorganic');
+            const tonnageAllTime = allTxs?.reduce((a, t) => a + (Number(t.weight_organic) || 0) + (Number(t.weight_inorganic) || 0), 0) || 0;
 
             const { data: payoutData } = await supabase.from('transactions').select('amount_earned').eq('status', 'completed');
             const totalPayout = payoutData?.reduce((a, t) => a + (t.amount_earned || 0), 0) || 0;
@@ -56,6 +61,7 @@ export default function GovPage() {
                 totalPayout, pendingWithdrawals: wdCount || 0, totalTransactions: txCount || 0,
                 globalProductionKg: globalProd,
                 salesRevenue: sRev, salesPaid: sPaid, salesUnpaid: sRev - sPaid, salesCount: salesData?.length || 0,
+                tonnageAllTime,
             });
         } catch (err) { console.error(err); } finally { setLoading(false); }
     };
@@ -227,7 +233,7 @@ export default function GovPage() {
                                     <p className="text-xs text-slate-400">Rasio produksi / inbound</p>
                                 </div>
                             </div>
-                            <p className="text-2xl font-black text-violet-700">{stats.tonnageToday > 0 ? ((stats.globalProductionKg / stats.tonnageToday) * 100).toFixed(0) : 0}<span className="text-sm font-bold">%</span></p>
+                            <p className="text-2xl font-black text-violet-700">{stats.tonnageAllTime > 0 ? ((stats.globalProductionKg / stats.tonnageAllTime) * 100).toFixed(1) : 0}<span className="text-sm font-bold">%</span></p>
                         </div>
                     </div>
                 </div>
