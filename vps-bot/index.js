@@ -510,41 +510,44 @@ async function handleMenuTarikTunai(senderNumber, userProfile) {
 }
 async function handleMenuHarga(senderNumber, userProfile) {
     let pricesData = [];
+    let bankName = 'Bank Sampah Anda';
+
     if (userProfile && userProfile.bank_sampah_id) {
-        const { data } = await supabase.from('unit_commodity_prices')
-            .select('name, price_per_kg, unit')
+        // Ambil nama bank sampah untuk ditampilkan
+        const { data: bankData } = await supabase.from('bank_sampah_units')
+            .select('name')
+            .eq('id', userProfile.bank_sampah_id)
+            .single();
+        if (bankData) bankName = bankData.name;
+
+        // Filter hanya harga BELI dari warga (inbound ke bank sampah)
+        const { data, error } = await supabase.from('unit_commodity_prices')
+            .select('name, price_per_kg, unit, category')
             .eq('bank_sampah_unit_id', userProfile.bank_sampah_id)
-            .eq('trade_type', 'inbound')
+            .eq('trade_type', 'buy_from_citizen')
             .eq('is_active', true)
             .order('name');
+
+        if (error) console.error('[BOT] Error fetch harga:', error.message);
         if (data && data.length > 0) pricesData = data;
-    }
-    
-    // Fallback if no specific price for this bank sampah
-    if (pricesData.length === 0) {
-        const { data } = await supabase.from('commodity_prices')
-            .select('name, price_per_kg, unit')
-            .eq('trade_type', 'inbound')
-            .eq('is_active', true)
-            .order('name');
-        if (data) pricesData = data;
     }
 
     let priceList = `┌─────────────────────────\n`;
-    let icons = ["🥤", "📦", "🔩", "📰", "🍶", "🛢️", "♻️"];
+    let icons = ["♻️", "📦", "🔩", "📰", "🍶", "🛢️", "🥤"];
     if (pricesData && pricesData.length > 0) {
         pricesData.forEach((p, idx) => {
              const icon = icons[idx % icons.length];
              const nameStr = p.name.padEnd(14, ' ');
-             priceList += `│ ${icon} ${nameStr} Rp ${p.price_per_kg.toLocaleString('id-ID')}/${p.unit || 'kg'}\n`;
+             const price = Number(p.price_per_kg).toLocaleString('id-ID');
+             priceList += `│ ${icon} ${nameStr} Rp ${price}/${p.unit || 'kg'}\n`;
         });
     } else {
-        priceList += `│ Data harga belum tersedia.\n`;
+        priceList += `│ Harga belum diatur oleh Admin.\n│ Hubungi Bank Sampah Anda.\n`;
     }
     priceList += `└─────────────────────────`;
 
     return sendButtons(senderNumber,
-        `💲 *Daftar Harga Sampah*\n\n${priceList}\n\n_Harga dapat berubah sewaktu-waktu_`,
+        `💲 *Harga Beli Sampah*\n📍 ${bankName}\n\n${priceList}\n\n_Harga dapat berubah sewaktu-waktu_`,
         [
             { id: "jemput", title: "🚛 Request Jemput" },
             { id: "btn_menu", title: "📋 Menu Utama" }
